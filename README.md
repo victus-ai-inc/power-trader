@@ -1,1 +1,1 @@
-# electricity-trader
+# power-trader
