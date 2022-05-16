@@ -1,55 +1,43 @@
-# Python 3.7
-token = "valid token"
-server = 'api.nrgstream.com'
-# NOTE: streamId '1' is in the NRG Stream 'Alberta Power' Product ... so the token must be for a user that has access to Alberta Power product,
-# if not the call will result in a NotFound
-# ...in otherwords, only data for the streams the user has access to can be returned
-path = '/api/StreamData/1?fromDate=09/21/2018&toDate=09/21/2018'
-
-# Get StreamdData in CVS format
-headers = {
-    'Accept': 'text/csv',
-    'Authorization': f'Bearer {token}'
-}
-
+import streamlit as st
+import pandas as pd
 import http.client
 import certifi
 import ssl
-context = ssl.create_default_context(cafile=certifi.where())
-conn = http.client.HTTPSConnection(server,context=context)
-conn.request('GET', path, None, headers)
-res = conn.getresponse()
 
-print('========= Get StreamdData in CVS format')
-print(res.code)
-print(res.headers)
-print(res.read().decode('utf-8'))
+#1. Pull NRG credentials from Streamlit secrets manager
+st.write("DB username:", st.secrets["nrg_username"])
+st.write("DB password:", st.secrets["nrg_password"])
 
-# Get StreamdData in JSON format
-headers = {
-    'Accept': 'application/json',
-    'Authorization': f'Bearer {token}'
-}
+#2. Use creds to generate token from NRG
+def getToken():
+    global accessToken
+    global tokenExpiry
 
-import json
-context = ssl.create_default_context(cafile=certifi.where())
-conn = http.client.HTTPSConnection(server,context=context)
-conn.request('GET', path, None, headers)
-res = conn.getresponse()
+    tokenPath = '/api/security/token'
+    tokenPayload = f'grant_type=password&username={username}&password={password}'
+    headers = {"Content-type": "application/x-www-form-urlencoded"}
 
-pretty_json = json.dumps(json.loads(res.read().decode('utf-8')), indent=2, sort_keys=False)
+    # Connect to API server to get a token
+    context = ssl.create_default_context(cafile=certifi.where())
+    conn = http.client.HTTPSConnection(server,context=context)
+    conn.request('POST', tokenPath, tokenPayload, headers)
+    res = conn.getresponse()
+    res_code = res.code
+    # Check if the response is good
+    if res_code == 200:
+        res_data = res.read()
+        # Decode the token into an object
+        jsonData = json.loads(res_data.decode('utf-8'))
+        accessToken = jsonData['access_token']
+        # Calculate new expiry date
+        tokenExpiry = datetime.now() + timedelta(seconds=jsonData['expires_in'])
+    else:
+        res_data = res.read()
+        print(res_data.decode('utf-8'))
+    conn.close()    
+    return
 
-print('========= Get StreamdData in JSON format')
-print(res.code)
-print(res.headers)
-print(pretty_json)
+#3. Use token to pull data
+#4. Pass data from pull-nrg-data.py to ab-power-trader.py
 
-# Release to token for another user / process
-path = '/api/ReleaseToken'
-headers = {
-'Authorization': f'Bearer {token}'
-}
-context = ssl.create_default_context(cafile=certifi.where())
-conn = http.client.HTTPSConnection(server,context=context)
-conn.request('DELETE', path, None, headers)
-res = conn.getresponse()
+
