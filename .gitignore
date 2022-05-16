@@ -128,5 +128,8 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# NRGstream credentials file
+# NRGstream credentials
 credentials.txt
+
+# Streamlit secrects
+.streamlit/secrets.toml
