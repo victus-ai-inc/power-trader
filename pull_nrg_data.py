@@ -1,22 +1,21 @@
-import streamlit as st
-import pandas as pd
+from datetime import datetime, timedelta
 import http.client
 import certifi
 import ssl
-import ab-power-trader
+import json
+import pandas as pd
+import ab_power_trader
+import streamlit as st
 
-#1. Pull NRG credentials from Streamlit secrets manager
-print(ab-power-trader.get_nrg_creds())
+# Pull NRG credentials from Streamlit secrets manager
+username, password = ab_power_trader.get_nrg_creds()
+server = 'api.nrgstream.com'
 
-#2. Use creds to generate token from NRG
+# Use creds to generate token from NRG
 def getToken():
-    global accessToken
-    global tokenExpiry
-
     tokenPath = '/api/security/token'
     tokenPayload = f'grant_type=password&username={username}&password={password}'
     headers = {"Content-type": "application/x-www-form-urlencoded"}
-
     # Connect to API server to get a token
     context = ssl.create_default_context(cafile=certifi.where())
     conn = http.client.HTTPSConnection(server,context=context)
@@ -32,12 +31,33 @@ def getToken():
         # Calculate new expiry date
         tokenExpiry = datetime.now() + timedelta(seconds=jsonData['expires_in'])
     else:
+        st.write(res_code)
         res_data = res.read()
-        print(res_data.decode('utf-8'))
-    conn.close()    
-    return
+        st.write(res_data.decode('utf-8'))
+    conn.close()
+    return accessToken, tokenExpiry
 
-#3. Use token to pull data
-#4. Pass data from pull-nrg-data.py to ab-power-trader.py
+#accessToken = ''
 
+# Release generated token
+def release_token(accessToken):
+    path = '/api/ReleaseToken'
+    headers = {'Authorization': f'Bearer {accessToken}'}
+    context = ssl.create_default_context(cafile=certifi.where())
+    conn = http.client.HTTPSConnection(server,context=context)
+    conn.request('DELETE', path, None, headers)
+    res = conn.getresponse()
+    st.write('Token successfully released.')
 
+# Use token to pull data
+def pull_data(fromDate, toDate):
+    # Get token
+    accessToken, tokenExpiry = getToken()
+    st.write(accessToken)
+    st.write(tokenExpiry)
+    st.write(fromDate, toDate)
+    # Pull data for stream
+        #add code for this tomorrow
+    # Release token
+    release_token(accessToken)
+    #pass
