@@ -13,6 +13,11 @@ import datetime
 st.set_page_config(layout='wide', initial_sidebar_state='auto', menu_items=None)
 st.title('Alberta Power Trader')
 
+def get_nrg_creds():
+    username = st.secrets["nrg_username"]
+    password = st.secrets["nrg_password"]
+    return username, password
+
 # Sidebar config
 start_date = st.sidebar.date_input('Start Date', value=datetime.datetime.now()-datetime.timedelta(30))
 end_date = st.sidebar.date_input('End Date', min_value=start_date)

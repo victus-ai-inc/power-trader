@@ -3,10 +3,10 @@ import pandas as pd
 import http.client
 import certifi
 import ssl
+import ab-power-trader
 
 #1. Pull NRG credentials from Streamlit secrets manager
-st.write("DB username:", st.secrets["nrg_username"])
-st.write("DB password:", st.secrets["nrg_password"])
+print(ab-power-trader.get_nrg_creds())
 
 #2. Use creds to generate token from NRG
 def getToken():
