@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+import time
 import http.client
 import certifi
 import ssl
@@ -37,8 +38,6 @@ def getToken():
     conn.close()
     return accessToken, tokenExpiry
 
-#accessToken = ''
-
 # Release generated token
 def release_token(accessToken):
     path = '/api/ReleaseToken'
@@ -50,14 +49,40 @@ def release_token(accessToken):
     st.write('Token successfully released.')
 
 # Use token to pull data
-def pull_data(fromDate, toDate):
+def pull_data(fromDate, toDate, streamIds):
     # Get token
     accessToken, tokenExpiry = getToken()
-    st.write(accessToken)
-    st.write(tokenExpiry)
-    st.write(fromDate, toDate)
+    #st.write(accessToken)
+    #st.write(tokenExpiry)
     # Pull data for stream
-        #add code for this tomorrow
+    for streamId in streamIds:
+        # Check if token has expired, if so, get new one
+        if datetime.now() >= tokenExpiry:
+            getToken()
+        # Setup the path for data request. Using hard coded dates for example
+        path = f'/api/StreamData/{streamId}?fromDate={fromDate}&toDate={toDate}'
+        headers = {
+            'Accept': 'Application/json',
+            'Authorization': f'Bearer {accessToken}'
+            }
+        context = ssl.create_default_context(cafile=certifi.where())
+        conn = http.client.HTTPSConnection(server,context=context)
+        conn.request('GET', path, None, headers)
+        res = conn.getresponse()
+        res_code = res.code
+        try:
+            st.write(f'{datetime.now()} Outputing stream {path} res code {res_code}')
+            df = json.dumps(json.loads(res.read().decode('utf-8')), indent=2, sort_keys=False)
+            st.write(df)
+            conn.close()
+            # Wait 1 second before next request
+            time.sleep(1)
+        except:
+            print('Exception Caught 1')
+            break
+
     # Release token
     release_token(accessToken)
-    #pass
+
+# accessToken = 'BOdeE8KfcnoGpM-8iSlsNeWt9zL-P07DZUoLiCbjeV4tIQTWKmw82FFlgj8G_H69nH5XGQWbHMdaYeJS02tWFR3ZTUU9Gnyn60WiEfaxXLCdLk8h6nQJnzN1vF1FDhfvfrNi7az5HAbbos1MjAwbvFJIKAeSsXno9Fje5_Fa9sCnRJdkl0YHPOIislDqyZ9QI1-VFYdLi-WZoBrbYEq1Svddv-s3D69VMLVz9omH-7jMySDTlvQaN0Lxdx3SGiEVy3y7EyQqEkjyEi3b_JTmPobfK4QtbLFgpzi4zprnJUwJN3TZau_38vyfFwXkIKvd0AqcMbnOVhH9KPc141TCt5ybXFI'
+# release_token(accessToken)

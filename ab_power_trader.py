@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 import altair as alt
 from st_aggrid import AgGrid
-import datetime
+from datetime import datetime, timedelta, date
 import pull_nrg_data
 
 def get_nrg_creds():
@@ -18,14 +18,16 @@ if __name__ == '__main__':
     st.title('Alberta Power Trader')
 
 # Sidebar config
-    fromDate = st.sidebar.date_input('Start Date', value=datetime.datetime.now()-datetime.timedelta(30))
+    fromDate = st.sidebar.date_input('Start Date', value=datetime.now()-timedelta(30))
     toDate = st.sidebar.date_input('End Date', min_value=fromDate)
+    fromDate = fromDate.strftime('%m/%d/%Y')
+    toDate = toDate.strftime('%m/%d/%Y')
+
     # Stream Ids
         #AB Internal Load Demand (5min) = 225
         #AB Internal Load Demand (1min) = 139308
         #24 month supply demand forecast = 278763
     streamIds = [225]
-    streamId = st.sidebar.selectbox('Pick a StreamId',(streamIds))
     # Pull NRG data
-    pull_nrg_data.pull_data(fromDate, toDate)
+    pull_nrg_data.pull_data(fromDate, toDate, streamIds)
 
