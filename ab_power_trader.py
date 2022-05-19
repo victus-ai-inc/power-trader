@@ -2,9 +2,10 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import json
 import altair as alt
 from st_aggrid import AgGrid
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta
 import pull_nrg_data
 
 def get_nrg_creds():
@@ -18,8 +19,8 @@ if __name__ == '__main__':
     st.title('Alberta Power Trader')
 
 # Sidebar config
-    fromDate = st.sidebar.date_input('Start Date', value=datetime.now()-timedelta(30))
-    toDate = st.sidebar.date_input('End Date', min_value=fromDate)
+    fromDate = st.sidebar.date_input('Start Date', value=datetime.now()-timedelta(1))
+    toDate = st.sidebar.date_input('End Date', min_value=fromDate)+timedelta(1)
     fromDate = fromDate.strftime('%m/%d/%Y')
     toDate = toDate.strftime('%m/%d/%Y')
 
@@ -27,7 +28,14 @@ if __name__ == '__main__':
         #AB Internal Load Demand (5min) = 225
         #AB Internal Load Demand (1min) = 139308
         #24 month supply demand forecast = 278763
-    streamIds = [225]
+    streamId = [139308]
     # Pull NRG data
-    pull_nrg_data.pull_data(fromDate, toDate, streamIds)
+    df = pull_nrg_data.pull_data(fromDate, toDate, streamId)
+    #meta = pd.json_normalize(df, record_path=['columns'])
+    #st.write(meta)
+    df = pd.json_normalize(df, record_path=['data'])
+    st.write(df)
+    
+    
+
 

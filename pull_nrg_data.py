@@ -4,7 +4,6 @@ import http.client
 import certifi
 import ssl
 import json
-import pandas as pd
 import ab_power_trader
 import streamlit as st
 
@@ -49,40 +48,37 @@ def release_token(accessToken):
     st.write('Token successfully released.')
 
 # Use token to pull data
-def pull_data(fromDate, toDate, streamIds):
+def pull_data(fromDate, toDate, streamId):
     # Get token
     accessToken, tokenExpiry = getToken()
-    #st.write(accessToken)
-    #st.write(tokenExpiry)
     # Pull data for stream
-    for streamId in streamIds:
-        # Check if token has expired, if so, get new one
-        if datetime.now() >= tokenExpiry:
-            getToken()
-        # Setup the path for data request. Using hard coded dates for example
-        path = f'/api/StreamData/{streamId}?fromDate={fromDate}&toDate={toDate}'
-        headers = {
-            'Accept': 'Application/json',
-            'Authorization': f'Bearer {accessToken}'
-            }
-        context = ssl.create_default_context(cafile=certifi.where())
-        conn = http.client.HTTPSConnection(server,context=context)
-        conn.request('GET', path, None, headers)
-        res = conn.getresponse()
-        res_code = res.code
-        try:
-            st.write(f'{datetime.now()} Outputing stream {path} res code {res_code}')
-            df = json.dumps(json.loads(res.read().decode('utf-8')), indent=2, sort_keys=False)
-            st.write(df)
-            conn.close()
-            # Wait 1 second before next request
-            time.sleep(1)
-        except:
-            print('Exception Caught 1')
-            break
-
+    # Check if token has expired, if so, get new one
+    if datetime.now() >= tokenExpiry:
+        getToken()
+    # Setup the path for data request. Using hard coded dates for example
+    path = f'/api/StreamData/{streamId}?fromDate={fromDate}&toDate={toDate}'
+    headers = {
+        'Accept': 'Application/json',
+        'Authorization': f'Bearer {accessToken}'
+        }
+    context = ssl.create_default_context(cafile=certifi.where())
+    conn = http.client.HTTPSConnection(server,context=context)
+    conn.request('GET', path, None, headers)
+    res = conn.getresponse()
+    res_code = res.code
+    try:
+        st.write(f'{datetime.now()} Outputing stream {path} res code {res_code}')
+        df = json.loads(res.read().decode('utf-8'))
+        st.write(df)
+        conn.close()
+        # Wait 1 second before next request
+        time.sleep(1)
+    except:
+        print('Exception Caught 1')
     # Release token
+    st.write(accessToken)
     release_token(accessToken)
+    return df
 
-# accessToken = 'BOdeE8KfcnoGpM-8iSlsNeWt9zL-P07DZUoLiCbjeV4tIQTWKmw82FFlgj8G_H69nH5XGQWbHMdaYeJS02tWFR3ZTUU9Gnyn60WiEfaxXLCdLk8h6nQJnzN1vF1FDhfvfrNi7az5HAbbos1MjAwbvFJIKAeSsXno9Fje5_Fa9sCnRJdkl0YHPOIislDqyZ9QI1-VFYdLi-WZoBrbYEq1Svddv-s3D69VMLVz9omH-7jMySDTlvQaN0Lxdx3SGiEVy3y7EyQqEkjyEi3b_JTmPobfK4QtbLFgpzi4zprnJUwJN3TZau_38vyfFwXkIKvd0AqcMbnOVhH9KPc141TCt5ybXFI'
+# accessToken = 'uBVK4V6mvRZVLEesCeDxkP05D_9pp_RWOBa8ITopOXNk9czqv9FcUFyYmeu4JFlgnYEdotRQxuJEcr4dvn0kDGTLa8DKRGDGszY5aRr9Q3Xu1ggOj4tfamt9HnmGJx-Acz_Lt9vgXz3XUItye0Let_lM8tPe9yBMnVza2oa0bsIZZfVfkTrwoZsM45244s3c28vYuy8wIK_YLS7kHxwg362zYcXHKTyZ1SlMIlFAcw6LSmFAH0kTVh9Ume4c9SpZxI8ENBNHvLEOpTYKA0l9Waq0AlZCnqvCk9Uis8Y2qLRmmkYseaFBXXDpLE5ArhttpKdBbPwl8xb2yyz1PHiRSfyL_Jk'
 # release_token(accessToken)
