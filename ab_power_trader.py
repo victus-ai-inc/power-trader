@@ -28,12 +28,12 @@ if __name__ == '__main__':
         #AB Internal Load Demand (5min) = 225
         #AB Internal Load Demand (1min) = 139308
         #24 month supply demand forecast = 278763
-    streamId = [139308]
+    streamId = 225
+     # Initialize NRG API token
+    accessToken, tokenExpiry = pull_nrg_data.getToken()
+    
     # Pull NRG data
-    df = pull_nrg_data.pull_data(fromDate, toDate, streamId)
-    #meta = pd.json_normalize(df, record_path=['columns'])
-    #st.write(meta)
-    df = pd.json_normalize(df, record_path=['data'])
+    df = pull_nrg_data.pull_data(fromDate, toDate, streamId, accessToken, tokenExpiry)
     st.write(df)
     
     
