@@ -1,10 +1,11 @@
 from datetime import datetime, timedelta, date
+import time
 import pandas as pd
 import pull_nrg_data
 
 def one_year_of_data(year, streamId, accessToken, tokenExpiry):
     firstDay = date(year,1,1)
-    lastDay = firstDay + timedelta(366)
+    lastDay = firstDay + timedelta(10)
     # Initialize start date & dataframe
     startDate = firstDay
     df = pd.DataFrame()
@@ -23,11 +24,14 @@ def one_year_of_data(year, streamId, accessToken, tokenExpiry):
     return df
 
 if __name__ == '__main__':
+    tic = time.perf_counter()
     streamId = 139308
-    year = 2020
+    year = 2022
     # Get NRG API token
     accessToken, tokenExpiry = pull_nrg_data.getToken()
     print(accessToken)
     df = one_year_of_data(year, streamId, accessToken, tokenExpiry)
     df.to_csv('test.csv', header=['timestamp','Demand'])
     pull_nrg_data.release_token(accessToken)
+    toc = time.perf_counter()
+    print(f'{toc - tic:0.2f} secs')
