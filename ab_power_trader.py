@@ -31,10 +31,11 @@ if __name__ == '__main__':
     streamId = 225
      # Initialize NRG API token
     accessToken, tokenExpiry = pull_nrg_data.getToken()
-    
+    st.write(accessToken)
     # Pull NRG data
     df = pull_nrg_data.pull_data(fromDate, toDate, streamId, accessToken, tokenExpiry)
     st.write(df)
+    pull_nrg_data.release_token(accessToken)
     
     
 
