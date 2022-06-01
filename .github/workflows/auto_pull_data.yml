@@ -2,7 +2,7 @@ name: auto_pull_data
 
 on:
   schedule:
-    - cron: '40 15 * * *'
+    - cron: '44 15 * * *'
   workflow_dispatch:
 
 jobs:
