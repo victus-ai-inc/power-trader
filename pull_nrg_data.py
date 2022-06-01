@@ -22,7 +22,7 @@ def getToken():
     conn = http.client.HTTPSConnection(server,context=context)
     conn.request('POST', tokenPath, tokenPayload, headers)
     res = conn.getresponse()
-    res_code = res.code
+    res_code = res.status
     # Check if the response is good
     if res_code == 200:
         res_data = res.read()
@@ -47,13 +47,14 @@ def pull_data(fromDate, toDate, streamId, accessToken, tokenExpiry):
         'Authorization': f'Bearer {accessToken}'
         }
     context = ssl.create_default_context(cafile=certifi.where())
-    conn = http.client.HTTPSConnection(server,context=context)
+    conn = http.client.HTTPSConnection(server, context=context)
     conn.request('GET', path, None, headers)
     res = conn.getresponse()
-    res_code = res.code
+    res_code = res.status
     try:
         st.write(f'{datetime.now()} Outputing stream {path} res code {res_code}')
         df = json.loads(res.read().decode('utf-8'))
+        st.write(df)
         df = pd.json_normalize(df, record_path=['data'])
         conn.close()
     except:
@@ -70,5 +71,5 @@ def release_token(accessToken):
     res = conn.getresponse()
     st.write('Token successfully released.')
 
-# accessToken = '-OGrnpgKog83XaKRqwDrgGdVPkIPU0g9ZAsYTJ2PIdyZhL_HqsDFRVh-ryPicw-H7E5pyPdIF9WG4uxrWGxvODwVyXhLAZh-F2ECugDNDgKVccIym5aV5RGhQanJz0k7HcZ6RI4b6jG-e1n2PpojM3PypVfGDybNoX_l8S4faJN5qWQA2Zw9CmHtOVv0L5BZvOCraadIOY5st06sRvI8yO8LJOxDx-Vo7MIWhJEnUPfBpKWXjR4IvTttLK-HtbHQq4EQHqbgUIsfe3ZsKhynSg-4xgxkDbF9wkNoP7b02_zJD_6qsvLq-AbFUDw3ti9wCOtCJydGtG7VFhCMYyvgoDACUTc'
+# accessToken = 'E7NXySe54ILsUPGfbF7S2v8O8_WFSBgiF8siI-WyRCNB5Rj2FmbesMCTRyajbtRkNAm3CCwNEbg71DFRN_V8RkI2FwwAoPJzuFjmMUQjEzEs4j8F_Wsa6SnZlcAlN9XS6VmqJvrZw0bdjoPGqCgsOVJJERF3VD7I6xYgSlUrtkot2vVy7URYwAy3PGZTL9Gi2lr1SE6xRrpdJWhqtgWmClPW5RbIpSyVzw2iNXBz_y1qenfW6oZ4HCUd-_PH39xH4jQ9eYVEem5aGWiTSzC2tWnbDpkiS8Po9aKDuS4DjJEiiCBnPmZAr3f17ZmELAeD-KnGaQKA1KpwBu8OFyuCLG-Bhjw'
 # release_token(accessToken)
