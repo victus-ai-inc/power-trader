@@ -70,6 +70,7 @@ def release_token(accessToken):
     conn.request('DELETE', path, None, headers)
     res = conn.getresponse()
     st.write('Token successfully released.')
+    print('token released')
 
 # accessToken = 'E7NXySe54ILsUPGfbF7S2v8O8_WFSBgiF8siI-WyRCNB5Rj2FmbesMCTRyajbtRkNAm3CCwNEbg71DFRN_V8RkI2FwwAoPJzuFjmMUQjEzEs4j8F_Wsa6SnZlcAlN9XS6VmqJvrZw0bdjoPGqCgsOVJJERF3VD7I6xYgSlUrtkot2vVy7URYwAy3PGZTL9Gi2lr1SE6xRrpdJWhqtgWmClPW5RbIpSyVzw2iNXBz_y1qenfW6oZ4HCUd-_PH39xH4jQ9eYVEem5aGWiTSzC2tWnbDpkiS8Po9aKDuS4DjJEiiCBnPmZAr3f17ZmELAeD-KnGaQKA1KpwBu8OFyuCLG-Bhjw'
 # release_token(accessToken)
