@@ -53,9 +53,9 @@ def pull_data(fromDate, toDate, streamId, accessToken, tokenExpiry):
     res_code = res.status
     try:
         st.write(f'{datetime.now()} Outputing stream {path} res code {res_code}')
-        df = json.loads(res.read().decode('utf-8'))
-        st.write(df)
-        df = pd.json_normalize(df, record_path=['data'])
+        jsonData = json.loads(res.read().decode('utf-8'))
+        st.write(jsonData)
+        df = pd.json_normalize(jsonData, record_path=['data'])
         conn.close()
     except:
         print('Exception Caught 1')
