@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta
-import time
 import pandas as pd
 import http.client
 import certifi
@@ -54,8 +53,10 @@ def pull_data(fromDate, toDate, streamId, accessToken, tokenExpiry):
     try:
         st.write(f'{datetime.now()} Outputing stream {path} res code {res_code}')
         jsonData = json.loads(res.read().decode('utf-8'))
+        jsonData['streamInfo'] = {'name':'ryan'}
         st.write(jsonData)
         df = pd.json_normalize(jsonData, record_path=['data'])
+        st.write(type(df))
         conn.close()
     except:
         print('Exception Caught 1')
