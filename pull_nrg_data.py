@@ -39,7 +39,6 @@ def getToken():
 
 def get_streamInfo(streamId):
     streamInfo = pd.read_csv('stream_codes.csv')
-    #203138
     streamInfo = streamInfo[streamInfo['streamId']==str(streamId)]
     return streamInfo
 
@@ -62,7 +61,7 @@ def pull_data(fromDate, toDate, streamId, accessToken, tokenExpiry):
         df = pd.json_normalize(jsonData, record_path='data')
         #Rename df cols
         df.rename(columns={0:'timeStamp', 1:'value'}, inplace=True)
-        #Add cols to df
+        #Add streamInfo cols to df
         streamInfo = get_streamInfo(streamId)
         assetCode = streamInfo.iloc[0,1]
         streamName = streamInfo.iloc[0,2]
@@ -72,6 +71,9 @@ def pull_data(fromDate, toDate, streamId, accessToken, tokenExpiry):
         intervalType = streamInfo.iloc[0,6]
         df = df.assign(streamId=streamId, assetCode=assetCode, streamName=streamName, fuelType=fuelType, \
                         subfuelType=subfuelType, timeInterval=timeInterval, intervalType=intervalType)
+        #Changing 'value' col to numeric and filling in NA's with previous value in col
+        df['value'] = pd.to_numeric(df['value'])
+        df.fillna(method='ffill',inplace=True)
         st.write(df)
         conn.close()
     except:
@@ -89,5 +91,5 @@ def release_token(accessToken):
     st.write('Token successfully released.')
     print('token released')
 
-# accessToken = 'E7NXySe54ILsUPGfbF7S2v8O8_WFSBgiF8siI-WyRCNB5Rj2FmbesMCTRyajbtRkNAm3CCwNEbg71DFRN_V8RkI2FwwAoPJzuFjmMUQjEzEs4j8F_Wsa6SnZlcAlN9XS6VmqJvrZw0bdjoPGqCgsOVJJERF3VD7I6xYgSlUrtkot2vVy7URYwAy3PGZTL9Gi2lr1SE6xRrpdJWhqtgWmClPW5RbIpSyVzw2iNXBz_y1qenfW6oZ4HCUd-_PH39xH4jQ9eYVEem5aGWiTSzC2tWnbDpkiS8Po9aKDuS4DjJEiiCBnPmZAr3f17ZmELAeD-KnGaQKA1KpwBu8OFyuCLG-Bhjw'
+# accessToken = 'xaY2Q9m3TNvB_a4U8L8w_Clz5F2WLz3RXKlxOcMExvIY6ShVAx9yrdiNvS3HTC7TsX9HtRTasqVR9SM3YStMo_ysEjoEjjAoyEfbkB6Co6jPlesD-wC0lGRvGMUNSdUEXO7wRZw-cfb9xFRIR7y2bX-VorD-zv6eQ1bEkm1EzXYKeKiKSf-xjJ32H_wVi_oktebZbgkOjaCpEWUgL_xDYkUoAJQHjn4Q5T92BPllkzveZmzmvJhBjpjegoxP6ISdElrBRLbrUSZTlH43k7_CLUwbAd8ryjfLaLymF0CAkKr8pQTJIKPyvMrBZ7jYCgAKT39bY2Lv8EMlkA_blpCZ8LSg9XY'
 # release_token(accessToken)
