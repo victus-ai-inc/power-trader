@@ -37,6 +37,12 @@ def getToken():
     conn.close()
     return (accessToken, tokenExpiry)
 
+def get_streamInfo(streamId):
+    streamInfo = pd.read_csv('stream_codes.csv')
+    #203138
+    streamInfo = streamInfo[streamInfo['streamId']==str(streamId)]
+    return streamInfo
+
 # Use token to pull data
 def pull_data(fromDate, toDate, streamId, accessToken, tokenExpiry): 
     # Setup the path for data request
@@ -51,12 +57,22 @@ def pull_data(fromDate, toDate, streamId, accessToken, tokenExpiry):
     res = conn.getresponse()
     res_code = res.status
     try:
-        st.write(f'{datetime.now()} Outputing stream {path} res code {res_code}')
+        #Load json data & create pandas df
         jsonData = json.loads(res.read().decode('utf-8'))
-        jsonData['streamInfo'] = {'name':'ryan'}
-        st.write(jsonData)
-        df = pd.json_normalize(jsonData, record_path=['data'])
-        st.write(type(df))
+        df = pd.json_normalize(jsonData, record_path='data')
+        #Rename df cols
+        df.rename(columns={0:'timeStamp', 1:'value'}, inplace=True)
+        #Add cols to df
+        streamInfo = get_streamInfo(streamId)
+        assetCode = streamInfo.iloc[0,1]
+        streamName = streamInfo.iloc[0,2]
+        fuelType = streamInfo.iloc[0,3]
+        subfuelType = streamInfo.iloc[0,4]
+        timeInterval = streamInfo.iloc[0,5]
+        intervalType = streamInfo.iloc[0,6]
+        df = df.assign(streamId=streamId, assetCode=assetCode, streamName=streamName, fuelType=fuelType, \
+                        subfuelType=subfuelType, timeInterval=timeInterval, intervalType=intervalType)
+        st.write(df)
         conn.close()
     except:
         print('Exception Caught 1')

@@ -1,4 +1,4 @@
-streamID,assetCode,streamName,fuelType,subfuelType,timeInterval,intervalType
+streamId,assetCode,streamName,fuelType,subfuelType,timeInterval,intervalType
 293682,ANC1,AB Newsprint,Natural Gas,Simple Gas,1 min,supply
 293686,ALP1,Bantry,Natural Gas,Simple Gas,1 min,supply
 293689,BHL1,Bellshill,Natural Gas,Simple Gas,1 min,supply
