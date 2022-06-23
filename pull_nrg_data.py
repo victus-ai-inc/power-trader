@@ -30,9 +30,8 @@ def getToken():
         # Calculate new expiry date
         tokenExpiry = datetime.now() + timedelta(seconds=jsonData['expires_in'])
     else:
-        st.write(res_code)
         res_data = res.read()
-        st.write(res_data.decode('utf-8'))
+        # print(res_data.decode('utf-8'))
     conn.close()
     return (accessToken, tokenExpiry)
 
@@ -85,6 +84,3 @@ def release_token(accessToken):
     conn.request('DELETE', path, None, headers)
     res = conn.getresponse()
     print('token released')
-
-# accessToken = 'fP6LEG8qlowwkH-fHeToGJyHgGk7-zR3VTfbACuvnDFeEPssPLa-H4-3BCEv36dhmQJMhaL9n1-cBtRUOFIpe0QFHexes63zOBCngY6iH-4SwFGsMT0llA0Tdr-ckOTVs_1GYI0Es9UCXX-Higx8iXIMX-rSSyMQcjoivSifZm6PO3Y-RbrHvcHpRBwCZzwCpYblHuGVW8_t1nuKbT_H7eb0C8-eqWU4HKtNLE_Ukslbn54rR3E2AKcRw9ZVSiwf-mheeTb-t--fG1Vb5z6r6RLUDei6it3qQfmphK3F7uPHNgf_JtCI6mpBc07_yi_UuHqNYE2Fg8LTpcuaB34WuLg1eMw'
-# release_token(accessToken)
