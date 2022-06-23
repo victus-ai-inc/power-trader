@@ -2,18 +2,23 @@ from datetime import datetime, timedelta, date
 import time
 import pandas as pd
 import pull_nrg_data
+import streamlit as st
 import mysql.connector
 from sqlalchemy import create_engine
 
+sql_user = st.secrets["sql_user"]
+sql_pw = st.secrets["sql_password"]
+sql_schema = st.secrets["sql_schema"]
+
 def sql_insert(df):
-    engine = create_engine('mysql+mysqlconnector://victusai:#p!k4XG2Mg#,B,W@localhost/nrgdata', echo=False)
-    df.to_sql(name='nrgdata', con=engine, if_exists = 'append', index=False)
+    engine = create_engine(f'mysql+mysqlconnector://{sql_user}:{sql_pw}@localhost/{sql_schema}', echo=False)
+    df.to_sql(name=sql_schema, con=engine, if_exists = 'append', index=False)
 
 if __name__ == '__main__':
     tic = time.perf_counter()
     
     streamId = 41371
-    year = 2021
+    year = 2020
     # Get NRG API token
     accessToken, tokenExpiry = pull_nrg_data.getToken()
     print(accessToken)
@@ -25,9 +30,10 @@ if __name__ == '__main__':
         else:
             endDate = date(year+1,1,1)
         APIdata = pull_nrg_data.pull_data(startDate.strftime('%m/%d/%Y'), endDate.strftime('%m/%d/%Y'), streamId, accessToken, tokenExpiry)
-    APIdata['timeStamp'] = pd.to_datetime(APIdata['timeStamp'])
+        APIdata['timeStamp'] = pd.to_datetime(APIdata['timeStamp'])
+        # Write data to DB
+        sql_insert(APIdata)
 
-    # Write data to DB
     APIdata.to_csv('test.csv', index=False)
 
     # Release token
