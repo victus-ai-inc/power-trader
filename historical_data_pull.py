@@ -3,11 +3,11 @@ import time
 import pandas as pd
 import pull_nrg_data
 import mysql.connector
-from mysql.connector import errorcode
+from sqlalchemy import create_engine
 
-def sql_insert():
-    nrgdata = mysql.connector.connect(user='victusai', password='#p!k4XG2Mg#,B,W', host='localhost', database='nrgdata')
-    nrgdata.close()
+def sql_insert(df):
+    engine = create_engine('mysql+mysqlconnector://victusai:#p!k4XG2Mg#,B,W@localhost/nrgdata', echo=False)
+    df.to_sql(name='nrgdata', con=engine, if_exists = 'append', index=False)
 
 if __name__ == '__main__':
     tic = time.perf_counter()

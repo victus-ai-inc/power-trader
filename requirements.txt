@@ -4,4 +4,3 @@ scipy
 altair
 streamlit
 streamlit-aggrid
-google-cloud-firestore
