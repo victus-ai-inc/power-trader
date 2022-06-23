@@ -42,6 +42,7 @@ def get_streamInfo(streamId):
 
 # Use token to pull data
 def pull_data(fromDate, toDate, streamId, accessToken, tokenExpiry): 
+    print('pull something...')
     # Setup the path for data request
     path = f'/api/StreamData/{streamId}?fromDate={fromDate}&toDate={toDate}'
     headers = {
