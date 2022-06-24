@@ -41,8 +41,7 @@ def get_streamInfo(streamId):
     return streamInfo
 
 # Use token to pull data
-def pull_data(fromDate, toDate, streamId, accessToken, tokenExpiry): 
-    print('pull something...')
+def pull_data(fromDate, toDate, streamId, accessToken, tokenExpiry):
     # Setup the path for data request
     path = f'/api/StreamData/{streamId}?fromDate={fromDate}&toDate={toDate}'
     headers = {
@@ -71,6 +70,7 @@ def pull_data(fromDate, toDate, streamId, accessToken, tokenExpiry):
     df = df.assign(streamId=streamId, assetCode=assetCode, streamName=streamName, fuelType=fuelType, \
                     subfuelType=subfuelType, timeInterval=timeInterval, intervalType=intervalType)
     # Changing 'value' col to numeric and filling in NA's with previous value in col
+    df.replace(to_replace={'value':''},value=0,inplace=True)
     df['value'] = pd.to_numeric(df['value'])
     df.fillna(method='ffill',inplace=True)
     conn.close()
