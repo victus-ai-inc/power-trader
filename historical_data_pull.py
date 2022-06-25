@@ -15,14 +15,15 @@ def sql_insert(df):
 
 def get_streams():
     streams = pd.read_csv('stream_codes.csv')
-    lst = [int(id) for id in streams[streams['timeInterval']=='5 min']['streamId'] if id < 100]
+    lst = [int(id) for id in streams[streams['timeInterval']=='5 min']['streamId']]
     print(f'Streams = {lst}')
     return lst
 
 if __name__ == '__main__':
     # Select streams & years to iterate over
-    streamIds = get_streams()
-    year = [2020, 2021]
+    #streamIds = get_streams()
+    streamIds = [338136]
+    year = [2020,2021]
     # Get NRG API token
     accessToken, tokenExpiry = pull_nrg_data.getToken()
     print(accessToken)

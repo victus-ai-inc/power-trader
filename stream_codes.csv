@@ -438,7 +438,7 @@ streamId,assetCode,streamName,fuelType,subfuelType,timeInterval,intervalType
 256552,HUL1,Hull,Solar,,5 min,reserve
 256975,INF1,Innisfail,Solar,,5 min,reserve
 326978,JER1,Jenner,Solar,,5 min,reserve
-#N/A,MON1,Monarch,Solar,,5 min,reserve
+338136,MON1,Monarch,Solar,,5 min,reserve
 336970,STR1,Strathmore 1,Solar,,5 min,reserve
 336974,STR2,Strathmore 2,Solar,,5 min,reserve
 278209,SUF1,Suffield,Solar,,5 min,reserve
