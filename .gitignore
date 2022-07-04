@@ -136,3 +136,6 @@ credentials.txt
 
 # SQL Jupyter notebook
 /sql_testing.ipynb
+
+# Google Bigquery auth file
+/google-big-query.json
