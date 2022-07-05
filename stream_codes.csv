@@ -71,96 +71,96 @@ streamId,assetCode,streamName,fuelType,subfuelType,timeInterval,intervalType
 293756,CMH1,Medicine Hat,Natural Gas,Combined Cycle,1 min,supply
 293760,NX01,Nexen Inc #1,Natural Gas,Combined Cycle,1 min,supply
 293772,EGC1,ENMAX Shepard,Natural Gas,Combined Cycle,1 min,supply
-23552,BR4,Battle River#4,Natural Gas,Gas Fired,1 min,supply
-23553,BR5,Battle River#5,Natural Gas,Gas Fired,1 min,supply
-10705,KH2,Keephills #2,Natural Gas,Gas Fired,1 min,supply
-293747,KH3,Keephills #3,Natural Gas,Gas Fired,1 min,supply
-23563,SH1,Sheerness #1,Natural Gas,Gas Fired,1 min,supply
-23564,SH2,Sheerness #2,Natural Gas,Gas Fired,1 min,supply
-293785,SD6,Sundance #6,Natural Gas,Gas Fired,1 min,supply
-293690,BIG,Bighorn,Hydro,,1 min,supply
-293694,BOW1,Bow River Hydro,Hydro,,1 min,supply
-293695,BRA,Brazeau,Hydro,,1 min,supply
-293710,CHIN,Chin Chutte,Hydro,,1 min,supply
-293724,DKSN,Dickson Dam,Hydro,,1 min,supply
-293742,ICP1,Irrican Hydro,Hydro,,1 min,supply
-105500,OMRH,CUPC Oldman River,Hydro,,1 min,supply
-293768,RYMD,Raymond Reservoir,Hydro,,1 min,supply
-293787,TAY1,Taylor Hydro 1,Hydro,,1 min,supply
-293778,SUM1,Summerview,Energy Storage,,1 min,supply
-293729,ERV1,eReserve1 Rycroft,Energy Storage,,1 min,supply
-327413,ERV2,eReserve2 Buffalo Creek,Energy Storage,,1 min,supply
-293696,BRD1,Burdett BRD1,Solar,,1 min,supply
-293700,BUR1,Burdett BUR1,Solar,,1 min,supply
-293697,BSC1,Brooks Solar,Solar,,1 min,supply
-337717,BRK1,Brooks Solar 1,Solar,,1 min,supply
-337713,BRK2,Brooks Solar 2,Solar,,1 min,supply
-337726,COL1,Coaldale Solar,Solar,,1 min,supply
-293712,CLR1,Claresholm 1,Solar,,1 min,supply
-293713,CLR2,Claresholm 2,Solar,,1 min,supply
-338126,NMK1,East Strathmore Namaka,Solar,,1 min,supply
-326970,HYS1,Hays,Solar,,1 min,supply
-293740,HUL1,Hull,Solar,,1 min,supply
-293741,INF1,Innisfail,Solar,,1 min,supply
-326980,JER1,Jenner,Solar,,1 min,supply
-338138,MON1,Monarch,Solar,,1 min,supply
-336968,STR1,Strathmore 1,Solar,,1 min,supply
-336972,STR2,Strathmore 2,Solar,,1 min,supply
-293777,SUF1,Suffield,Solar,,1 min,supply
-336692,TVS1,Travers,Solar,,1 min,supply
-293790,VXH1,Vauxhall,Solar,,1 min,supply
-293794,WEF1,Westfield Yellow Lake,Solar,,1 min,supply
-293685,ARD1,Ardenville Wind,Wind,,1 min,supply
-293698,BUL1,BUL1 Bull Creek,Wind,,1 min,supply
-293699,BUL2,BUL2 Bull Creek,Wind,,1 min,supply
-293692,BSR1,Blackspring Ridge,Wind,,1 min,supply
-293693,BTR1,Blue Trail Wind,Wind,,1 min,supply
-293706,CR1,Castle River #1,Wind,,1 min,supply
-293707,CRR2,Castle Rock Ridge 2,Wind,,1 min,supply
-293708,CRR1,Castle Rock Wind Farm,Wind,,1 min,supply
-293719,CRE3,Cowley Ridge,Wind,,1 min,supply
-293728,TAB1,Enmax Taber,Wind,,1 min,supply
-293735,NEP1,Ghost Pine,Wind,,1 min,supply
-293739,HAL1,Halkirk Wind Power Facility,Wind,,1 min,supply
-293748,KHW1,Kettles Hill Wind,Wind,,1 min,supply
-293755,AKE1,McBride Lake Windfarm,Wind,,1 min,supply
-293766,OWF1,Oldman 2 Wind Farm 1,Wind,,1 min,supply
-335533,RTL1,Rattlesnake Ridge Wind,Wind,,1 min,supply
-293770,RIV1,Riverview,Wind,,1 min,supply
-293774,GWW1,Soderglen Wind,Wind,,1 min,supply
-293779,IEW1,Summerview 1,Wind,,1 min,supply
-293780,IEW2,Summerview 2,Wind,,1 min,supply
-293781,SCR3,Suncor Chin Chute,Wind,,1 min,supply
-293782,SCR2,Suncor Magrath,Wind,,1 min,supply
-293798,WHT1,Whitla,Wind,,1 min,supply
-327190,WHT2,Whitla 2,Wind,,1 min,supply
-322577,WRW1,Windrise,Wind,,1 min,supply
-293799,SCR4,Suncor Wintering Hills,Wind,,1 min,supply
-293684,AFG1,APF Athabasca,Biomass & Other,,1 min,supply
-327194,BON1,Bonnybrook,Biomass & Other,,1 min,supply
-293702,CCMH,Cancarb Medicine Hat,Biomass & Other,,1 min,supply
-293723,DAI1,Daishowa,Biomass & Other,,1 min,supply
-293736,GOC1,Gold Creek,Biomass & Other,,1 min,supply
-293737,GPEC,Grande Prairie EcoPower,Biomass & Other,,1 min,supply
-293765,NRG3,NRGreen Cogen,Biomass & Other,,1 min,supply
-293773,SLP1,Slave Lake,Biomass & Other,,1 min,supply
-293791,WWD1,Weldwood #1,Biomass & Other,,1 min,supply
-293795,WST1,Westlock,Biomass & Other,,1 min,supply
-293796,WEY1,Weyerhaeuser,Biomass & Other,,1 min,supply
-293797,EAGL,Whitecourt Power,Biomass & Other,,1 min,supply
-293732,GN1,Genesee #1,Coal,,1 min,supply
-293733,GN2,Genesee #2,Coal,,1 min,supply
-293734,GN3,Genesee #3,Coal,,1 min,supply
-23551,BR3,Battle River#3,Coal,,1 min,supply
-10700,KH1,Keephills #1,Coal,,1 min,supply
-293763,NPC1,NPC1 Denis St. Pierre,Natural Gas,,1 min,supply
-23559,RB1,Rainbow #1,Natural Gas,,1 min,supply
-23560,RB2,Rainbow #2,Natural Gas,,1 min,supply
-23561,RB3,Rainbow #3,Natural Gas,,1 min,supply
-23565,ST1,Sturgeon #1,Natural Gas,,1 min,supply
-23566,ST2,Sturgeon #2,Natural Gas,,1 min,supply
-293783,SD4,Sundance #4,Coal,,1 min,supply
-293784,SD5,Sundance #5,Coal,,1 min,supply
+23552,BR4,Battle River#4,Natural Gas,Gas Fired Steam,1 min,supply
+23553,BR5,Battle River#5,Natural Gas,Gas Fired Steam,1 min,supply
+10705,KH2,Keephills #2,Natural Gas,Gas Fired Steam,1 min,supply
+293747,KH3,Keephills #3,Natural Gas,Gas Fired Steam,1 min,supply
+23563,SH1,Sheerness #1,Natural Gas,Gas Fired Steam,1 min,supply
+23564,SH2,Sheerness #2,Natural Gas,Gas Fired Steam,1 min,supply
+293785,SD6,Sundance #6,Natural Gas,Gas Fired Steam,1 min,supply
+293690,BIG,Bighorn,Hydro,Hydro,1 min,supply
+293694,BOW1,Bow River Hydro,Hydro,Hydro,1 min,supply
+293695,BRA,Brazeau,Hydro,Hydro,1 min,supply
+293710,CHIN,Chin Chutte,Hydro,Hydro,1 min,supply
+293724,DKSN,Dickson Dam,Hydro,Hydro,1 min,supply
+293742,ICP1,Irrican Hydro,Hydro,Hydro,1 min,supply
+105500,OMRH,CUPC Oldman River,Hydro,Hydro,1 min,supply
+293768,RYMD,Raymond Reservoir,Hydro,Hydro,1 min,supply
+293787,TAY1,Taylor Hydro 1,Hydro,Hydro,1 min,supply
+293778,SUM1,Summerview,Energy Storage,Energy Storage,1 min,supply
+293729,ERV1,eReserve1 Rycroft,Energy Storage,Energy Storage,1 min,supply
+327413,ERV2,eReserve2 Buffalo Creek,Energy Storage,Energy Storage,1 min,supply
+293696,BRD1,Burdett BRD1,Solar,Solar,1 min,supply
+293700,BUR1,Burdett BUR1,Solar,Solar,1 min,supply
+293697,BSC1,Brooks Solar,Solar,Solar,1 min,supply
+337717,BRK1,Brooks Solar 1,Solar,Solar,1 min,supply
+337713,BRK2,Brooks Solar 2,Solar,Solar,1 min,supply
+337726,COL1,Coaldale Solar,Solar,Solar,1 min,supply
+293712,CLR1,Claresholm 1,Solar,Solar,1 min,supply
+293713,CLR2,Claresholm 2,Solar,Solar,1 min,supply
+338126,NMK1,East Strathmore Namaka,Solar,Solar,1 min,supply
+326970,HYS1,Hays,Solar,Solar,1 min,supply
+293740,HUL1,Hull,Solar,Solar,1 min,supply
+293741,INF1,Innisfail,Solar,Solar,1 min,supply
+326980,JER1,Jenner,Solar,Solar,1 min,supply
+338138,MON1,Monarch,Solar,Solar,1 min,supply
+336968,STR1,Strathmore 1,Solar,Solar,1 min,supply
+336972,STR2,Strathmore 2,Solar,Solar,1 min,supply
+293777,SUF1,Suffield,Solar,Solar,1 min,supply
+336692,TVS1,Travers,Solar,Solar,1 min,supply
+293790,VXH1,Vauxhall,Solar,Solar,1 min,supply
+293794,WEF1,Westfield Yellow Lake,Solar,Solar,1 min,supply
+293685,ARD1,Ardenville Wind,Wind,Wind,1 min,supply
+293698,BUL1,BUL1 Bull Creek,Wind,Wind,1 min,supply
+293699,BUL2,BUL2 Bull Creek,Wind,Wind,1 min,supply
+293692,BSR1,Blackspring Ridge,Wind,Wind,1 min,supply
+293693,BTR1,Blue Trail Wind,Wind,Wind,1 min,supply
+293706,CR1,Castle River #1,Wind,Wind,1 min,supply
+293707,CRR2,Castle Rock Ridge 2,Wind,Wind,1 min,supply
+293708,CRR1,Castle Rock Wind Farm,Wind,Wind,1 min,supply
+293719,CRE3,Cowley Ridge,Wind,Wind,1 min,supply
+293728,TAB1,Enmax Taber,Wind,Wind,1 min,supply
+293735,NEP1,Ghost Pine,Wind,Wind,1 min,supply
+293739,HAL1,Halkirk Wind Power Facility,Wind,Wind,1 min,supply
+293748,KHW1,Kettles Hill Wind,Wind,Wind,1 min,supply
+293755,AKE1,McBride Lake Windfarm,Wind,Wind,1 min,supply
+293766,OWF1,Oldman 2 Wind Farm 1,Wind,Wind,1 min,supply
+335533,RTL1,Rattlesnake Ridge Wind,Wind,Wind,1 min,supply
+293770,RIV1,Riverview,Wind,Wind,1 min,supply
+293774,GWW1,Soderglen Wind,Wind,Wind,1 min,supply
+293779,IEW1,Summerview 1,Wind,Wind,1 min,supply
+293780,IEW2,Summerview 2,Wind,Wind,1 min,supply
+293781,SCR3,Suncor Chin Chute,Wind,Wind,1 min,supply
+293782,SCR2,Suncor Magrath,Wind,Wind,1 min,supply
+293798,WHT1,Whitla,Wind,Wind,1 min,supply
+327190,WHT2,Whitla 2,Wind,Wind,1 min,supply
+322577,WRW1,Windrise,Wind,Wind,1 min,supply
+293799,SCR4,Suncor Wintering Hills,Wind,Wind,1 min,supply
+293684,AFG1,APF Athabasca,Biomass & Other,Biomass & Other,1 min,supply
+327194,BON1,Bonnybrook,Biomass & Other,Biomass & Other,1 min,supply
+293702,CCMH,Cancarb Medicine Hat,Biomass & Other,Biomass & Other,1 min,supply
+293723,DAI1,Daishowa,Biomass & Other,Biomass & Other,1 min,supply
+293736,GOC1,Gold Creek,Biomass & Other,Biomass & Other,1 min,supply
+293737,GPEC,Grande Prairie EcoPower,Biomass & Other,Biomass & Other,1 min,supply
+293765,NRG3,NRGreen Cogen,Biomass & Other,Biomass & Other,1 min,supply
+293773,SLP1,Slave Lake,Biomass & Other,Biomass & Other,1 min,supply
+293791,WWD1,Weldwood #1,Biomass & Other,Biomass & Other,1 min,supply
+293795,WST1,Westlock,Biomass & Other,Biomass & Other,1 min,supply
+293796,WEY1,Weyerhaeuser,Biomass & Other,Biomass & Other,1 min,supply
+293797,EAGL,Whitecourt Power,Biomass & Other,Biomass & Other,1 min,supply
+293732,GN1,Genesee #1,Coal,Coal,1 min,supply
+293733,GN2,Genesee #2,Coal,Coal,1 min,supply
+293734,GN3,Genesee #3,Coal,Coal,1 min,supply
+23551,BR3,Battle River#3,Coal,Coal,1 min,supply
+10700,KH1,Keephills #1,Coal,Coal,1 min,supply
+293763,NPC1,NPC1 Denis St. Pierre,Natural Gas,Natural Gas,1 min,supply
+23559,RB1,Rainbow #1,Natural Gas,Natural Gas,1 min,supply
+23560,RB2,Rainbow #2,Natural Gas,Natural Gas,1 min,supply
+23561,RB3,Rainbow #3,Natural Gas,Natural Gas,1 min,supply
+23565,ST1,Sturgeon #1,Natural Gas,Natural Gas,1 min,supply
+23566,ST2,Sturgeon #2,Natural Gas,Natural Gas,1 min,supply
+293783,SD4,Sundance #4,Coal,Coal,1 min,supply
+293784,SD5,Sundance #5,Coal,Coal,1 min,supply
 129796,ANC1,AB Newsprint,Natural Gas,Simple Gas,5 min,supply
 45132,ALP1,Bantry,Natural Gas,Simple Gas,5 min,supply
 237687,BHL1,Bellshill,Natural Gas,Simple Gas,5 min,supply
@@ -233,107 +233,107 @@ streamId,assetCode,streamName,fuelType,subfuelType,timeInterval,intervalType
 271,CMH1,Medicine Hat,Natural Gas,Combined Cycle,5 min,supply
 909,NX01,Nexen Inc #1,Natural Gas,Combined Cycle,5 min,supply
 137054,EGC1,ENMAX Shepard,Natural Gas,Combined Cycle,5 min,supply
-37,BR4,Battle River#4,Natural Gas,Gas Fired,5 min,supply
-38,BR5,Battle River#5,Natural Gas,Gas Fired,5 min,supply
-21,KH2,Keephills #2,Natural Gas,Gas Fired,5 min,supply
-93931,KH3,Keephills #3,Natural Gas,Gas Fired,5 min,supply
-34,SH1,Sheerness #1,Natural Gas,Gas Fired,5 min,supply
-35,SH2,Sheerness #2,Natural Gas,Gas Fired,5 min,supply
-29,SD6,Sundance #6,Natural Gas,Gas Fired,5 min,supply
-69,BIG,Bighorn,Hydro,,5 min,supply
-278,BOW1,Bow River Hydro,Hydro,,5 min,supply
-70,BRA,Brazeau,Hydro,,5 min,supply
-258,CHIN,Chin Chutte,Hydro,,5 min,supply
-1026,DKSN,Dickson Dam,Hydro,,5 min,supply
-5626,ICP1,Irrican Hydro,Hydro,,5 min,supply
-1536,OMRH,CUPC Oldman River,Hydro,,5 min,supply
-267,RYMD,Raymond Reservoir,Hydro,,5 min,supply
-576,TAY1,Taylor Hydro 1,Hydro,,5 min,supply
-290372,SUM1,Summerview,Energy Storage,,5 min,supply
-290409,ERV1,eReserve1 Rycroft,Energy Storage,,5 min,supply
-327410,ERV2,eReserve2 Buffalo Creek,Energy Storage,,5 min,supply
-292581,BRD1,Burdett BRD1,Solar,,5 min,supply
-292603,BUR1,Burdett BUR1,Solar,,5 min,supply
-198886,BSC1,Brooks Solar,Solar,,5 min,supply
-337714,BRK1,Brooks Solar 1,Solar,,5 min,supply
-337710,BRK2,Brooks Solar 2,Solar,,5 min,supply
-337727,COL1,Coaldale Solar,Solar,,5 min,supply
-292584,CLR1,Claresholm 1,Solar,,5 min,supply
-292587,CLR2,Claresholm 2,Solar,,5 min,supply
-338123,NMK1,East Strathmore Namaka,Solar,,5 min,supply
-326971,HYS1,Hays,Solar,,5 min,supply
-256551,HUL1,Hull,Solar,,5 min,supply
-256974,INF1,Innisfail,Solar,,5 min,supply
-326981,JER1,Jenner,Solar,,5 min,supply
-338139,MON1,Monarch,Solar,,5 min,supply
-336969,STR1,Strathmore 1,Solar,,5 min,supply
-336973,STR2,Strathmore 2,Solar,,5 min,supply
-278207,SUF1,Suffield,Solar,,5 min,supply
-336689,TVS1,Travers,Solar,,5 min,supply
-254129,VXH1,Vauxhall,Solar,,5 min,supply
-292600,WEF1,Westfield Yellow Lake,Solar,,5 min,supply
-93924,ARD1,Ardenville Wind,Wind,,5 min,supply
-155939,BUL1,BUL1 Bull Creek,Wind,,5 min,supply
-155942,BUL2,BUL2 Bull Creek,Wind,,5 min,supply
-135613,BSR1,Blackspring Ridge,Wind,,5 min,supply
-83936,BTR1,Blue Trail Wind,Wind,,5 min,supply
-997,CR1,Castle River #1,Wind,,5 min,supply
-245351,CRR2,Castle Rock Ridge 2,Wind,,5 min,supply
-111881,CRR1,Castle Rock Wind Farm,Wind,,5 min,supply
-259,CRE3,Cowley Ridge,Wind,,5 min,supply
-24043,TAB1,Enmax Taber,Wind,,5 min,supply
-93925,NEP1,Ghost Pine,Wind,,5 min,supply
-118032,HAL1,Halkirk Wind Power Facility,Wind,,5 min,supply
-8409,KHW1,Kettles Hill Wind,Wind,,5 min,supply
-2735,AKE1,McBride Lake Windfarm,Wind,,5 min,supply
-137051,OWF1,Oldman 2 Wind Farm 1,Wind,,5 min,supply
-335532,RTL1,Rattlesnake Ridge Wind,Wind,,5 min,supply
-245354,RIV1,Riverview,Wind,,5 min,supply
-14604,GWW1,Soderglen Wind,Wind,,5 min,supply
-4770,IEW1,Summerview 1,Wind,,5 min,supply
-86410,IEW2,Summerview 2,Wind,,5 min,supply
-15079,SCR3,Suncor Chin Chute,Wind,,5 min,supply
-4531,SCR2,Suncor Magrath,Wind,,5 min,supply
-244987,WHT1,Whitla,Wind,,5 min,supply
-327189,WHT2,Whitla 2,Wind,,5 min,supply
-322575,WRW1,Windrise,Wind,,5 min,supply
-101786,SCR4,Suncor Wintering Hills,Wind,,5 min,supply
-1025,AFG1,APF Athabasca,Biomass & Other,,5 min,supply
-327193,BON1,Bonnybrook,Biomass & Other,,5 min,supply
-41613,CCMH,Cancarb Medicine Hat,Biomass & Other,,5 min,supply
-102251,DAI1,Daishowa,Biomass & Other,,5 min,supply
-264,GOC1,Gold Creek,Biomass & Other,,5 min,supply
-5025,GPEC,Grande Prairie EcoPower,Biomass & Other,,5 min,supply
-127169,NRG3,NRGreen Cogen,Biomass & Other,,5 min,supply
-161479,SLP1,Slave Lake,Biomass & Other,,5 min,supply
-94039,WWD1,Weldwood #1,Biomass & Other,,5 min,supply
-270,WST1,Westlock,Biomass & Other,,5 min,supply
-98495,WEY1,Weyerhaeuser,Biomass & Other,,5 min,supply
-263,EAGL,Whitecourt Power,Biomass & Other,,5 min,supply
-48,GN1,Genesee #1,Coal,,5 min,supply
-49,GN2,Genesee #2,Coal,,5 min,supply
-4851,GN3,Genesee #3,Coal,,5 min,supply
-36,BR3,Battle River#3,Coal,,5 min,supply
-1022,PW01,Buck Lake,Natural Gas,,5 min,supply
-262,DV1,Drayton Valley Power,Biomass,,5 min,supply
-147295,MFG1,High River,Natural Gas,,5 min,supply
-161489,HSM1,House Mountain,Natural Gas,,5 min,supply
-4,KH1,Keephills #1,Coal,,5 min,supply
-4500,NPC1,NPC1 Denis St. Pierre,Natural Gas,,5 min,supply
-45,RB1,Rainbow #1,Natural Gas,,5 min,supply
-46,RB2,Rainbow #2,Natural Gas,,5 min,supply
-47,RB3,Rainbow #3,Natural Gas,,5 min,supply
-43,ST1,Sturgeon #1,Natural Gas,,5 min,supply
-44,ST2,Sturgeon #2,Natural Gas,,5 min,supply
-22,SD1,Sundance #1,Coal,,5 min,supply
-25,SD2,Sundance #2,Coal,,5 min,supply
-26,SD3,Sundance #3,Coal,,5 min,supply
-27,SD4,Sundance #4,Coal,,5 min,supply
-28,SD5,Sundance #5,Coal,,5 min,supply
-8406,TAY2,Taylor Wind,Wind,,5 min,supply
-33,WB4,Wabamun #4,Coal,,5 min,supply
-1456,WWDC,Weldwood,Biomass & Other,,5 min,supply
-94040,WWD2,Weldwood #2,Biomass & Other,,5 min,supply
+37,BR4,Battle River#4,Natural Gas,Gas Fired Steam,5 min,supply
+38,BR5,Battle River#5,Natural Gas,Gas Fired Steam,5 min,supply
+21,KH2,Keephills #2,Natural Gas,Gas Fired Steam,5 min,supply
+93931,KH3,Keephills #3,Natural Gas,Gas Fired Steam,5 min,supply
+34,SH1,Sheerness #1,Natural Gas,Gas Fired Steam,5 min,supply
+35,SH2,Sheerness #2,Natural Gas,Gas Fired Steam,5 min,supply
+29,SD6,Sundance #6,Natural Gas,Gas Fired Steam,5 min,supply
+69,BIG,Bighorn,Hydro,Hydro,5 min,supply
+278,BOW1,Bow River Hydro,Hydro,Hydro,5 min,supply
+70,BRA,Brazeau,Hydro,Hydro,5 min,supply
+258,CHIN,Chin Chutte,Hydro,Hydro,5 min,supply
+1026,DKSN,Dickson Dam,Hydro,Hydro,5 min,supply
+5626,ICP1,Irrican Hydro,Hydro,Hydro,5 min,supply
+1536,OMRH,CUPC Oldman River,Hydro,Hydro,5 min,supply
+267,RYMD,Raymond Reservoir,Hydro,Hydro,5 min,supply
+576,TAY1,Taylor Hydro 1,Hydro,Hydro,5 min,supply
+290372,SUM1,Summerview,Energy Storage,Energy Storage,5 min,supply
+290409,ERV1,eReserve1 Rycroft,Energy Storage,Energy Storage,5 min,supply
+327410,ERV2,eReserve2 Buffalo Creek,Energy Storage,Energy Storage,5 min,supply
+292581,BRD1,Burdett BRD1,Solar,Solar,5 min,supply
+292603,BUR1,Burdett BUR1,Solar,Solar,5 min,supply
+198886,BSC1,Brooks Solar,Solar,Solar,5 min,supply
+337714,BRK1,Brooks Solar 1,Solar,Solar,5 min,supply
+337710,BRK2,Brooks Solar 2,Solar,Solar,5 min,supply
+337727,COL1,Coaldale Solar,Solar,Solar,5 min,supply
+292584,CLR1,Claresholm 1,Solar,Solar,5 min,supply
+292587,CLR2,Claresholm 2,Solar,Solar,5 min,supply
+338123,NMK1,East Strathmore Namaka,Solar,Solar,5 min,supply
+326971,HYS1,Hays,Solar,Solar,5 min,supply
+256551,HUL1,Hull,Solar,Solar,5 min,supply
+256974,INF1,Innisfail,Solar,Solar,5 min,supply
+326981,JER1,Jenner,Solar,Solar,5 min,supply
+338139,MON1,Monarch,Solar,Solar,5 min,supply
+336969,STR1,Strathmore 1,Solar,Solar,5 min,supply
+336973,STR2,Strathmore 2,Solar,Solar,5 min,supply
+278207,SUF1,Suffield,Solar,Solar,5 min,supply
+336689,TVS1,Travers,Solar,Solar,5 min,supply
+254129,VXH1,Vauxhall,Solar,Solar,5 min,supply
+292600,WEF1,Westfield Yellow Lake,Solar,Solar,5 min,supply
+93924,ARD1,Ardenville Wind,Wind,Wind,5 min,supply
+155939,BUL1,BUL1 Bull Creek,Wind,Wind,5 min,supply
+155942,BUL2,BUL2 Bull Creek,Wind,Wind,5 min,supply
+135613,BSR1,Blackspring Ridge,Wind,Wind,5 min,supply
+83936,BTR1,Blue Trail Wind,Wind,Wind,5 min,supply
+997,CR1,Castle River #1,Wind,Wind,5 min,supply
+245351,CRR2,Castle Rock Ridge 2,Wind,Wind,5 min,supply
+111881,CRR1,Castle Rock Wind Farm,Wind,Wind,5 min,supply
+259,CRE3,Cowley Ridge,Wind,Wind,5 min,supply
+24043,TAB1,Enmax Taber,Wind,Wind,5 min,supply
+93925,NEP1,Ghost Pine,Wind,Wind,5 min,supply
+118032,HAL1,Halkirk Wind Power Facility,Wind,Wind,5 min,supply
+8409,KHW1,Kettles Hill Wind,Wind,Wind,5 min,supply
+2735,AKE1,McBride Lake Windfarm,Wind,Wind,5 min,supply
+137051,OWF1,Oldman 2 Wind Farm 1,Wind,Wind,5 min,supply
+335532,RTL1,Rattlesnake Ridge Wind,Wind,Wind,5 min,supply
+245354,RIV1,Riverview,Wind,Wind,5 min,supply
+14604,GWW1,Soderglen Wind,Wind,Wind,5 min,supply
+4770,IEW1,Summerview 1,Wind,Wind,5 min,supply
+86410,IEW2,Summerview 2,Wind,Wind,5 min,supply
+15079,SCR3,Suncor Chin Chute,Wind,Wind,5 min,supply
+4531,SCR2,Suncor Magrath,Wind,Wind,5 min,supply
+244987,WHT1,Whitla,Wind,Wind,5 min,supply
+327189,WHT2,Whitla 2,Wind,Wind,5 min,supply
+322575,WRW1,Windrise,Wind,Wind,5 min,supply
+101786,SCR4,Suncor Wintering Hills,Wind,Wind,5 min,supply
+1025,AFG1,APF Athabasca,Biomass & Other,Biomass & Other,5 min,supply
+327193,BON1,Bonnybrook,Biomass & Other,Biomass & Other,5 min,supply
+41613,CCMH,Cancarb Medicine Hat,Biomass & Other,Biomass & Other,5 min,supply
+102251,DAI1,Daishowa,Biomass & Other,Biomass & Other,5 min,supply
+264,GOC1,Gold Creek,Biomass & Other,Biomass & Other,5 min,supply
+5025,GPEC,Grande Prairie EcoPower,Biomass & Other,Biomass & Other,5 min,supply
+127169,NRG3,NRGreen Cogen,Biomass & Other,Biomass & Other,5 min,supply
+161479,SLP1,Slave Lake,Biomass & Other,Biomass & Other,5 min,supply
+94039,WWD1,Weldwood #1,Biomass & Other,Biomass & Other,5 min,supply
+270,WST1,Westlock,Biomass & Other,Biomass & Other,5 min,supply
+98495,WEY1,Weyerhaeuser,Biomass & Other,Biomass & Other,5 min,supply
+263,EAGL,Whitecourt Power,Biomass & Other,Biomass & Other,5 min,supply
+48,GN1,Genesee #1,Coal,Coal,5 min,supply
+49,GN2,Genesee #2,Coal,Coal,5 min,supply
+4851,GN3,Genesee #3,Coal,Coal,5 min,supply
+36,BR3,Battle River#3,Coal,Coal,5 min,supply
+1022,PW01,Buck Lake,Natural Gas,Natural Gas,5 min,supply
+262,DV1,Drayton Valley Power,Biomass,Biomass,5 min,supply
+147295,MFG1,High River,Natural Gas,Natural Gas,5 min,supply
+161489,HSM1,House Mountain,Natural Gas,Natural Gas,5 min,supply
+4,KH1,Keephills #1,Coal,Coal,5 min,supply
+4500,NPC1,NPC1 Denis St. Pierre,Natural Gas,Natural Gas,5 min,supply
+45,RB1,Rainbow #1,Natural Gas,Natural Gas,5 min,supply
+46,RB2,Rainbow #2,Natural Gas,Natural Gas,5 min,supply
+47,RB3,Rainbow #3,Natural Gas,Natural Gas,5 min,supply
+43,ST1,Sturgeon #1,Natural Gas,Natural Gas,5 min,supply
+44,ST2,Sturgeon #2,Natural Gas,Natural Gas,5 min,supply
+22,SD1,Sundance #1,Coal,Coal,5 min,supply
+25,SD2,Sundance #2,Coal,Coal,5 min,supply
+26,SD3,Sundance #3,Coal,Coal,5 min,supply
+27,SD4,Sundance #4,Coal,Coal,5 min,supply
+28,SD5,Sundance #5,Coal,Coal,5 min,supply
+8406,TAY2,Taylor Wind,Wind,Wind,5 min,supply
+33,WB4,Wabamun #4,Coal,Coal,5 min,supply
+1456,WWDC,Weldwood,Biomass & Other,Biomass & Other,5 min,supply
+94040,WWD2,Weldwood #2,Biomass & Other,Biomass & Other,5 min,supply
 129794,ANC1,AB Newsprint,Natural Gas,Simple Gas,5 min,reserve
 45134,ALP1,Bantry,Natural Gas,Simple Gas,5 min,reserve
 237688,BHL1,Bellshill,Natural Gas,Simple Gas,5 min,reserve
@@ -406,104 +406,104 @@ streamId,assetCode,streamName,fuelType,subfuelType,timeInterval,intervalType
 924,CMH1,Medicine Hat,Natural Gas,Combined Cycle,5 min,reserve
 934,NX01,Nexen Inc #1,Natural Gas,Combined Cycle,5 min,reserve
 137052,EGC1,ENMAX Shepard,Natural Gas,Combined Cycle,5 min,reserve
-950,BR4,Battle River#4,Natural Gas,Gas Fired,5 min,reserve
-951,BR5,Battle River#5,Natural Gas,Gas Fired,5 min,reserve
-936,KH2,Keephills #2,Natural Gas,Gas Fired,5 min,reserve
-93932,KH3,Keephills #3,Natural Gas,Gas Fired,5 min,reserve
-947,SH1,Sheerness #1,Natural Gas,Gas Fired,5 min,reserve
-948,SH2,Sheerness #2,Natural Gas,Gas Fired,5 min,reserve
-942,SD6,Sundance #6,Natural Gas,Gas Fired,5 min,reserve
-969,BIG,Bighorn,Hydro,,5 min,reserve
-973,BOW1,Bow River Hydro,Hydro,,5 min,reserve
-970,BRA,Brazeau,Hydro,,5 min,reserve
-925,CHIN,Chin Chutte,Hydro,,5 min,reserve
-1034,DKSN,Dickson Dam,Hydro,,5 min,reserve
-5627,ICP1,Irrican Hydro,Hydro,,5 min,reserve
-1538,OMRH,CUPC Oldman River,Hydro,,5 min,reserve
-920,RYMD,Raymond Reservoir,Hydro,,5 min,reserve
-916,TAY1,Taylor Hydro 1,Hydro,,5 min,reserve
-290374,SUM1,Summerview,Energy Storage,,5 min,reserve
-290410,ERV1,eReserve1 Rycroft,Energy Storage,,5 min,reserve
-327411,ERV2,eReserve2 Buffalo Creek,Energy Storage,,5 min,reserve
-292582,BRD1,Burdett BRD1,Solar,,5 min,reserve
-292604,BUR1,Burdett BUR1,Solar,,5 min,reserve
-198887,BSC1,Brooks Solar,Solar,,5 min,reserve
-337715,BRK1,Brooks Solar 1,Solar,,5 min,reserve
-337711,BRK2,Brooks Solar 2,Solar,,5 min,reserve
-337724,COL1,Coaldale Solar,Solar,,5 min,reserve
-292585,CLR1,Claresholm 1,Solar,,5 min,reserve
-292588,CLR2,Claresholm 2,Solar,,5 min,reserve
-338124,NMK1,East Strathmore Namaka,Solar,,5 min,reserve
-326972,HYS1,Hays,Solar,,5 min,reserve
-256552,HUL1,Hull,Solar,,5 min,reserve
-256975,INF1,Innisfail,Solar,,5 min,reserve
-326978,JER1,Jenner,Solar,,5 min,reserve
-338136,MON1,Monarch,Solar,,5 min,reserve
-336970,STR1,Strathmore 1,Solar,,5 min,reserve
-336974,STR2,Strathmore 2,Solar,,5 min,reserve
-278209,SUF1,Suffield,Solar,,5 min,reserve
-336690,TVS1,Travers,Solar,,5 min,reserve
-254130,VXH1,Vauxhall,Solar,,5 min,reserve
-292601,WEF1,Westfield Yellow Lake,Solar,,5 min,reserve
-93926,ARD1,Ardenville Wind,Wind,,5 min,reserve
-155937,BUL1,BUL1 Bull Creek,Wind,,5 min,reserve
-155940,BUL2,BUL2 Bull Creek,Wind,,5 min,reserve
-135614,BSR1,Blackspring Ridge,Wind,,5 min,reserve
-83937,BTR1,Blue Trail Wind,Wind,,5 min,reserve
-998,CR1,Castle River #1,Wind,,5 min,reserve
-245352,CRR2,Castle Rock Ridge 2,Wind,,5 min,reserve
-111882,CRR1,Castle Rock Wind Farm,Wind,,5 min,reserve
-926,CRE3,Cowley Ridge,Wind,,5 min,reserve
-24044,TAB1,Enmax Taber,Wind,,5 min,reserve
-93927,NEP1,Ghost Pine,Wind,,5 min,reserve
-118033,HAL1,Halkirk Wind Power Facility,Wind,,5 min,reserve
-8410,KHW1,Kettles Hill Wind,Wind,,5 min,reserve
-2737,AKE1,McBride Lake Windfarm,Wind,,5 min,reserve
-137049,OWF1,Oldman 2 Wind Farm 1,Wind,,5 min,reserve
-335530,RTL1,Rattlesnake Ridge Wind,Wind,,5 min,reserve
-245355,RIV1,Riverview,Wind,,5 min,reserve
-14605,GWW1,Soderglen Wind,Wind,,5 min,reserve
-4771,IEW1,Summerview 1,Wind,,5 min,reserve
-86411,IEW2,Summerview 2,Wind,,5 min,reserve
-15080,SCR3,Suncor Chin Chute,Wind,,5 min,reserve
-4532,SCR2,Suncor Magrath,Wind,,5 min,reserve
-244988,WHT1,Whitla,Wind,,5 min,reserve
-327192,WHT2,Whitla 2,Wind,,5 min,reserve
-322576,WRW1,Windrise,Wind,,5 min,reserve
-101787,SCR4,Suncor Wintering Hills,Wind,,5 min,reserve
-1033,AFG1,APF Athabasca,Biomass & Other,,5 min,reserve
-327196,BON1,Bonnybrook,Biomass & Other,,5 min,reserve
-41614,CCMH,Cancarb Medicine Hat,Biomass & Other,,5 min,reserve
-102252,DAI1,Daishowa,Biomass & Other,,5 min,reserve
-931,GOC1,Gold Creek,Biomass & Other,,5 min,reserve
-5026,GPEC,Grande Prairie EcoPower,Biomass & Other,,5 min,reserve
-127170,NRG3,NRGreen Cogen,Biomass & Other,,5 min,reserve
-161481,SLP1,Slave Lake,Biomass & Other,,5 min,reserve
-94037,WWD1,Weldwood #1,Biomass & Other,,5 min,reserve
-923,WST1,Westlock,Biomass & Other,,5 min,reserve
-98496,WEY1,Weyerhaeuser,Biomass & Other,,5 min,reserve
-930,EAGL,Whitecourt Power,Biomass & Other,,5 min,reserve
-958,GN1,Genesee #1,Coal,,5 min,reserve
-959,GN2,Genesee #2,Coal,,5 min,reserve
-4853,GN3,Genesee #3,Coal,,5 min,reserve
-949,BR3,Battle River#3,Coal,,5 min,reserve
-1030,PW01,Buck Lake,Natural Gas,,5 min,reserve
-929,DV1,Drayton Valley Power,Biomass,,5 min,reserve
-147293,MFG1,High River,Natural Gas,,5 min,reserve
-161490,HSM1,House Mountain,Natural Gas,,5 min,reserve
-935,KH1,Keephills #1,Coal,,5 min,reserve
-4501,NPC1,NPC1 Denis St. Pierre,Natural Gas,,5 min,reserve
-955,RB1,Rainbow #1,Natural Gas,,5 min,reserve
-956,RB2,Rainbow #2,Natural Gas,,5 min,reserve
-957,RB3,Rainbow #3,Natural Gas,,5 min,reserve
-953,ST1,Sturgeon #1,Natural Gas,,5 min,reserve
-954,ST2,Sturgeon #2,Natural Gas,,5 min,reserve
-937,SD1,Sundance #1,Coal,,5 min,reserve
-938,SD2,Sundance #2,Coal,,5 min,reserve
-939,SD3,Sundance #3,Coal,,5 min,reserve
-940,SD4,Sundance #4,Coal,,5 min,reserve
-941,SD5,Sundance #5,Coal,,5 min,reserve
-8407,TAY2,Taylor Wind,Wind,,5 min,reserve
-946,WB4,Wabamun #4,Coal,,5 min,reserve
-1457,WWDC,Weldwood,Biomass & Other,,5 min,reserve
-94038,WWD2,Weldwood #2,Biomass & Other,,5 min,reserve
+950,BR4,Battle River#4,Natural Gas,Gas Fired Steam,5 min,reserve
+951,BR5,Battle River#5,Natural Gas,Gas Fired Steam,5 min,reserve
+936,KH2,Keephills #2,Natural Gas,Gas Fired Steam,5 min,reserve
+93932,KH3,Keephills #3,Natural Gas,Gas Fired Steam,5 min,reserve
+947,SH1,Sheerness #1,Natural Gas,Gas Fired Steam,5 min,reserve
+948,SH2,Sheerness #2,Natural Gas,Gas Fired Steam,5 min,reserve
+942,SD6,Sundance #6,Natural Gas,Gas Fired Steam,5 min,reserve
+969,BIG,Bighorn,Hydro,Hydro,5 min,reserve
+973,BOW1,Bow River Hydro,Hydro,Hydro,5 min,reserve
+970,BRA,Brazeau,Hydro,Hydro,5 min,reserve
+925,CHIN,Chin Chutte,Hydro,Hydro,5 min,reserve
+1034,DKSN,Dickson Dam,Hydro,Hydro,5 min,reserve
+5627,ICP1,Irrican Hydro,Hydro,Hydro,5 min,reserve
+1538,OMRH,CUPC Oldman River,Hydro,Hydro,5 min,reserve
+920,RYMD,Raymond Reservoir,Hydro,Hydro,5 min,reserve
+916,TAY1,Taylor Hydro 1,Hydro,Hydro,5 min,reserve
+290374,SUM1,Summerview,Energy Storage,Energy Storage,5 min,reserve
+290410,ERV1,eReserve1 Rycroft,Energy Storage,Energy Storage,5 min,reserve
+327411,ERV2,eReserve2 Buffalo Creek,Energy Storage,Energy Storage,5 min,reserve
+292582,BRD1,Burdett BRD1,Solar,Solar,5 min,reserve
+292604,BUR1,Burdett BUR1,Solar,Solar,5 min,reserve
+198887,BSC1,Brooks Solar,Solar,Solar,5 min,reserve
+337715,BRK1,Brooks Solar 1,Solar,Solar,5 min,reserve
+337711,BRK2,Brooks Solar 2,Solar,Solar,5 min,reserve
+337724,COL1,Coaldale Solar,Solar,Solar,5 min,reserve
+292585,CLR1,Claresholm 1,Solar,Solar,5 min,reserve
+292588,CLR2,Claresholm 2,Solar,Solar,5 min,reserve
+338124,NMK1,East Strathmore Namaka,Solar,Solar,5 min,reserve
+326972,HYS1,Hays,Solar,Solar,5 min,reserve
+256552,HUL1,Hull,Solar,Solar,5 min,reserve
+256975,INF1,Innisfail,Solar,Solar,5 min,reserve
+326978,JER1,Jenner,Solar,Solar,5 min,reserve
+338136,MON1,Monarch,Solar,Solar,5 min,reserve
+336970,STR1,Strathmore 1,Solar,Solar,5 min,reserve
+336974,STR2,Strathmore 2,Solar,Solar,5 min,reserve
+278209,SUF1,Suffield,Solar,Solar,5 min,reserve
+336690,TVS1,Travers,Solar,Solar,5 min,reserve
+254130,VXH1,Vauxhall,Solar,Solar,5 min,reserve
+292601,WEF1,Westfield Yellow Lake,Solar,Solar,5 min,reserve
+93926,ARD1,Ardenville Wind,Wind,Wind,5 min,reserve
+155937,BUL1,BUL1 Bull Creek,Wind,Wind,5 min,reserve
+155940,BUL2,BUL2 Bull Creek,Wind,Wind,5 min,reserve
+135614,BSR1,Blackspring Ridge,Wind,Wind,5 min,reserve
+83937,BTR1,Blue Trail Wind,Wind,Wind,5 min,reserve
+998,CR1,Castle River #1,Wind,Wind,5 min,reserve
+245352,CRR2,Castle Rock Ridge 2,Wind,Wind,5 min,reserve
+111882,CRR1,Castle Rock Wind Farm,Wind,Wind,5 min,reserve
+926,CRE3,Cowley Ridge,Wind,Wind,5 min,reserve
+24044,TAB1,Enmax Taber,Wind,Wind,5 min,reserve
+93927,NEP1,Ghost Pine,Wind,Wind,5 min,reserve
+118033,HAL1,Halkirk Wind Power Facility,Wind,Wind,5 min,reserve
+8410,KHW1,Kettles Hill Wind,Wind,Wind,5 min,reserve
+2737,AKE1,McBride Lake Windfarm,Wind,Wind,5 min,reserve
+137049,OWF1,Oldman 2 Wind Farm 1,Wind,Wind,5 min,reserve
+335530,RTL1,Rattlesnake Ridge Wind,Wind,Wind,5 min,reserve
+245355,RIV1,Riverview,Wind,Wind,5 min,reserve
+14605,GWW1,Soderglen Wind,Wind,Wind,5 min,reserve
+4771,IEW1,Summerview 1,Wind,Wind,5 min,reserve
+86411,IEW2,Summerview 2,Wind,Wind,5 min,reserve
+15080,SCR3,Suncor Chin Chute,Wind,Wind,5 min,reserve
+4532,SCR2,Suncor Magrath,Wind,Wind,5 min,reserve
+244988,WHT1,Whitla,Wind,Wind,5 min,reserve
+327192,WHT2,Whitla 2,Wind,Wind,5 min,reserve
+322576,WRW1,Windrise,Wind,Wind,5 min,reserve
+101787,SCR4,Suncor Wintering Hills,Wind,Wind,5 min,reserve
+1033,AFG1,APF Athabasca,Biomass & Other,Biomass & Other,5 min,reserve
+327196,BON1,Bonnybrook,Biomass & Other,Biomass & Other,5 min,reserve
+41614,CCMH,Cancarb Medicine Hat,Biomass & Other,Biomass & Other,5 min,reserve
+102252,DAI1,Daishowa,Biomass & Other,Biomass & Other,5 min,reserve
+931,GOC1,Gold Creek,Biomass & Other,Biomass & Other,5 min,reserve
+5026,GPEC,Grande Prairie EcoPower,Biomass & Other,Biomass & Other,5 min,reserve
+127170,NRG3,NRGreen Cogen,Biomass & Other,Biomass & Other,5 min,reserve
+161481,SLP1,Slave Lake,Biomass & Other,Biomass & Other,5 min,reserve
+94037,WWD1,Weldwood #1,Biomass & Other,Biomass & Other,5 min,reserve
+923,WST1,Westlock,Biomass & Other,Biomass & Other,5 min,reserve
+98496,WEY1,Weyerhaeuser,Biomass & Other,Biomass & Other,5 min,reserve
+930,EAGL,Whitecourt Power,Biomass & Other,Biomass & Other,5 min,reserve
+958,GN1,Genesee #1,Coal,Coal,5 min,reserve
+959,GN2,Genesee #2,Coal,Coal,5 min,reserve
+4853,GN3,Genesee #3,Coal,Coal,5 min,reserve
+949,BR3,Battle River#3,Coal,Coal,5 min,reserve
+1030,PW01,Buck Lake,Natural Gas,Natural Gas,5 min,reserve
+929,DV1,Drayton Valley Power,Biomass,Biomass,5 min,reserve
+147293,MFG1,High River,Natural Gas,Natural Gas,5 min,reserve
+161490,HSM1,House Mountain,Natural Gas,Natural Gas,5 min,reserve
+935,KH1,Keephills #1,Coal,Coal,5 min,reserve
+4501,NPC1,NPC1 Denis St. Pierre,Natural Gas,Natural Gas,5 min,reserve
+955,RB1,Rainbow #1,Natural Gas,Natural Gas,5 min,reserve
+956,RB2,Rainbow #2,Natural Gas,Natural Gas,5 min,reserve
+957,RB3,Rainbow #3,Natural Gas,Natural Gas,5 min,reserve
+953,ST1,Sturgeon #1,Natural Gas,Natural Gas,5 min,reserve
+954,ST2,Sturgeon #2,Natural Gas,Natural Gas,5 min,reserve
+937,SD1,Sundance #1,Coal,Coal,5 min,reserve
+938,SD2,Sundance #2,Coal,Coal,5 min,reserve
+939,SD3,Sundance #3,Coal,Coal,5 min,reserve
+940,SD4,Sundance #4,Coal,Coal,5 min,reserve
+941,SD5,Sundance #5,Coal,Coal,5 min,reserve
+8407,TAY2,Taylor Wind,Wind,Wind,5 min,reserve
+946,WB4,Wabamun #4,Coal,Coal,5 min,reserve
+1457,WWDC,Weldwood,Biomass & Other,Biomass & Other,5 min,reserve
+94038,WWD2,Weldwood #2,Biomass & Other,Biomass & Other,5 min,reserve

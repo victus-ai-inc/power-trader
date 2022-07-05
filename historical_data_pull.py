@@ -15,15 +15,16 @@ def sql_insert(df):
 
 def get_streams():
     streams = pd.read_csv('stream_codes.csv')
-    lst = [int(id) for id in streams[streams['timeInterval']=='5 min']['streamId']]
+    # Pull only 5-min supply streams
+    lst = [int(id) for id in streams[(streams['timeInterval']=='5 min') & (streams['intervalType']=='supply')]['streamId']]
     print(f'Streams = {lst}')
     return lst
 
 if __name__ == '__main__':
     # Select streams & years to iterate over
     #streamIds = get_streams()
-    streamIds = [338136]
-    year = [2020,2021]
+    streamIds = [63288]
+    year = [2022]
     # Get NRG API token
     accessToken, tokenExpiry = pull_nrg_data.getToken()
     print(accessToken)
@@ -33,7 +34,7 @@ if __name__ == '__main__':
         print(f'STREAM #{id}')
         print('--------------')
         for yr in year:
-            for month in range(1,13):
+            for month in range(1,2):
                 if datetime.now() >= tokenExpiry:
                     accessToken, tokenExpiry = pull_nrg_data.getToken()
                     print(f'New token expires {tokenExpiry}:')
@@ -47,7 +48,8 @@ if __name__ == '__main__':
                     APIdata = pull_nrg_data.pull_data(startDate.strftime('%m/%d/%Y'), endDate.strftime('%m/%d/%Y'), id, accessToken, tokenExpiry)
                     APIdata['timeStamp'] = pd.to_datetime(APIdata['timeStamp'])
                     # Write data to DB
-                    sql_insert(APIdata)
+                    print(APIdata)
+                    #sql_insert(APIdata)
                     print(f'Stream #{id} successfully loaded for {month}-{yr}')
                 except:
                     print(f'Stream #{id} is empty for {month}-{yr}')
