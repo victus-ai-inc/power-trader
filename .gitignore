@@ -129,13 +129,13 @@ dmypy.json
 .pyre/
 
 # NRGstream credentials
-#credentials.txt
+credentials.txt
 
 # Streamlit secrects
-#.streamlit/secrets.toml
+.streamlit/secrets.toml
 
 # SQL Jupyter notebook
-#/sql_testing.ipynb
+/sql_testing.ipynb
 
 # Google Bigquery auth file
-#/google-big-query.json
+/google-big-query.json
