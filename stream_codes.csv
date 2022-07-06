@@ -507,3 +507,4 @@ streamId,assetCode,streamName,fuelType,subfuelType,timeInterval,intervalType
 946,WB4,Wabamun #4,Coal,Coal,5 min,reserve
 1457,WWDC,Weldwood,Biomass & Other,Biomass & Other,5 min,reserve
 94038,WWD2,Weldwood #2,Biomass & Other,Biomass & Other,5 min,reserve
+278763,,24M Supply Demand Forecast,Demand Forecast,Demand Forecast,,

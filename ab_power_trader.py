@@ -1,4 +1,5 @@
 #Streamlit app to monitor historical/future power supply/demand in Alberta
+from turtle import color
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -16,26 +17,71 @@ def get_nrg_creds():
 if __name__ == '__main__':
 # App config
     st.set_page_config(layout='wide', initial_sidebar_state='auto', menu_items=None)
-    st.title('Alberta Power Trader')
+    st.title('Alberta Power Forecaster')
 
 # Sidebar config
-    fromDate = st.sidebar.date_input('Start Date', value=datetime.now()-timedelta(1))
-    toDate = st.sidebar.date_input('End Date', min_value=fromDate)+timedelta(1)
-    fromDate = fromDate.strftime('%m/%d/%Y')
-    toDate = toDate.strftime('%m/%d/%Y')
+    # fromDate = st.sidebar.date_input('Start Date', value=datetime.now()-timedelta(1))
+    # toDate = st.sidebar.date_input('End Date', min_value=fromDate)+timedelta(1)
+    # fromDate = fromDate.strftime('%m/%d/%Y')
+    # toDate = toDate.strftime('%m/%d/%Y')
 
-    # Stream Ids
-        #AB Internal Load Demand (5min) = 225
-        #AB Internal Load Demand (1min) = 139308
-        #24 month supply demand forecast = 278763
-    streamId = 203138
-     # Initialize NRG API token
-    accessToken, tokenExpiry = pull_nrg_data.getToken()
-    st.write(accessToken)
     # Pull NRG data
-    df = pull_nrg_data.pull_data(fromDate, toDate, streamId, accessToken, tokenExpiry)
-    pull_nrg_data.release_token(accessToken)
+    forecast = pd.DataFrame([])
+    for forecast_num in range(1,5):
+        df = pd.read_csv(f'http://ets.aeso.ca/Market/Reports/Manual/supply_and_demand/csvData/{forecast_num}-6month.csv', on_bad_lines='skip')
+        df = df[~df['Report Date'].str.contains('Disclaimer')]
+        forecast = pd.concat([forecast,df],axis=0)
+
+    offset_df = forecast[['Report Date','AIL Load + Operating Reserves (MW)']]
     
+    offset_df['Offset'] = 0
+    offset_df.rename(columns={'Report Date':'Date','AIL Load + Operating Reserves (MW)':'Demand'},inplace=True)
+     
+    grid_options = {
+        "gridWidth":'100',
+        "columnDefs": [
+            {
+                "headerName": "Date",
+                "field": "Date",
+                "editable": False,
+            },
+            {
+                "headerName": "Demand",
+                "field": "Demand",
+                "editable": False,
+            },
+            {
+                "headerName": "Offset",
+                "field": "Offset",
+                "editable": True,
+            },
+        ],
+    }
+
+    col1, col2 = st.columns([1,3])
+
+    with col1:
+        offset_df = AgGrid(offset_df[['Date','Demand','Offset']], grid_options)['data']
+    
+    offset_df=pd.DataFrame(offset_df)
+    offset_df['tot_offset'] = offset_df['Offset'].cumsum()
+    offset_df['Adjusted Demand'] = offset_df['Demand'] + offset_df['tot_offset']
+    
+    brush = alt.selection_interval(encodings=['x'])
+    line = alt.Chart(offset_df).mark_line(color='black').encode(
+        x='Date:T',
+        y=alt.Y('Demand:Q'),
+    ).add_selection(brush)
+    area = alt.Chart(offset_df).mark_area(color='blue', opacity=0.1).encode(
+        x='Date:T',
+        y='Adjusted Demand:Q'
+    )
+    
+    with col2:
+        st.altair_chart(line + area, use_container_width=True)
+    
+
+
     
 
 
