@@ -38,7 +38,6 @@ if __name__ == '__main__':
     offset_df.rename(columns={'Report Date':'Date','AIL Load + Operating Reserves (MW)':'Demand'},inplace=True)
      
     grid_options = {
-        "gridWidth":'100',
         "columnDefs": [
             {
                 "headerName": "Date",
@@ -58,7 +57,7 @@ if __name__ == '__main__':
         ],
     }
 
-    col1, col2 = st.columns([1,3])
+    col1, col2 = st.columns([1,2])
 
     with col1:
         offset_df = AgGrid(offset_df[['Date','Demand','Offset']], grid_options)['data']
@@ -72,7 +71,7 @@ if __name__ == '__main__':
         x='Date:T',
         y=alt.Y('Demand:Q'),
     ).add_selection(brush)
-    area = alt.Chart(offset_df).mark_area(color='blue', opacity=0.1).encode(
+    area = alt.Chart(offset_df).mark_area(color='green', opacity=0.3).encode(
         x='Date:T',
         y='Adjusted Demand:Q'
     )
