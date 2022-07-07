@@ -1,6 +1,4 @@
 pandas
-numpy
-scipy
 altair
 streamlit
 streamlit-aggrid
