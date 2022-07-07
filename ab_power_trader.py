@@ -15,7 +15,6 @@ def hide_menu(bool):
         hide_menu_style = """
             <style>
             #MainMenu {visibility: hidden;}
-            footer {visibility: hidden;}
             </style>
             """
         return st.markdown(hide_menu_style, unsafe_allow_html=True)
