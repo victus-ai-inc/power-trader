@@ -13,12 +13,12 @@ def get_nrg_creds():
 def hide_menu(bool):
     if bool == True:
         hide_menu_style = """
-        <style>
-        #MainMenu {visibility:hidden;}
-        footer {visibility:hidden;}
-        </style>
-        """
-    return st.markdown(hide_menu_style, unsafe_allow_html=True)
+            <style>
+            #MainMenu {visibility: hidden;}
+            footer {visibility: hidden;}
+            </style>
+            """
+        return st.markdown(hide_menu_style, unsafe_allow_html=True)
 
 if __name__ == '__main__':
 # App config
