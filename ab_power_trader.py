@@ -22,6 +22,7 @@ def hide_menu(bool):
 
 if __name__ == '__main__':
 # App config
+    hide_menu(True)
     st.set_page_config(layout='wide', initial_sidebar_state='auto', menu_items=None)
     st.title('Alberta Power Forecaster')
 
