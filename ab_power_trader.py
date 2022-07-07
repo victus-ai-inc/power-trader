@@ -1,13 +1,9 @@
 #Streamlit app to monitor historical/future power supply/demand in Alberta
-from turtle import color
 import streamlit as st
 import pandas as pd
-import numpy as np
-import json
 import altair as alt
 from st_aggrid import AgGrid
 from datetime import datetime, timedelta
-import pull_nrg_data
 
 def get_nrg_creds():
     username = st.secrets["nrg_username"]
@@ -33,26 +29,37 @@ if __name__ == '__main__':
         forecast = pd.concat([forecast,df],axis=0)
 
     offset_df = forecast[['Report Date','AIL Load + Operating Reserves (MW)']]
-    
     offset_df['Offset'] = 0
     offset_df.rename(columns={'Report Date':'Date','AIL Load + Operating Reserves (MW)':'Demand'},inplace=True)
-     
+    offset_df['Year'] = pd.DatetimeIndex(offset_df['Date']).year
+    offset_df['Month'] = pd.DatetimeIndex(offset_df['Date']).month
+
     grid_options = {
+        "defaultColDef":
+        {
+            "autoHeight": True,
+            "editable": False,
+            "sortable": False,
+            "filterable": False,
+            "suppressMovable": True,
+            "resizable":False,
+        },
+        "RowHoverHighlight":True,
         "columnDefs": [
             {
                 "headerName": "Date",
                 "field": "Date",
-                "editable": False,
+                "type":"dateColumn",
             },
             {
                 "headerName": "Demand",
                 "field": "Demand",
-                "editable": False,
             },
             {
                 "headerName": "Offset",
                 "field": "Offset",
                 "editable": True,
+                "singleClickEdit":True,
             },
         ],
     }
@@ -60,27 +67,31 @@ if __name__ == '__main__':
     col1, col2 = st.columns([1,2])
 
     with col1:
-        offset_df = AgGrid(offset_df[['Date','Demand','Offset']], grid_options)['data']
+        offset_df = AgGrid(offset_df[['Date','Demand','Offset']], grid_options, fit_columns_on_grid_load=True)['data']
     
     offset_df=pd.DataFrame(offset_df)
     offset_df['tot_offset'] = offset_df['Offset'].cumsum()
     offset_df['Adjusted Demand'] = offset_df['Demand'] + offset_df['tot_offset']
-    
-    brush = alt.selection_interval(encodings=['x'])
+
     line = alt.Chart(offset_df).mark_line(color='black').encode(
-        x='Date:T',
-        y=alt.Y('Demand:Q'),
-    ).add_selection(brush)
+        x=alt.X('Date:T',axis=alt.Axis(format='%b %Y'),title=''),
+        y=alt.Y('Demand:Q', title='Demand (MW)'),
+    ).properties(
+        height=430,
+    )
+
     area = alt.Chart(offset_df).mark_area(color='green', opacity=0.3).encode(
         x='Date:T',
-        y='Adjusted Demand:Q'
-    )
+        y='Adjusted Demand:Q',
+    ).interactive(bind_y=True)
+
+    nearest = alt.selection(type='single', nearest=True, on='mouseover', fields=['Date'], empty='none', clear="mouseout")
     
+    rule = alt.Chart(offset_df).mark_rule(color='gray').encode(
+        x='Date:T',
+        opacity=alt.condition(nearest, alt.value(1), alt.value(0)),
+        tooltip = ['Date:T','Demand','Adjusted Demand']
+    ).add_selection(nearest)
+
     with col2:
-        st.altair_chart(line + area, use_container_width=True)
-    
-
-
-    
-
-
+        st.altair_chart(line + area + rule, use_container_width=True)
