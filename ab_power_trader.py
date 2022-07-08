@@ -1,5 +1,4 @@
 #Streamlit app to monitor historical/future power supply/demand in Alberta
-from turtle import color
 import streamlit as st
 import pandas as pd
 import altair as alt

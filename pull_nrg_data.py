@@ -47,6 +47,7 @@ def get_streamInfo(streamId):
 # Use token to pull data
 def pull_data(fromDate, toDate, streamId, accessToken, tokenExpiry):
     # Setup the path for data request
+    server = 'api.nrgstream.com'
     path = f'/api/StreamData/{streamId}?fromDate={fromDate}&toDate={toDate}'
     headers = {'Accept': 'Application/json', 'Authorization': f'Bearer {accessToken}'}
     context = ssl.create_default_context(cafile=certifi.where())
