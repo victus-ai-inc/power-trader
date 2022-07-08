@@ -1,12 +1,8 @@
 # Pull 24mth Supply Demand forecast (future_df)
 from datetime import datetime, date, timedelta
-import time
-from unicodedata import numeric
 import pandas as pd
 import pull_nrg_data
 from pandasql import sqldf
-from datetime import datetime, timedelta
-import pandas as pd
 import http.client
 import certifi
 import ssl
