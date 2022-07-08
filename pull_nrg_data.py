@@ -57,7 +57,6 @@ def pull_data(fromDate, toDate, streamId, accessToken, tokenExpiry):
     # Load json data & create pandas df
     jsonData = json.loads(res.read().decode('utf-8'))
     df = pd.json_normalize(jsonData, record_path='data')
-    print(streamId)
     if streamId == 278763:
         df.drop(df.columns[1,3,4,5],axis=1,inplace=True)
     # Rename df cols
