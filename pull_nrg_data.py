@@ -48,16 +48,11 @@ def get_streamInfo(streamId):
 def pull_data(fromDate, toDate, streamId, accessToken, tokenExpiry):
     # Setup the path for data request
     path = f'/api/StreamData/{streamId}?fromDate={fromDate}&toDate={toDate}'
-    headers = {
-        'Accept': 'Application/json',
-        'Authorization': f'Bearer {accessToken}'
-        }
+    headers = {'Accept': 'Application/json', 'Authorization': f'Bearer {accessToken}'}
     context = ssl.create_default_context(cafile=certifi.where())
     conn = http.client.HTTPSConnection(server, context=context)
     conn.request('GET', path, None, headers)
     res = conn.getresponse()
-    #res_code = res.status
-
     # Load json data & create pandas df
     jsonData = json.loads(res.read().decode('utf-8'))
     df = pd.json_normalize(jsonData, record_path='data')
@@ -85,6 +80,7 @@ def pull_data(fromDate, toDate, streamId, accessToken, tokenExpiry):
 # Release generated token
 def release_token(accessToken):
     path = '/api/ReleaseToken'
+    server = 'api.nrgstream.com'
     headers = {'Authorization': f'Bearer {accessToken}'}
     context = ssl.create_default_context(cafile=certifi.where())
     conn = http.client.HTTPSConnection(server,context=context)

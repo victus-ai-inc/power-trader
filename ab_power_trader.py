@@ -1,4 +1,5 @@
 #Streamlit app to monitor historical/future power supply/demand in Alberta
+from turtle import color
 import streamlit as st
 import pandas as pd
 import altair as alt
@@ -21,6 +22,7 @@ def hide_menu(bool):
             """
         return st.markdown(hide_menu_style, unsafe_allow_html=True)
 
+@st.experimental_memo
 def outage_data():
     # Define streams & years
     streamIds = [44648, 118361, 322689, 118362, 147262, 322675, 322682, 44651]
@@ -63,6 +65,13 @@ def outage_data():
         outages = pd.concat([outages,stream_df], axis=1, join='outer')
         # Release NRG API access token
         pull_nrg_data.release_token(accessToken)
+    # Reset index so dataframe can be plotted with Altair
+    outages.reset_index(inplace=True)
+    outages = pd.melt(outages, 
+                    id_vars=['timeStamp'],
+                    value_vars=['Coal', 'Gas', 'Dual Fuel', 'Hydro', 'Wind', 'Solar', 'Energy Storage', 'Biomass & Other'],
+                    var_name='Source',
+                    value_name='Value')
     return outages
 
 # Main code block
@@ -121,8 +130,22 @@ if __name__ == '__main__':
             },
         ],
     }
+# Outages chart
+    st.subheader('Forecasted Outages')
+    outage_df = outage_data()
+    outage_area = alt.Chart(outage_df).mark_area(opacity=0.5).encode(
+        x=alt.X('yearmonth(timeStamp):T', title=''),
+        y=alt.Y('Value:Q', stack='center', axis=None),
+        color=alt.Color('Source:N', scale=alt.Scale(scheme='category20'), legend=alt.Legend(orient="top")),
+        tooltip=[alt.Tooltip('yearmonth(timeStamp):T', title='Date'),'Source','Value']
+        )
+    #.properties(height=1000)
+    st.altair_chart(outage_area, use_container_width=True)
+
 # Creating cols for Streamlit app
+    st.subheader('Adjusted Demand')
     col1, col2 = st.columns([1,2])
+
 # Adding AgGrid table to Col1
     with col1:
         offset_df = AgGrid(offset_df[['Date','Demand','Offset']], grid_options, fit_columns_on_grid_load=True)['data']
@@ -155,4 +178,3 @@ if __name__ == '__main__':
     with col2:
         st.altair_chart(line + area + rule, use_container_width=True)
 
-st.write(outage_data())
