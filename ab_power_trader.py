@@ -2,13 +2,13 @@
 import streamlit as st
 import pandas as pd
 import altair as alt
+import pull_nrg_data
+import json
+import http.client
+import certifi
+import ssl
 from st_aggrid import AgGrid
-from datetime import datetime, timedelta
-
-def get_nrg_creds():
-    username = st.secrets["nrg_username"]
-    password = st.secrets["nrg_password"]
-    return username, password
+from datetime import datetime, date, timedelta
 
 # Function to hide top and bottom menus on Streamlit app
 def hide_menu(bool):
@@ -20,6 +20,50 @@ def hide_menu(bool):
             </style>
             """
         return st.markdown(hide_menu_style, unsafe_allow_html=True)
+
+def outage_data():
+    # Define streams & years
+    streamIds = [44648, 118361, 322689, 118362, 147262, 322675, 322682, 44651]
+    streamNames = {44648:'Coal', 118361:'Gas', 322689:'Dual Fuel', 118362:'Hydro', 147262:'Wind', 322675:'Solar', 322682:'Energy Storage', 44651:'Biomass & Other'}
+    year = [datetime.now().year,datetime.now().year+1,datetime.now().year+2]
+    outages = pd.DataFrame([])
+
+    for id in streamIds:
+        accessToken, tokenExpiry = pull_nrg_data.getToken()
+        server = 'api.nrgstream.com'
+        stream_df = pd.DataFrame([])
+        # Pull NRG API access token
+        if datetime.now() >= tokenExpiry:
+                accessToken, tokenExpiry = pull_nrg_data.getToken()
+        for yr in year:
+            # Define start & end dates
+            startDate = date(yr,1,1).strftime('%m/%d/%Y')
+            endDate = date(yr,12,31).strftime('%m/%d/%Y')
+            # NRG API connection
+            path = f'/api/StreamData/{id}?fromDate={startDate}&toDate={endDate}'
+            headers = {'Accept': 'Application/json', 'Authorization': f'Bearer {accessToken}'}
+            context = ssl.create_default_context(cafile=certifi.where())
+            conn = http.client.HTTPSConnection(server, context=context)
+            conn.request('GET', path, None, headers)
+            res = conn.getresponse()
+            # Load json data from API & create pandas df
+            jsonData = json.loads(res.read().decode('utf-8'))
+            df = pd.json_normalize(jsonData, record_path='data')
+            # Close NRG API connection
+            conn.close()
+            # Concat years for each stream
+            stream_df = pd.concat([stream_df,df], axis=0)
+        # Rename stream_df cols
+        stream_df.rename(columns={0:'timeStamp', 1:f'{streamNames[id]}'}, inplace=True)
+        # Change timeStamp to datetime
+        stream_df['timeStamp'] = pd.to_datetime(stream_df['timeStamp'])
+        # Re-index the stream_df
+        stream_df.set_index('timeStamp', inplace=True)
+        # Join stream_df to outages dataframe
+        outages = pd.concat([outages,stream_df], axis=1, join='outer')
+        # Release NRG API access token
+        pull_nrg_data.release_token(accessToken)
+    return outages
 
 # Main code block
 if __name__ == '__main__':
@@ -110,3 +154,5 @@ if __name__ == '__main__':
     # Adding layered chart to Col2
     with col2:
         st.altair_chart(line + area + rule, use_container_width=True)
+
+st.write(outage_data())

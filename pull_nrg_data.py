@@ -4,14 +4,18 @@ import http.client
 import certifi
 import ssl
 import json
-import ab_power_trader
+import streamlit as st
 
 # Pull NRG credentials from Streamlit secrets manager
-username, password = ab_power_trader.get_nrg_creds()
-server = 'api.nrgstream.com'
+def get_nrg_creds():
+    username = st.secrets["nrg_username"]
+    password = st.secrets["nrg_password"]
+    return username, password
 
 # Use creds to generate token from NRG
 def getToken():
+    username, password = get_nrg_creds()
+    server = 'api.nrgstream.com'
     tokenPath = '/api/security/token'
     tokenPayload = f'grant_type=password&username={username}&password={password}'
     headers = {"Content-type": "application/x-www-form-urlencoded"}
@@ -86,4 +90,4 @@ def release_token(accessToken):
     conn = http.client.HTTPSConnection(server,context=context)
     conn.request('DELETE', path, None, headers)
     res = conn.getresponse()
-    print('token released')
+    #print('token released')

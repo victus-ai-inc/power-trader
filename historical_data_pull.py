@@ -23,8 +23,8 @@ def get_streams():
 if __name__ == '__main__':
     # Select streams & years to iterate over
     #streamIds = get_streams()
-    streamIds = [63288]
-    year = [2022]
+    streamIds = [118361]
+    year = [2020,2021,2022,2023,2024]
     # Get NRG API token
     accessToken, tokenExpiry = pull_nrg_data.getToken()
     print(accessToken)
@@ -34,7 +34,7 @@ if __name__ == '__main__':
         print(f'STREAM #{id}')
         print('--------------')
         for yr in year:
-            for month in range(1,2):
+            for month in range(1,13):
                 if datetime.now() >= tokenExpiry:
                     accessToken, tokenExpiry = pull_nrg_data.getToken()
                     print(f'New token expires {tokenExpiry}:')
