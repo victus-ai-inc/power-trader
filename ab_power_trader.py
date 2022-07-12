@@ -21,6 +21,7 @@ def hide_menu(bool):
             """
         return st.markdown(hide_menu_style, unsafe_allow_html=True)
 
+# Create outages dataframe from NRG data
 @st.experimental_memo
 def outage_data():
     # Define streams & years
@@ -88,7 +89,7 @@ if __name__ == '__main__':
 
 # Pull 24M Supply/Demand data from AESO
     forecast = pd.DataFrame([])
-    # Scraping data
+    # Scraping data from AESO website
     for forecast_num in range(1,5):
         df = pd.read_csv(f'http://ets.aeso.ca/Market/Reports/Manual/supply_and_demand/csvData/{forecast_num}-6month.csv', on_bad_lines='skip')
         df = df[~df['Report Date'].str.contains('Disclaimer')]
@@ -138,9 +139,8 @@ if __name__ == '__main__':
     selection = alt.selection_interval(encodings=['x'])
     outage_area = alt.Chart(outage_df).mark_area(opacity=0.5).encode(
         x=alt.X('yearmonth(timeStamp):T', title=''),
-        y=alt.Y('Value:Q', stack='normalize'),
+        y=alt.Y('Value:Q', stack='zero', axis=alt.Axis(format='f'), title=''),
         color=alt.Color('Source:N', scale=alt.Scale(scheme='category20'), legend=alt.Legend(orient="top")),
-        tooltip=[alt.Tooltip('yearmonth(timeStamp):T', title='Date'),'Source','Value']
         ).add_selection(selection).properties(width=1600)
     outage_bar = alt.Chart(outage_df).mark_bar(opacity=0.5).encode(
         x='Value:Q',
@@ -186,7 +186,7 @@ if __name__ == '__main__':
             tooltip = ['Date:T', 
                         alt.Tooltip('Open:Q', title='Open (MW)', format=',d'),
                         alt.Tooltip('Close:Q', title='Close (MW)', format=',d'),
-                        alt.Tooltip('Adjusted Demand:Q', title='Adjusted Demand (MW)', format=',d')]
+                        alt.Tooltip('Adjusted Demand:Q', title='Adjusted Close (MW)', format=',d')]
         ).add_selection(nearest)
     # Adding layered chart to Col2
     with col2:
