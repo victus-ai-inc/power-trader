@@ -96,9 +96,11 @@ if __name__ == '__main__':
 # Creating offset_df
     offset_df = forecast[['Report Date','AIL Load + Operating Reserves (MW)']]
     offset_df['Offset'] = 0
-    offset_df.rename(columns={'Report Date':'Date','AIL Load + Operating Reserves (MW)':'Demand'},inplace=True)
+    offset_df.rename(columns={'Report Date':'Date','AIL Load + Operating Reserves (MW)':'Close'},inplace=True)
+    offset_df['Open'] = offset_df['Close'].shift(periods=1)
     offset_df['Year'] = pd.DatetimeIndex(offset_df['Date']).year
     offset_df['Month'] = pd.DatetimeIndex(offset_df['Date']).month
+    
 # Grid options for AgGrid table
     grid_options = {
         "defaultColDef":
@@ -119,7 +121,7 @@ if __name__ == '__main__':
             },
             {
                 "headerName": "Demand",
-                "field": "Demand",
+                "field": "Close",
             },
             {
                 "headerName": "Offset",
@@ -129,51 +131,65 @@ if __name__ == '__main__':
             },
         ],
     }
+    
 # Outages chart
     st.subheader('Forecasted Outages')
     outage_df = outage_data()
+    selection = alt.selection_interval(encodings=['x'])
     outage_area = alt.Chart(outage_df).mark_area(opacity=0.5).encode(
         x=alt.X('yearmonth(timeStamp):T', title=''),
-        y=alt.Y('Value:Q', stack='center', axis=None),
+        y=alt.Y('Value:Q', stack='normalize'),
         color=alt.Color('Source:N', scale=alt.Scale(scheme='category20'), legend=alt.Legend(orient="top")),
         tooltip=[alt.Tooltip('yearmonth(timeStamp):T', title='Date'),'Source','Value']
-        )
-    #.properties(height=1000)
-    st.altair_chart(outage_area, use_container_width=True)
+        ).add_selection(selection).properties(width=1600)
+    outage_bar = alt.Chart(outage_df).mark_bar(opacity=0.5).encode(
+        x='Value:Q',
+        y=alt.Y('Source:N',title=''),
+        color=alt.Color('Source:N', scale=alt.Scale(scheme='category20'))
+    ).transform_filter(selection).properties(width=1600)
+    st.altair_chart(outage_area & outage_bar, use_container_width=True)
 
-# Creating cols for Streamlit app
+# Offset demand table & chart
     st.subheader('Adjusted Demand')
+    # Creating cols for Streamlit app
     col1, col2 = st.columns([1,2])
-
-# Adding AgGrid table to Col1
+    # Adding AgGrid table to Col1
     with col1:
-        offset_df = AgGrid(offset_df[['Date','Demand','Offset']], grid_options, fit_columns_on_grid_load=True)['data']
-# Calculating cummulative offset
-    offset_df = pd.DataFrame(offset_df)
-    offset_df['tot_offset'] = offset_df['Offset'].cumsum()
-    offset_df['Adjusted Demand'] = offset_df['Demand'] + offset_df['tot_offset']
-# Creating Altair charts
-    # Demand line chart
-    line = alt.Chart(offset_df).mark_line(color='black').encode(
-        x=alt.X('Date:T',axis=alt.Axis(format='%b %Y'),title=''),
-        y=alt.Y('Demand:Q', title='Demand (MW)'),
-    ).properties(
-        height=430,
-    )
-    # Adjusted Demand area chart
-    area = alt.Chart(offset_df).mark_area(color='green', opacity=0.3).encode(
-        x='Date:T',
-        y='Adjusted Demand:Q',
-    ).interactive(bind_y=True)
-    # Selector for sliding vertical line 
-    nearest = alt.selection(type='single', nearest=True, on='mouseover', fields=['Date'], empty='none', clear="mouseout")
-    # Creating vertical line to highlight current Date
-    rule = alt.Chart(offset_df).mark_rule(color='gray').encode(
-        x='Date:T',
-        opacity=alt.condition(nearest, alt.value(1), alt.value(0)),
-        tooltip = ['Date:T','Demand','Adjusted Demand']
-    ).add_selection(nearest)
+        offset_df = AgGrid(offset_df[['Date','Open','Close','Offset']], grid_options, fit_columns_on_grid_load=True)['data']
+    # Calculating cummulative offset
+        offset_df = pd.DataFrame(offset_df)
+        offset_df['tot_offset'] = offset_df['Offset'].cumsum()
+        offset_df['Adjusted Demand'] = offset_df['Close'] + offset_df['tot_offset']
+        offset_df = offset_df[1:]
+    # Creating Altair charts
+        # Demand candlestick chart
+        open_close_color = alt.condition("datum.Open <= datum.Close",
+                                 alt.value("#06982d"),
+                                 alt.value("#ae1325"))
+        candlestick = alt.Chart(offset_df).mark_bar().encode(
+            x=alt.X('Date:T',axis=alt.Axis(format='%b %Y'),title=''),
+            y=alt.Y('Open:Q', title='Demand (MW)'),
+            y2=alt.Y2('Close:Q', title=''),
+            color=open_close_color
+        ).interactive( ).properties(height=430)
+        # Adjusted Demand area chart
+        area = alt.Chart(offset_df).mark_area(color='green', opacity=0.3).encode(
+            x='Date:T',
+            y='Adjusted Demand:Q',
+        ).interactive(bind_y=True)
+        # Selector for sliding vertical line
+        nearest = alt.selection(type='single', nearest=True, on='mouseover', fields=['Date'], empty='none', clear='mouseout')
+        # Creating vertical line to highlight current Date
+        rule = alt.Chart(offset_df).mark_rule(color='gray').encode(
+            x='Date:T',
+            opacity=alt.condition(nearest, alt.value(1), alt.value(0)),
+            tooltip = ['Date:T', 
+                        alt.Tooltip('Open:Q', title='Open (MW)', format=',d'),
+                        alt.Tooltip('Close:Q', title='Close (MW)', format=',d'),
+                        alt.Tooltip('Adjusted Demand:Q', title='Adjusted Demand (MW)', format=',d')]
+        ).add_selection(nearest)
     # Adding layered chart to Col2
     with col2:
-        st.altair_chart(line + area + rule, use_container_width=True)
+        st.altair_chart(candlestick + area + rule, use_container_width=True)
+    
 
