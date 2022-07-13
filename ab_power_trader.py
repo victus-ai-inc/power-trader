@@ -141,11 +141,11 @@ if __name__ == '__main__':
     selection = alt.selection_interval(encodings=['x'])
     outage_area = alt.Chart(outage_df).mark_area(opacity=0.5).encode(
         x=alt.X('yearmonth(timeStamp):T', title=''),
-        y=alt.Y('Value:Q', stack='zero', axis=alt.Axis(format='f'), title=''),
+        y=alt.Y('Value:Q', stack='zero', axis=alt.Axis(format=',f'), title='Outages (MW)'),
         color=alt.Color('Source:N', scale=alt.Scale(scheme='category20'), legend=alt.Legend(orient="top")),
         ).add_selection(selection).properties(width=1600)
     outage_bar = alt.Chart(outage_df).mark_bar(opacity=0.5).encode(
-        x='Value:Q',
+        x=alt.X('Value:Q', title='Outages (MW)'),
         y=alt.Y('Source:N',title=''),
         color=alt.Color('Source:N', scale=alt.Scale(scheme='category20'))
     ).transform_filter(selection).properties(width=1600)
@@ -175,7 +175,7 @@ if __name__ == '__main__':
             color=open_close_color
         ).interactive( ).properties(height=430)
         # Adjusted Demand area chart
-        area = alt.Chart(offset_df).mark_area(color='green', opacity=0.3).encode(
+        area = alt.Chart(offset_df).mark_area(color='grey', opacity=0.3).encode(
             x='Date:T',
             y='Adjusted Demand:Q',
         ).interactive(bind_y=True)
