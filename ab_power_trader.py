@@ -121,14 +121,16 @@ if __name__ == '__main__':
                 "type":"dateColumn",
             },
             {
-                "headerName": "Demand",
+                "headerName": "Demand (MW)",
                 "field": "Close",
+                "valueFormatter": "Math.floor(data.Close).toString().replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1,')",
             },
             {
-                "headerName": "Offset",
+                "headerName": "Offset (MW)",
                 "field": "Offset",
                 "editable": True,
                 "singleClickEdit":True,
+                "valueFormatter": "Math.floor(data.Offset).toString().replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1,')",
             },
         ],
     }
