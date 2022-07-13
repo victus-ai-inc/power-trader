@@ -143,12 +143,12 @@ if __name__ == '__main__':
         x=alt.X('yearmonth(timeStamp):T', title=''),
         y=alt.Y('Value:Q', stack='zero', axis=alt.Axis(format=',f'), title='Outages (MW)'),
         color=alt.Color('Source:N', scale=alt.Scale(scheme='category20'), legend=alt.Legend(orient="top")),
-        ).add_selection(selection).properties(width=1600)
+        ).add_selection(selection).properties(width=1300)
     outage_bar = alt.Chart(outage_df).mark_bar(opacity=0.5).encode(
         x=alt.X('Value:Q', title='Outages (MW)'),
         y=alt.Y('Source:N',title=''),
         color=alt.Color('Source:N', scale=alt.Scale(scheme='category20'))
-    ).transform_filter(selection).properties(width=1600)
+    ).transform_filter(selection).properties(width=1300)
     st.altair_chart(outage_area & outage_bar, use_container_width=True)
 
 # Offset demand table & chart
@@ -193,5 +193,3 @@ if __name__ == '__main__':
     # Adding layered chart to Col2
     with col2:
         st.altair_chart(candlestick + area + rule, use_container_width=True)
-    
-

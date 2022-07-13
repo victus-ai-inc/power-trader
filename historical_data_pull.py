@@ -4,7 +4,13 @@ import pull_nrg_data
 import streamlit as st
 import mysql.connector
 from sqlalchemy import create_engine
+import os
+from google.cloud import bigquery
+from google.cloud.exceptions import NotFound
 
+# Path to Google auth credentials
+os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = '/home/ryan-bulger/power-trader/google-big-query.json'
+# SQL auth
 sql_user = st.secrets["sql_user"]
 sql_pw = st.secrets["sql_password"]
 sql_schema = st.secrets["sql_schema"]
@@ -22,9 +28,9 @@ def get_streams():
 
 if __name__ == '__main__':
     # Select streams & years to iterate over
-    #streamIds = get_streams()
-    streamIds = [118361]
-    year = [2020,2021,2022,2023,2024]
+    streamIds = get_streams()
+    #streamIds = [129796, 45132]
+    year = [2020, 2021]
     # Get NRG API token
     accessToken, tokenExpiry = pull_nrg_data.getToken()
     print(accessToken)
@@ -49,11 +55,10 @@ if __name__ == '__main__':
                     APIdata['timeStamp'] = pd.to_datetime(APIdata['timeStamp'])
                     # Write data to DB
                     print(APIdata)
-                    #sql_insert(APIdata)
+                    bigquery.Client().load_table_from_dataframe(APIdata, 'nrgdata.nrgdata')
                     print(f'Stream #{id} successfully loaded for {month}-{yr}')
                 except:
                     print(f'Stream #{id} is empty for {month}-{yr}')
                     pass
-
     # Release token
     pull_nrg_data.release_token(accessToken)
