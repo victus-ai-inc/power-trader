@@ -17,13 +17,13 @@ def get_streams():
 
 if __name__ == '__main__':
     streamIds = get_streams()
-    year = [2020, 2021]
+    year = [2022]
     stream_count = len(streamIds)
     count = 0
     for id in streamIds:
         for yr in year:
             startDate = date(yr,1,1)
-            endDate = date(yr+1,1,1)
+            endDate = date(yr,7,1)
             accessToken, tokenExpiry = pull_nrg_data.getToken()
             try:
                 APIdata = pull_nrg_data.pull_data(startDate.strftime('%m/%d/%Y'), endDate.strftime('%m/%d/%Y'), id, accessToken, tokenExpiry)
