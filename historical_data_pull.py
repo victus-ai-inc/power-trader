@@ -16,24 +16,22 @@ def get_streams():
     return lst
 
 if __name__ == '__main__':
-    # Select streams & years to iterate over
     streamIds = get_streams()
-    #streamIds = [129796, 45132]
     year = [2020, 2021]
-    # Cycle through months and write to DB
+    stream_count = len(streamIds)
+    count = 0
     for id in streamIds:
         for yr in year:
-            accessToken, tokenExpiry = pull_nrg_data.getToken()
             startDate = date(yr,1,1)
             endDate = date(yr+1,1,1)
+            accessToken, tokenExpiry = pull_nrg_data.getToken()
             try:
                 APIdata = pull_nrg_data.pull_data(startDate.strftime('%m/%d/%Y'), endDate.strftime('%m/%d/%Y'), id, accessToken, tokenExpiry)
-                APIdata['timeStamp'] = pd.to_datetime(APIdata['timeStamp'])
-                # Write data to DB
-                #bigquery.Client().load_table_from_dataframe(APIdata, 'nrgdata.nrgdata')
-                print(f'Stream #{id} successfully loaded for {yr}')
                 pull_nrg_data.release_token(accessToken)
+                APIdata['timeStamp'] = pd.to_datetime(APIdata['timeStamp'])
+                bigquery.Client().load_table_from_dataframe(APIdata, 'nrgdata.nrgdata')
             except:
-                print(f'Stream #{id} is empty for {yr}')
                 pull_nrg_data.release_token(accessToken)
                 pass
+        print(f'STREAM #{id} finished, {stream_count-count} streams remaining')
+        count += 1
