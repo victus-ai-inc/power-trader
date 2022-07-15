@@ -7,8 +7,11 @@ import json
 import http.client
 import certifi
 import ssl
+import os
 from st_aggrid import AgGrid
-from datetime import datetime, date, timedelta
+from datetime import datetime, date
+from google.cloud import bigquery
+from google.cloud.exceptions import NotFound
 
 # Function to hide top and bottom menus on Streamlit app
 def hide_menu(bool):
@@ -22,22 +25,14 @@ def hide_menu(bool):
         return st.markdown(hide_menu_style, unsafe_allow_html=True)
 
 # Create outages dataframe from NRG data
-@st.experimental_memo
-def outage_data():
-    # Define streams & years
-    streamIds = [44648, 118361, 322689, 118362, 147262, 322675, 322682, 44651]
-    streamNames = {44648:'Coal', 118361:'Gas', 322689:'Dual Fuel', 118362:'Hydro', 147262:'Wind', 322675:'Solar', 322682:'Energy Storage', 44651:'Biomass & Other'}
-    year = [datetime.now().year,datetime.now().year+1,datetime.now().year+2]
-    outages = pd.DataFrame([])
-
+#@st.experimental_memo
+def stream_data(streamIds, streamNames, years):
+    stream_df = pd.DataFrame([])
     for id in streamIds:
-        accessToken, tokenExpiry = pull_nrg_data.getToken()
         server = 'api.nrgstream.com'
-        stream_df = pd.DataFrame([])
-        # Pull NRG API access token
-        if datetime.now() >= tokenExpiry:
-                accessToken, tokenExpiry = pull_nrg_data.getToken()
-        for yr in year:
+        year_df = pd.DataFrame([])
+        for yr in years:
+            accessToken, tokenExpiry = pull_nrg_data.getToken()
             # Define start & end dates
             startDate = date(yr,1,1).strftime('%m/%d/%Y')
             endDate = date(yr,12,31).strftime('%m/%d/%Y')
@@ -54,25 +49,30 @@ def outage_data():
             # Close NRG API connection
             conn.close()
             # Concat years for each stream
-            stream_df = pd.concat([stream_df,df], axis=0)
-        # Rename stream_df cols
-        stream_df.rename(columns={0:'timeStamp', 1:f'{streamNames[id]}'}, inplace=True)
+            year_df = pd.concat([year_df,df], axis=0)
+            # Release NRG API access token
+            pull_nrg_data.release_token(accessToken)
+        # Rename year_df cols
+        year_df.rename(columns={0:'timeStamp', 1:f'{streamNames[id]}'}, inplace=True)
+        print(year_df)
         # Change timeStamp to datetime
-        stream_df['timeStamp'] = pd.to_datetime(stream_df['timeStamp'])
-        # Re-index the stream_df
-        stream_df.set_index('timeStamp', inplace=True)
-        # Join stream_df to outages dataframe
-        outages = pd.concat([outages,stream_df], axis=1, join='outer')
-        # Release NRG API access token
-        pull_nrg_data.release_token(accessToken)
-    # Reset index so dataframe can be plotted with Altair
-    outages.reset_index(inplace=True)
-    outages = pd.melt(outages, 
-                    id_vars=['timeStamp'],
-                    value_vars=['Coal', 'Gas', 'Dual Fuel', 'Hydro', 'Wind', 'Solar', 'Energy Storage', 'Biomass & Other'],
-                    var_name='Source',
-                    value_name='Value')
-    return outages
+        year_df['timeStamp'] = pd.to_datetime(year_df['timeStamp'])
+        # Re-index the year_df
+        year_df.set_index('timeStamp', inplace=True)
+        # Join year_df to outages dataframe
+        stream_df = pd.concat([stream_df,year_df], axis=1, join='outer')
+    return stream_df
+
+# Pull historical data from Google BigQuery
+@st.experimental_memo
+def pull_grouped_hist():
+    # Google BigQuery auth
+    os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = '/home/ryan-bulger/power-trader/google-big-query.json'
+    # Pull data
+    sql = "SELECT * FROM nrgdata.grouped_data"
+    history_df = bigquery.Client().query(sql).to_dataframe()
+    history_df['date'] = pd.to_datetime(history_df[['year','month','day']])
+    return history_df
 
 # Main code block
 if __name__ == '__main__':
@@ -81,11 +81,44 @@ if __name__ == '__main__':
     st.title('Alberta Power Forecaster')
     hide_menu(True)
 
-# Sidebar config
-    # fromDate = st.sidebar.date_input('Start Date', value=datetime.now()-timedelta(1))
-    # toDate = st.sidebar.date_input('End Date', min_value=fromDate)+timedelta(1)
-    # fromDate = fromDate.strftime('%m/%d/%Y')
-    # toDate = toDate.strftime('%m/%d/%Y')
+# Pull historical data
+    history_df = pull_grouped_hist()
+    hist = alt.Chart(history_df).mark_area().encode(
+        x='date:T',
+        y=alt.Y('Close:Q', stack='zero'),
+        color='subfuelType'
+    ).interactive()
+    st.altair_chart(hist, use_container_width=True)
+
+# Outages chart
+    st.subheader('Forecasted Outages')
+    #Create outages_df
+    streamIds = [44648, 118361, 322689, 118362, 147262, 322675, 322682, 44651]
+    streamNames = {44648:'Coal', 118361:'Gas', 322689:'Dual Fuel', 118362:'Hydro', 147262:'Wind', 322675:'Solar', 322682:'Energy Storage', 44651:'Biomass & Other'}
+    years = [datetime.now().year, datetime.now().year+1, datetime.now().year+2]
+    outage_df = stream_data(streamIds, streamNames, years)
+    
+    # Reset index so dataframe can be plotted with Altair
+    outage_df.reset_index(inplace=True)
+    outage_df = pd.melt(outage_df, 
+                    id_vars=['timeStamp'],
+                    value_vars=['Coal', 'Gas', 'Dual Fuel', 'Hydro', 'Wind', 'Solar', 'Energy Storage', 'Biomass & Other'],
+                    var_name='Source',
+                    value_name='Value')
+    # Outages area chart
+    selection = alt.selection_interval(encodings=['x'])
+    outage_area = alt.Chart(outage_df).mark_area(opacity=0.5).encode(
+        x=alt.X('yearmonth(timeStamp):T', title=''),
+        y=alt.Y('Value:Q', stack='zero', axis=alt.Axis(format=',f'), title='Outages (MW)'),
+        color=alt.Color('Source:N', scale=alt.Scale(scheme='category20'), legend=alt.Legend(orient="top")),
+        ).add_selection(selection).properties(width=1300)
+    # Outages bar chart
+    outage_bar = alt.Chart(outage_df).mark_bar(opacity=0.5).encode(
+        x=alt.X('Value:Q', title='Outages (MW)'),
+        y=alt.Y('Source:N',title=''),
+        color=alt.Color('Source:N', scale=alt.Scale(scheme='category20'))
+    ).transform_filter(selection).properties(width=1300)
+    st.altair_chart(outage_area & outage_bar, use_container_width=True)
 
 # Pull 24M Supply/Demand data from AESO
     forecast = pd.DataFrame([])
@@ -94,15 +127,15 @@ if __name__ == '__main__':
         df = pd.read_csv(f'http://ets.aeso.ca/Market/Reports/Manual/supply_and_demand/csvData/{forecast_num}-6month.csv', on_bad_lines='skip')
         df = df[~df['Report Date'].str.contains('Disclaimer')]
         forecast = pd.concat([forecast,df],axis=0)
-# Creating offset_df
+    # Creating offset_df
     offset_df = forecast[['Report Date','AIL Load + Operating Reserves (MW)']]
     offset_df['Offset'] = 0
     offset_df.rename(columns={'Report Date':'Date','AIL Load + Operating Reserves (MW)':'Close'},inplace=True)
     offset_df['Open'] = offset_df['Close'].shift(periods=1)
-    offset_df['Year'] = pd.DatetimeIndex(offset_df['Date']).year
-    offset_df['Month'] = pd.DatetimeIndex(offset_df['Date']).month
-    
-# Grid options for AgGrid table
+    #offset_df['Year'] = pd.DatetimeIndex(offset_df['Date']).year
+    #offset_df['Month'] = pd.DatetimeIndex(offset_df['Date']).month
+
+# Grid options for AgGrid Demand forecast table
     grid_options = {
         "defaultColDef":
         {
@@ -135,21 +168,7 @@ if __name__ == '__main__':
         ],
     }
     
-# Outages chart
-    st.subheader('Forecasted Outages')
-    outage_df = outage_data()
-    selection = alt.selection_interval(encodings=['x'])
-    outage_area = alt.Chart(outage_df).mark_area(opacity=0.5).encode(
-        x=alt.X('yearmonth(timeStamp):T', title=''),
-        y=alt.Y('Value:Q', stack='zero', axis=alt.Axis(format=',f'), title='Outages (MW)'),
-        color=alt.Color('Source:N', scale=alt.Scale(scheme='category20'), legend=alt.Legend(orient="top")),
-        ).add_selection(selection).properties(width=1300)
-    outage_bar = alt.Chart(outage_df).mark_bar(opacity=0.5).encode(
-        x=alt.X('Value:Q', title='Outages (MW)'),
-        y=alt.Y('Source:N',title=''),
-        color=alt.Color('Source:N', scale=alt.Scale(scheme='category20'))
-    ).transform_filter(selection).properties(width=1300)
-    st.altair_chart(outage_area & outage_bar, use_container_width=True)
+
 
 # Offset demand table & chart
     st.subheader('Adjusted Demand')
