@@ -55,7 +55,6 @@ def stream_data(streamIds, streamNames, years):
             pull_nrg_data.release_token(accessToken)
         # Rename year_df cols
         year_df.rename(columns={0:'timeStamp', 1:f'{streamNames[id]}'}, inplace=True)
-        print(year_df)
         # Change timeStamp to datetime
         year_df['timeStamp'] = pd.to_datetime(year_df['timeStamp'])
         # Re-index the year_df
@@ -169,11 +168,9 @@ if __name__ == '__main__':
             },
         ],
     }
-    
-
 
 # Offset demand table & chart
-    st.subheader('Adjusted Demand')
+    st.subheader('Forecasted & Adjusted Demand')
     # Creating cols for Streamlit app
     col1, col2 = st.columns([1,2])
     # Adding AgGrid table to Col1
