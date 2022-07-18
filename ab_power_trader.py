@@ -79,7 +79,7 @@ if __name__ == '__main__':
 # App config
     st.set_page_config(layout='wide', initial_sidebar_state='auto', menu_items=None)
     st.title('Alberta Power Forecaster')
-    hide_menu(True)
+    #hide_menu(True)
 
 # Pull historical data
     # history_df = pull_grouped_hist()
@@ -171,7 +171,7 @@ if __name__ == '__main__':
 
 
 # Offset demand table & chart
-    st.subheader('Adjusted Demand')
+    st.subheader('Forecasted & Adjusted Demand')
     # Creating cols for Streamlit app
     col1, col2 = st.columns([1,2])
     # Adding AgGrid table to Col1
