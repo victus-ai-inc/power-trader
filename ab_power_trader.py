@@ -64,15 +64,15 @@ def stream_data(streamIds, streamNames, years):
     return stream_df
 
 # Pull historical data from Google BigQuery
-@st.experimental_memo
-def pull_grouped_hist():
-    # Google BigQuery auth
-    os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = '/home/ryan-bulger/power-trader/google-big-query.json'
-    # Pull data
-    sql = "SELECT * FROM nrgdata.grouped_data"
-    history_df = bigquery.Client().query(sql).to_dataframe()
-    history_df['date'] = pd.to_datetime(history_df[['year','month','day']])
-    return history_df
+# @st.experimental_memo
+# def pull_grouped_hist():
+#     # Google BigQuery auth
+#     os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = '/home/ryan-bulger/power-trader/google-big-query.json'
+#     # Pull data
+#     sql = "SELECT * FROM nrgdata.grouped_data"
+#     history_df = bigquery.Client().query(sql).to_dataframe()
+#     history_df['date'] = pd.to_datetime(history_df[['year','month','day']])
+#     return history_df
 
 # Main code block
 if __name__ == '__main__':
@@ -82,13 +82,13 @@ if __name__ == '__main__':
     hide_menu(True)
 
 # Pull historical data
-    history_df = pull_grouped_hist()
-    hist = alt.Chart(history_df).mark_area().encode(
-        x='date:T',
-        y=alt.Y('Close:Q', stack='zero'),
-        color='subfuelType'
-    ).interactive()
-    st.altair_chart(hist, use_container_width=True)
+    # history_df = pull_grouped_hist()
+    # hist = alt.Chart(history_df).mark_area().encode(
+    #     x='date:T',
+    #     y=alt.Y('Close:Q', stack='zero'),
+    #     color='subfuelType'
+    # ).interactive()
+    # st.altair_chart(hist, use_container_width=True)
 
 # Outages chart
     st.subheader('Forecasted Outages')
