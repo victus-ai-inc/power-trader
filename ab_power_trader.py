@@ -68,7 +68,6 @@ def stream_data(streamIds, streamNames, years):
 def pull_grouped_hist():
     # Google BigQuery auth
     credentials = service_account.Credentials.from_service_account_info(st.secrets["gcp_service_account"])
-    #os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = '/home/ryan-bulger/power-trader/google-big-query.json'
     # Pull data
     sql = "SELECT * FROM nrgdata.grouped_data"
     history_df = bigquery.Client(credentials=credentials).query(sql).to_dataframe()
