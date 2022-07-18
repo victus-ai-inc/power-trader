@@ -11,6 +11,7 @@ import os
 from st_aggrid import AgGrid
 from datetime import datetime, date
 from google.cloud import bigquery
+from google.oauth2 import service_account
 from google.cloud.exceptions import NotFound
 
 # Function to hide top and bottom menus on Streamlit app
@@ -67,10 +68,11 @@ def stream_data(streamIds, streamNames, years):
 @st.experimental_memo
 def pull_grouped_hist():
     # Google BigQuery auth
-    os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = '/home/ryan-bulger/power-trader/google-big-query.json'
+    credentials = service_account.Credentials.from_service_account_info(st.secrets["gcp_service_account"])
+    #os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = '/home/ryan-bulger/power-trader/google-big-query.json'
     # Pull data
     sql = "SELECT * FROM nrgdata.grouped_data"
-    history_df = bigquery.Client().query(sql).to_dataframe()
+    history_df = bigquery.Client(credentials=credentials).query(sql).to_dataframe()
     history_df['date'] = pd.to_datetime(history_df[['year','month','day']])
     return history_df
 
