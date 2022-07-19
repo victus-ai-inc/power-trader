@@ -25,7 +25,7 @@ def hide_menu(bool):
         return st.markdown(hide_menu_style, unsafe_allow_html=True)
 
 # Create outages dataframe from NRG data
-#@st.experimental_memo
+@st.experimental_memo
 def stream_data(streamIds, streamNames, years):
     stream_df = pd.DataFrame([])
     for id in streamIds:
@@ -62,6 +62,22 @@ def stream_data(streamIds, streamNames, years):
         stream_df = pd.concat([stream_df,year_df], axis=1, join='outer')
     return stream_df
 
+@st.experimental_memo
+def forecast():
+    forecast = pd.DataFrame([])
+    # Scraping data from AESO website
+    for forecast_num in range(1,5):
+        df = pd.read_csv(f'http://ets.aeso.ca/Market/Reports/Manual/supply_and_demand/csvData/{forecast_num}-6month.csv', on_bad_lines='skip')
+        df = df[~df['Report Date'].str.contains('Disclaimer')]
+        forecast = pd.concat([forecast,df],axis=0)
+    # Creating offset_df
+    offset_df = forecast[['Report Date','AIL Load + Operating Reserves (MW)']]
+    offset_df['Offset'] = 0
+    offset_df.rename(columns={'Report Date':'Date','AIL Load + Operating Reserves (MW)':'Close'},inplace=True)
+    offset_df['Open'] = offset_df['Close'].shift(periods=1)
+    #offset_df['Year'] = pd.DatetimeIndex(offset_df['Date']).year
+    #offset_df['Month'] = pd.DatetimeIndex(offset_df['Date']).month
+    return offset_df
 # Pull historical data from Google BigQuery
 # @st.experimental_memo
 # def pull_grouped_hist():
@@ -92,19 +108,7 @@ if __name__ == '__main__':
 
 
 # Pull 24M Supply/Demand data from AESO
-    forecast = pd.DataFrame([])
-    # Scraping data from AESO website
-    for forecast_num in range(1,5):
-        df = pd.read_csv(f'http://ets.aeso.ca/Market/Reports/Manual/supply_and_demand/csvData/{forecast_num}-6month.csv', on_bad_lines='skip')
-        df = df[~df['Report Date'].str.contains('Disclaimer')]
-        forecast = pd.concat([forecast,df],axis=0)
-    # Creating offset_df
-    offset_df = forecast[['Report Date','AIL Load + Operating Reserves (MW)']]
-    offset_df['Offset'] = 0
-    offset_df.rename(columns={'Report Date':'Date','AIL Load + Operating Reserves (MW)':'Close'},inplace=True)
-    offset_df['Open'] = offset_df['Close'].shift(periods=1)
-    #offset_df['Year'] = pd.DatetimeIndex(offset_df['Date']).year
-    #offset_df['Month'] = pd.DatetimeIndex(offset_df['Date']).month
+    offset_df = forecast()
 
 # Grid options for AgGrid Demand forecast table
     grid_options = {
