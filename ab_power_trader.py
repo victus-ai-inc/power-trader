@@ -26,7 +26,7 @@ def hide_menu(bool):
         return st.markdown(hide_menu_style, unsafe_allow_html=True)
 
 # Create outages dataframe from NRG data
-#@st.experimental_memo
+@st.experimental_memo
 def stream_data(streamIds, streamNames, years):
     stream_df = pd.DataFrame([])
     for id in streamIds:
@@ -81,44 +81,14 @@ if __name__ == '__main__':
     st.title('Alberta Power Forecaster')
     hide_menu(True)
 
-# Pull historical data
-    history_df = pull_grouped_hist()
-    hist = alt.Chart(history_df).mark_area().encode(
-        x='date:T',
-        y=alt.Y('Close:Q', stack='zero'),
-        color='subfuelType'
-    ).interactive()
-    st.altair_chart(hist, use_container_width=True)
-
-# Outages chart
-    st.subheader('Forecasted Outages')
-    #Create outages_df
-    streamIds = [44648, 118361, 322689, 118362, 147262, 322675, 322682, 44651]
-    streamNames = {44648:'Coal', 118361:'Gas', 322689:'Dual Fuel', 118362:'Hydro', 147262:'Wind', 322675:'Solar', 322682:'Energy Storage', 44651:'Biomass & Other'}
+    streamIds = [278763]
+    streamNames = {278763:'0'}
     years = [datetime.now().year, datetime.now().year+1, datetime.now().year+2]
-    outage_df = stream_data(streamIds, streamNames, years)
-    
-    # Reset index so dataframe can be plotted with Altair
-    outage_df.reset_index(inplace=True)
-    outage_df = pd.melt(outage_df, 
-                    id_vars=['timeStamp'],
-                    value_vars=['Coal', 'Gas', 'Dual Fuel', 'Hydro', 'Wind', 'Solar', 'Energy Storage', 'Biomass & Other'],
-                    var_name='Source',
-                    value_name='Value')
-    # Outages area chart
-    selection = alt.selection_interval(encodings=['x'])
-    outage_area = alt.Chart(outage_df).mark_area(opacity=0.5).encode(
-        x=alt.X('yearmonth(timeStamp):T', title=''),
-        y=alt.Y('Value:Q', stack='zero', axis=alt.Axis(format=',f'), title='Outages (MW)'),
-        color=alt.Color('Source:N', scale=alt.Scale(scheme='category20'), legend=alt.Legend(orient="top")),
-        ).add_selection(selection).properties(width=1300)
-    # Outages bar chart
-    outage_bar = alt.Chart(outage_df).mark_bar(opacity=0.5).encode(
-        x=alt.X('Value:Q', title='Outages (MW)'),
-        y=alt.Y('Source:N',title=''),
-        color=alt.Color('Source:N', scale=alt.Scale(scheme='category20'))
-    ).transform_filter(selection).properties(width=1300)
-    st.altair_chart(outage_area & outage_bar, use_container_width=True)
+    offset_df2 = stream_data(streamIds, streamNames, years)
+    offset_df2.rename(columns={'0':'Peak Hour', 2:'Expected Supply', 3:'Import Capacity', 4:'Load+Reserve', 5:'Surplus'}, inplace=True)
+    #offset_df['Year'] = pd.DatetimeIndex(offset_df['Date']).year
+    #offset_df['Month'] = pd.DatetimeIndex(offset_df['Date']).month
+    st.write(offset_df2)
 
 # Pull 24M Supply/Demand data from AESO
     forecast = pd.DataFrame([])
@@ -132,8 +102,7 @@ if __name__ == '__main__':
     offset_df['Offset'] = 0
     offset_df.rename(columns={'Report Date':'Date','AIL Load + Operating Reserves (MW)':'Close'},inplace=True)
     offset_df['Open'] = offset_df['Close'].shift(periods=1)
-    #offset_df['Year'] = pd.DatetimeIndex(offset_df['Date']).year
-    #offset_df['Month'] = pd.DatetimeIndex(offset_df['Date']).month
+    
 
 # Grid options for AgGrid Demand forecast table
     grid_options = {
@@ -210,3 +179,42 @@ if __name__ == '__main__':
     # Adding layered chart to Col2
     with col2:
         st.altair_chart(candlestick + area + rule, use_container_width=True)
+
+# Outages chart
+    st.subheader('Forecasted Outages')
+    #Create outages_df
+    streamIds = [44648, 118361, 322689, 118362, 147262, 322675, 322682, 44651]
+    streamNames = {44648:'Coal', 118361:'Gas', 322689:'Dual Fuel', 118362:'Hydro', 147262:'Wind', 322675:'Solar', 322682:'Energy Storage', 44651:'Biomass & Other'}
+    years = [datetime.now().year, datetime.now().year+1, datetime.now().year+2]
+    outage_df = stream_data(streamIds, streamNames, years)
+    
+    # Reset index so dataframe can be plotted with Altair
+    outage_df.reset_index(inplace=True)
+    outage_df = pd.melt(outage_df, 
+                    id_vars=['timeStamp'],
+                    value_vars=['Coal', 'Gas', 'Dual Fuel', 'Hydro', 'Wind', 'Solar', 'Energy Storage', 'Biomass & Other'],
+                    var_name='Source',
+                    value_name='Value')
+    # Outages area chart
+    selection = alt.selection_interval(encodings=['x'])
+    outage_area = alt.Chart(outage_df).mark_area(opacity=0.5).encode(
+        x=alt.X('yearmonth(timeStamp):T', title=''),
+        y=alt.Y('Value:Q', stack='zero', axis=alt.Axis(format=',f'), title='Outages (MW)'),
+        color=alt.Color('Source:N', scale=alt.Scale(scheme='category20'), legend=alt.Legend(orient="top")),
+        ).add_selection(selection).properties(width=1300)
+    # Outages bar chart
+    outage_bar = alt.Chart(outage_df).mark_bar(opacity=0.5).encode(
+        x=alt.X('Value:Q', title='Outages (MW)'),
+        y=alt.Y('Source:N',title=''),
+        color=alt.Color('Source:N', scale=alt.Scale(scheme='category20'))
+    ).transform_filter(selection).properties(width=1300)
+    st.altair_chart(outage_area & outage_bar, use_container_width=True)
+
+# Pull historical data
+    history_df = pull_grouped_hist()
+    hist = alt.Chart(history_df).mark_area().encode(
+        x='date:T',
+        y=alt.Y('Close:Q', stack='zero'),
+        color='subfuelType'
+    ).interactive()
+    st.altair_chart(hist, use_container_width=True)
