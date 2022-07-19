@@ -78,6 +78,7 @@ def forecast():
     #offset_df['Year'] = pd.DatetimeIndex(offset_df['Date']).year
     #offset_df['Month'] = pd.DatetimeIndex(offset_df['Date']).month
     return offset_df
+
 # Pull historical data from Google BigQuery
 # @st.experimental_memo
 # def pull_grouped_hist():
