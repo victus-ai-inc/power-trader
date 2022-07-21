@@ -9,10 +9,28 @@ import certifi
 import ssl
 import os
 from st_aggrid import AgGrid
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from google.cloud import bigquery
 from google.oauth2 import service_account
 from google.cloud.exceptions import NotFound
+import time
+
+#@st.experimental_memo
+def current_data():
+    streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694]
+    current_df = pd.DataFrame([])
+    yesterday = datetime.now()
+    for id in streamIds:
+        accessToken, tokenExpiry = pull_nrg_data.getToken()
+        try:
+            APIdata = pull_nrg_data.pull_data(yesterday.strftime('%m/%d/%Y %H:%s'), yesterday.strftime('%m/%d/%Y '), id, accessToken, tokenExpiry)
+            pull_nrg_data.release_token(accessToken)
+            APIdata['timeStamp'] = pd.to_datetime(APIdata['timeStamp'])
+            current_df = pd.concat([current_df, APIdata], axis=0)
+        except:
+            pull_nrg_data.release_token(accessToken)
+            pass
+    return current_df
 
 # Function to hide top and bottom menus on Streamlit app
 def hide_menu(bool):
@@ -76,10 +94,13 @@ def pull_grouped_hist():
 
 # Main code block
 if __name__ == '__main__':
+
 # App config
     st.set_page_config(layout='wide', initial_sidebar_state='auto', menu_items=None)
     st.title('Alberta Power Forecaster')
     hide_menu(True)
+
+    st.write(current_data())
 
     streamIds = [278763]
     streamNames = {278763:'0'}

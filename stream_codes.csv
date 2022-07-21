@@ -507,7 +507,6 @@ streamId,assetCode,streamName,fuelType,subfuelType,timeInterval,intervalType
 946,WB4,Wabamun #4,Coal,Coal,5 min,reserve
 1457,WWDC,Weldwood,Biomass & Other,Biomass & Other,5 min,reserve
 94038,WWD2,Weldwood #2,Biomass & Other,Biomass & Other,5 min,reserve
-278763,,24M Supply Demand Forecast,Demand Forecast,Demand Forecast,,
 129795,ANC1,AB Newsprint,Natural Gas,Simple Gas,1 hr,supply
 2011,ALS1,Air Liquide Scotford #1,Natural Gas,Cogen,1 hr,supply
 93311,HMT1,AltaGas Harmattan,Natural Gas,Cogen,1 hr,supply
@@ -680,3 +679,12 @@ streamId,assetCode,streamName,fuelType,subfuelType,timeInterval,intervalType
 327191,WHT2,Whitla 2,Wind,Wind,1 hr,supply
 244986,WHT1,Whitla,Wind,Wind,1 hr,supply
 322574,WRW1,Windrise,Wind,Wind,1 hr,supply
+86,,Coal,Coal,Coal,5 min,supply
+322684,,Dual Fuel,Dual Fuel,Dual Fuel,5 min,supply
+322677,,Energy Storage,Energy Storage,Energy Storage,5 min,supply
+87,,Hydro,Hydro,Hydro,5 min,supply
+85,,Natural Gas,Natural Gas,Natural Gas,5 min,supply
+23695,,Biomass & Other,Biomass & Other,Biomass & Other,5 min,supply
+322665,,Solar,Solar,Solar,5 min,supply
+23694,,Wind,Wind,Wind,5 min,supply
+278763,,24M Supply Demand Forecast,,Demand Forecast,,
