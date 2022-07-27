@@ -57,8 +57,6 @@ def pull_data(fromDate, toDate, streamId, accessToken, tokenExpiry):
     # Load json data & create pandas df
     jsonData = json.loads(res.read().decode('utf-8'))
     df = pd.json_normalize(jsonData, record_path='data')
-    if streamId == 278763:
-        df.drop(df.columns[1,3,4,5],axis=1,inplace=True)
     # Rename df cols
     df.rename(columns={0:'timeStamp', 1:'value'}, inplace=True)
     # Add streamInfo cols to df
@@ -72,9 +70,9 @@ def pull_data(fromDate, toDate, streamId, accessToken, tokenExpiry):
     df = df.assign(streamId=streamId, assetCode=assetCode, streamName=streamName, fuelType=fuelType, \
                     subfuelType=subfuelType, timeInterval=timeInterval, intervalType=intervalType)
     # Changing 'value' col to numeric and filling in NA's with previous value in col
-    df.replace(to_replace={'value':''},value=0,inplace=True)
+    df.replace(to_replace={'value':''}, value=0, inplace=True)
     df['value'] = pd.to_numeric(df['value'])
-    df.fillna(method='ffill',inplace=True)
+    df.fillna(method='ffill', inplace=True)
     conn.close()
     return df
 
@@ -87,4 +85,3 @@ def release_token(accessToken):
     conn = http.client.HTTPSConnection(server,context=context)
     conn.request('DELETE', path, None, headers)
     res = conn.getresponse()
-    #print('token released')

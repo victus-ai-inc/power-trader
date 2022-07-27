@@ -3,11 +3,10 @@ import streamlit as st
 import pandas as pd
 import altair as alt
 import pull_nrg_data
+import ssl
 import json
 import http.client
 import certifi
-import ssl
-import os
 from st_aggrid import AgGrid
 from datetime import datetime, date, timedelta
 from google.cloud import bigquery
@@ -23,7 +22,7 @@ def current_data():
     for id in streamIds:
         accessToken, tokenExpiry = pull_nrg_data.getToken()
         try:
-            APIdata = pull_nrg_data.pull_data(yesterday.strftime('%m/%d/%Y %H:%s'), yesterday.strftime('%m/%d/%Y '), id, accessToken, tokenExpiry)
+            APIdata = pull_nrg_data.pull_data(yesterday.strftime('%m/%d/%Y'), yesterday.strftime('%m/%d/%Y'), id, accessToken, tokenExpiry)
             pull_nrg_data.release_token(accessToken)
             APIdata['timeStamp'] = pd.to_datetime(APIdata['timeStamp'])
             current_df = pd.concat([current_df, APIdata], axis=0)
@@ -123,7 +122,6 @@ if __name__ == '__main__':
     offset_df['Offset'] = 0
     offset_df.rename(columns={'Report Date':'Date','AIL Load + Operating Reserves (MW)':'Close'},inplace=True)
     offset_df['Open'] = offset_df['Close'].shift(periods=1)
-    
 
 # Grid options for AgGrid Demand forecast table
     grid_options = {
