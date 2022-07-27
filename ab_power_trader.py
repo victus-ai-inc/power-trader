@@ -29,6 +29,7 @@ def current_data():
         except:
             pull_nrg_data.release_token(accessToken)
             pass
+    
     return current_df
 
 # Function to hide top and bottom menus on Streamlit app
