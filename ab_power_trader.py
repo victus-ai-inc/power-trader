@@ -12,24 +12,35 @@ from datetime import datetime, date, timedelta
 from google.cloud import bigquery
 from google.oauth2 import service_account
 from google.cloud.exceptions import NotFound
+from pandasql import sqldf
 import time
 
-#@st.experimental_memo
 def current_data():
     streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694]
     current_df = pd.DataFrame([])
-    yesterday = datetime.now()
+    today = datetime.now()
     for id in streamIds:
         accessToken, tokenExpiry = pull_nrg_data.getToken()
         try:
-            APIdata = pull_nrg_data.pull_data(yesterday.strftime('%m/%d/%Y'), yesterday.strftime('%m/%d/%Y'), id, accessToken, tokenExpiry)
+            APIdata = pull_nrg_data.pull_data(today.strftime('%m/%d/%Y'), today.strftime('%m/%d/%Y'), id, accessToken, tokenExpiry)
             pull_nrg_data.release_token(accessToken)
             APIdata['timeStamp'] = pd.to_datetime(APIdata['timeStamp'])
             current_df = pd.concat([current_df, APIdata], axis=0)
         except:
             pull_nrg_data.release_token(accessToken)
             pass
-    
+    query = '''
+        SELECT
+            fuelType,
+            strftime('%Y', timeStamp) AS year,
+            strftime('%m', timeStamp) AS month,
+            strftime('%d', timeStamp) AS day,
+            strftime('%H', timeStamp) AS hour,
+            avg(value)
+        FROM current_df
+        GROUP BY fuelType, year, month, day, hour
+        '''
+    current_df = sqldf(query, locals())
     return current_df
 
 # Function to hide top and bottom menus on Streamlit app
@@ -87,9 +98,9 @@ def pull_grouped_hist():
     # Google BigQuery auth
     credentials = service_account.Credentials.from_service_account_info(st.secrets["gcp_service_account"])
     # Pull data
-    sql = "SELECT * FROM nrgdata.grouped_data"
-    history_df = bigquery.Client(credentials=credentials).query(sql).to_dataframe()
-    history_df['date'] = pd.to_datetime(history_df[['year','month','day']])
+    query = 'SELECT * FROM nrgdata.grouped_hist'
+    history_df = bigquery.Client(credentials=credentials).query(query).to_dataframe()
+    #history_df['date'] = pd.to_datetime(history_df[['year','month','day']])
     return history_df
 
 # Main code block
@@ -100,29 +111,22 @@ if __name__ == '__main__':
     st.title('Alberta Power Forecaster')
     hide_menu(True)
 
-    st.write(current_data())
-
+# Pull 24M Supply/Demand data from AESO
     streamIds = [278763]
     streamNames = {278763:'0'}
     years = [datetime.now().year, datetime.now().year+1, datetime.now().year+2]
-    offset_df2 = stream_data(streamIds, streamNames, years)
-    offset_df2.rename(columns={'0':'Peak Hour', 2:'Expected Supply', 3:'Import Capacity', 4:'Load+Reserve', 5:'Surplus'}, inplace=True)
-    #offset_df['Year'] = pd.DatetimeIndex(offset_df['Date']).year
-    #offset_df['Month'] = pd.DatetimeIndex(offset_df['Date']).month
-    st.write(offset_df2)
+    offset_df = stream_data(streamIds, streamNames, years)
+    offset_df.rename(columns={'0':'Peak Hour', 2:'Expected Supply', 3:'Import Capacity', 4:'Load+Reserve', 5:'Surplus'}, inplace=True)
+    st.write(offset_df)
+    st.write(pull_grouped_hist())
 
-# Pull 24M Supply/Demand data from AESO
-    forecast = pd.DataFrame([])
-    # Scraping data from AESO website
-    for forecast_num in range(1,5):
-        df = pd.read_csv(f'http://ets.aeso.ca/Market/Reports/Manual/supply_and_demand/csvData/{forecast_num}-6month.csv', on_bad_lines='skip')
-        df = df[~df['Report Date'].str.contains('Disclaimer')]
-        forecast = pd.concat([forecast,df],axis=0)
-    # Creating offset_df
-    offset_df = forecast[['Report Date','AIL Load + Operating Reserves (MW)']]
-    offset_df['Offset'] = 0
-    offset_df.rename(columns={'Report Date':'Date','AIL Load + Operating Reserves (MW)':'Close'},inplace=True)
-    offset_df['Open'] = offset_df['Close'].shift(periods=1)
+# Pull live data
+    st.write(current_data())
+    for seconds in range(20):
+        placeholder = st.empty()
+        with placeholder.container():
+            st.dataframe(current_data())
+            time.sleep(10)
 
 # Grid options for AgGrid Demand forecast table
     grid_options = {
