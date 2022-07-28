@@ -15,7 +15,18 @@ from google.cloud.exceptions import NotFound
 from pandasql import sqldf
 import time
 
-def current_data() -> pd.DataFrame:
+# Function to hide top and bottom menus on Streamlit app
+def hide_menu(bool):
+    if bool == True:
+        hide_menu_style = """
+            <style>
+            #MainMenu {visibility: hidden;}
+            footer {visibility: hidden;}
+            </style>
+            """
+        return st.markdown(hide_menu_style, unsafe_allow_html=True)
+
+def current_data():
     streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694]
     current_df = pd.DataFrame([])
     today = datetime.now()
@@ -36,23 +47,13 @@ def current_data() -> pd.DataFrame:
             strftime('%m', timeStamp) AS month,
             strftime('%d', timeStamp) AS day,
             strftime('%H', timeStamp) AS hour,
+            timeStamp,
             avg(value) AS value
         FROM current_df
-        GROUP BY fuelType, year, month, day, hour
+        GROUP BY fuelType, year, month, day, hour, timeStamp
         '''
-    current_df = sqldf(query, locals())
+    current_df = sqldf(query, locals()).astype({'fuelType':'object', 'year':'int64','month':'int64', 'day':'int64', 'hour':'int64', 'timeStamp':'datetime64[ns]', 'value':'float64'})
     return current_df
-
-# Function to hide top and bottom menus on Streamlit app
-def hide_menu(bool):
-    if bool == True:
-        hide_menu_style = """
-            <style>
-            #MainMenu {visibility: hidden;}
-            footer {visibility: hidden;}
-            </style>
-            """
-        return st.markdown(hide_menu_style, unsafe_allow_html=True)
 
 # Create outages dataframe from NRG data
 @st.experimental_memo
@@ -145,13 +146,13 @@ if __name__ == '__main__':
     hide_menu(True)
 
 # Pull 24M Supply/Demand data from AESO
-    st.subheader('24M Supply/Demand data from AESO (Daily)')
+    #st.subheader('24M Supply/Demand data from AESO (Daily)')
     streamIds = [278763]
     streamNames = {278763:'0'}
     years = [datetime.now().year, datetime.now().year+1, datetime.now().year+2]
     offset_df = stream_data(streamIds, streamNames, years)
     offset_df.rename(columns={'0':'Peak Hour', 2:'Expected Supply', 3:'Import Capacity', 4:'Load+Reserve', 5:'Surplus'}, inplace=True)
-    st.write(offset_df)
+    #st.write(offset_df)
 
 # # Offset demand table & chart
 #     st.subheader('Forecasted & Adjusted Demand')
@@ -196,35 +197,28 @@ if __name__ == '__main__':
 #     with col2:
 #         st.altair_chart(candlestick + area + rule, use_container_width=True)
 
-# Outages chart
-    st.subheader('Forecasted Outages (Daily)')
-    #Create outages_df
-    streamIds = [44648, 118361, 322689, 118362, 147262, 322675, 322682, 44651]
-    streamNames = {44648:'Coal', 118361:'Gas', 322689:'Dual Fuel', 118362:'Hydro', 147262:'Wind', 322675:'Solar', 322682:'Energy Storage', 44651:'Biomass & Other'}
-    years = [datetime.now().year, datetime.now().year+1, datetime.now().year+2]
-    outage_df = stream_data(streamIds, streamNames, years)
+# # Outages chart
+#     st.subheader('Forecasted Outages (Daily)')
+#     #Create outages_df
+#     streamIds = [44648, 118361, 322689, 118362, 147262, 322675, 322682, 44651]
+#     streamNames = {44648:'Coal', 118361:'Gas', 322689:'Dual Fuel', 118362:'Hydro', 147262:'Wind', 322675:'Solar', 322682:'Energy Storage', 44651:'Biomass & Other'}
+#     years = [datetime.now().year, datetime.now().year+1, datetime.now().year+2]
+#     outage_df = stream_data(streamIds, streamNames, years)
     
-    # Reset index so dataframe can be plotted with Altair
-    outage_df.reset_index(inplace=True)
-    outage_df = pd.melt(outage_df, 
-                    id_vars=['timeStamp'],
-                    value_vars=['Coal', 'Gas', 'Dual Fuel', 'Hydro', 'Wind', 'Solar', 'Energy Storage', 'Biomass & Other'],
-                    var_name='Source',
-                    value_name='Value')
-    # Outages area chart
-    selection = alt.selection_interval(encodings=['x'])
-    outage_area = alt.Chart(outage_df).mark_area(opacity=0.5).encode(
-        x=alt.X('yearmonth(timeStamp):T', title=''),
-        y=alt.Y('Value:Q', stack='zero', axis=alt.Axis(format=',f'), title='Outages (MW)'),
-        color=alt.Color('Source:N', scale=alt.Scale(scheme='category20'), legend=alt.Legend(orient="top")),
-        ).add_selection(selection).properties(width=1300)
-    # Outages bar chart
-    outage_bar = alt.Chart(outage_df).mark_bar(opacity=0.5).encode(
-        x=alt.X('Value:Q', title='Outages (MW)'),
-        y=alt.Y('Source:N',title=''),
-        color=alt.Color('Source:N', scale=alt.Scale(scheme='category20'))
-    ).transform_filter(selection).properties(width=1300)
-    st.altair_chart(outage_area & outage_bar, use_container_width=True)
+#     # Reset index so dataframe can be plotted with Altair
+#     outage_df.reset_index(inplace=True)
+#     outage_df = pd.melt(outage_df, 
+#                     id_vars=['timeStamp'],
+#                     value_vars=['Coal', 'Gas', 'Dual Fuel', 'Hydro', 'Wind', 'Solar', 'Energy Storage', 'Biomass & Other'],
+#                     var_name='Source',
+#                     value_name='Value')
+#     # Outages area chart
+#     outage_area = alt.Chart(outage_df).mark_area(opacity=0.5).encode(
+#         x=alt.X('yearmonth(timeStamp):T', title=''),
+#         y=alt.Y('Value:Q', stack='zero', axis=alt.Axis(format=',f'), title='Outages (MW)'),
+#         color=alt.Color('Source:N', scale=alt.Scale(scheme='category20'), legend=alt.Legend(orient="top")),
+#         ).properties(width=1300)
+#     st.altair_chart(outage_area, use_container_width=True)
     
     placeholder = st.empty()
     for seconds in range(100000):
@@ -232,24 +226,28 @@ if __name__ == '__main__':
         with placeholder.container():
             # Pull live data
             st.subheader('Live Data (hourly)')
-            st.dataframe(current_df)
-            chart = alt.Chart(current_df).mark_area().encode(
-                x='hour',
+            live_chart = alt.Chart(current_df).mark_area(opacity=0.5).encode(
+                x='timeStamp:T',
                 y='value:Q',
-                color='fuelType:N',
-                tooltip=['fuelType:N','hour','value:Q']
-            ).properties(width=1000).interactive()
-            st.altair_chart(chart)
+                color=alt.Color('fuelType:N', scale=alt.Scale(scheme='category20')),
+                tooltip=['fuelType:N','timeStamp:T','value:Q']
+            ).properties(width=1000)
+            st.altair_chart(live_chart)
 
             # Pull historical data
             st.subheader('Historical data from Google BigQuery (hourly)')
             history_df = pull_grouped_hist()
-            st.write(history_df)
-            hist = alt.Chart(history_df).mark_area().encode(
-                    x='hour',
+            
+            # Combine historical to live data
+            combo_df = pd.concat([history_df,current_df], axis=0)
+            query = 'SELECT * FROM combo_df ORDER BY fuelType, timeStamp'
+            combo_df = sqldf(query, globals())
+            
+            combo_area = alt.Chart(history_df).mark_area(opacity=0.5).encode(
+                    x='timeStamp:T',
                     y='value:Q',
-                    color='fuelType:N'
-                ).interactive()
-            st.altair_chart(hist, use_container_width=True)
-
-            time.sleep(5)
+                    color=alt.Color('fuelType:N', scale=alt.Scale(scheme='category20')),
+                    tooltip=['fuelType:N','timeStamp:T','value:Q']
+                ).properties(width=1000).interactive(bind_y=False)
+            st.altair_chart(combo_area)
+            time.sleep(1)
