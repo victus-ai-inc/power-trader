@@ -50,7 +50,7 @@ def current_data():
             timeStamp,
             avg(value) AS value
         FROM current_df
-        GROUP BY fuelType, year, month, day, hour, timeStamp
+        GROUP BY fuelType, year, month, day, hour
         '''
     current_df = sqldf(query, locals()).astype({'fuelType':'object', 'year':'int64','month':'int64', 'day':'int64', 'hour':'int64', 'timeStamp':'datetime64[ns]', 'value':'float64'})
     return current_df
@@ -87,6 +87,7 @@ def stream_data(streamIds, streamNames, years):
         year_df.rename(columns={0:'timeStamp', 1:f'{streamNames[id]}'}, inplace=True)
         # Change timeStamp to datetime
         year_df['timeStamp'] = pd.to_datetime(year_df['timeStamp'])
+        year_df['timeStamp'] = year_df['timeStamp'].dt.tz_localize(tz='America/Edmonton')
         # Re-index the year_df
         year_df.set_index('timeStamp', inplace=True)
         # Join year_df to outages dataframe
@@ -99,9 +100,8 @@ def pull_grouped_hist():
     # Google BigQuery auth
     credentials = service_account.Credentials.from_service_account_info(st.secrets["gcp_service_account"])
     # Pull data
-    query = 'SELECT * FROM nrgdata.grouped_hist'
+    query = 'SELECT * FROM nrgdata.grouped_hist WHERE timeStamp BETWEEN DATE_SUB(current_date(), INTERVAL 7 DAY) AND current_date()'
     history_df = bigquery.Client(credentials=credentials).query(query).to_dataframe()
-    #history_df['date'] = pd.to_datetime(history_df[['year','month','day']])
     return history_df
 
 # Grid options for AgGrid Demand forecast table
@@ -142,11 +142,13 @@ if __name__ == '__main__':
 
 # App config
     st.set_page_config(layout='wide', initial_sidebar_state='auto', menu_items=None)
+    with st.sidebar:
+        cutoff = st.select_slider('Warning MW cutoff',[x*10 for x in range(11)])
     st.title('Alberta Power Forecaster')
     hide_menu(True)
 
-# Pull 24M Supply/Demand data from AESO
-    #st.subheader('24M Supply/Demand data from AESO (Daily)')
+# Pull 24M Supply/Demand data
+    #st.subheader('24M Supply/Demand data (Daily)')
     streamIds = [278763]
     streamNames = {278763:'0'}
     years = [datetime.now().year, datetime.now().year+1, datetime.now().year+2]
@@ -222,32 +224,47 @@ if __name__ == '__main__':
     
     placeholder = st.empty()
     for seconds in range(100000):
+        # Pull live data
         current_df = current_data()
         with placeholder.container():
-            # Pull live data
-            st.subheader('Live Data (hourly)')
-            live_chart = alt.Chart(current_df).mark_area(opacity=0.5).encode(
-                x='timeStamp:T',
-                y='value:Q',
-                color=alt.Color('fuelType:N', scale=alt.Scale(scheme='category20')),
-                tooltip=['fuelType:N','timeStamp:T','value:Q']
-            ).properties(width=1000)
-            st.altair_chart(live_chart)
-
-            # Pull historical data
-            st.subheader('Historical data from Google BigQuery (hourly)')
+        # Create dataframe for KPIs
+            current_hour = current_df[['fuelType','value']][current_df['hour']==datetime.now().hour]
+            previous_hour = current_df[['fuelType','value']][current_df['hour']==datetime.now().hour-1]
+            kpi_df = previous_hour.merge(current_hour, how='left', on='fuelType', suffixes=('Previous','Current'))
+            kpi_df['delta'] = kpi_df['valueCurrent'] - kpi_df['valuePrevious']
+            kpi_df['absDelta'] = abs(kpi_df['delta'])
+            warning_list = list(kpi_df['fuelType'][kpi_df['absDelta'] > cutoff])
+            kpi_df.iloc[:,1:] = kpi_df.iloc[:,1:].applymap('{:.0f}'.format)
+        # Displaying KPIs
+            col1, col2, col3, col4, col5, col6, col7, col8 = st.columns(8)
+            col1.metric(label=kpi_df.iloc[0,0], value=kpi_df.iloc[0,2], delta=kpi_df.iloc[0,3])
+            col2.metric(label=kpi_df.iloc[1,0], value=kpi_df.iloc[1,2], delta=kpi_df.iloc[1,3])
+            col3.metric(label=kpi_df.iloc[2,0], value=kpi_df.iloc[2,2], delta=kpi_df.iloc[2,3])
+            col4.metric(label=kpi_df.iloc[3,0], value=kpi_df.iloc[3,2], delta=kpi_df.iloc[3,3])
+            col5.metric(label=kpi_df.iloc[4,0], value=kpi_df.iloc[4,2], delta=kpi_df.iloc[4,3])
+            col6.metric(label=kpi_df.iloc[5,0], value=kpi_df.iloc[5,2], delta=kpi_df.iloc[5,3])
+            col7.metric(label=kpi_df.iloc[6,0], value=kpi_df.iloc[6,2], delta=kpi_df.iloc[6,3])
+            col8.metric(label=kpi_df.iloc[7,0], value=kpi_df.iloc[7,2], delta=kpi_df.iloc[7,3])
+        # Warning box
+            if len(warning_list) > 0:
+                l = len(warning_list)
+                for _ in range(l):
+                    st.error(f'{warning_list[_]} has a differential greater than {cutoff} MW over the previous hour.')
+        # Pull last 7 days data
             history_df = pull_grouped_hist()
-            
-            # Combine historical to live data
+        # Combine last 7 days & live dataframes
+            st.subheader('Combo df (hourly)')
             combo_df = pd.concat([history_df,current_df], axis=0)
             query = 'SELECT * FROM combo_df ORDER BY fuelType, timeStamp'
             combo_df = sqldf(query, globals())
-            
-            combo_area = alt.Chart(history_df).mark_area(opacity=0.5).encode(
-                    x='timeStamp:T',
-                    y='value:Q',
-                    color=alt.Color('fuelType:N', scale=alt.Scale(scheme='category20')),
-                    tooltip=['fuelType:N','timeStamp:T','value:Q']
-                ).properties(width=1000).interactive(bind_y=False)
+            #st.write(combo_df)
+        # Base combo_df bar chart
+            combo_area = alt.Chart(combo_df).mark_area(color='grey', opacity=0.7).encode(
+                x='timeStamp:T',
+                y='value:Q',
+                color=alt.Color('fuelType:N', scale=alt.Scale(scheme='category20')),
+                tooltip=['fuelType:N','timeStamp:T','hour:O', 'value:N']
+            ).properties(width=1000, height=500)
             st.altair_chart(combo_area)
+
             time.sleep(1)
