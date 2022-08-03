@@ -141,3 +141,5 @@ credentials.txt
 /google-big-query.json
 
 live_test.py
+
+alerts.py

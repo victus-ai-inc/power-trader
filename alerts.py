@@ -1,3 +1,39 @@
+import smtplib
 import streamlit as st
-import datetime
-import pywhatkit as py
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+# email = st.secrets['gmail_address']
+# pas = st.secrets['gmail_password']
+email = 'ryan.d.bulger@gmail.com'
+pas = 'Snowboarder77*'
+
+sms_gateway = '14035129991@msg.telus.com'
+# The server we use to send emails in our case it will be gmail but every email provider has a different smtp 
+# and port is also provided by the email provider.
+smtp = "smtp.gmail.com"
+port = 587
+# This will start our email server
+server = smtplib.SMTP(smtp,port)
+# Starting the server
+server.starttls()
+# Now we need to login
+server.login(email,pas)
+
+# Now we use the MIME module to structure our message.
+msg = MIMEMultipart()
+msg['From'] = email
+msg['To'] = sms_gateway
+# Make sure you add a new line in the subject
+msg['Subject'] = "TESTING\n"
+# Make sure you also add new lines to your body
+body = "Hello World!\n"
+# and then attach that body furthermore you can also send html content.
+msg.attach(MIMEText(body, 'plain'))
+
+sms = msg.as_string()
+
+server.sendmail(email,sms_gateway,sms)
+
+# lastly quit the server
+server.quit()
