@@ -17,8 +17,8 @@ if __name__ == '__main__':
     count = 1
     for id in streamIds:
         for yr in year:
-            startDate = date(yr,1,1)
-            endDate = date(yr,8,1)
+            startDate = date(yr,8,2)
+            endDate = date(yr,8,3)
             accessToken, tokenExpiry = pull_nrg_data.getToken()
             try:
                 APIdata = pull_nrg_data.pull_data(startDate.strftime('%m/%d/%Y'), endDate.strftime('%m/%d/%Y'), id, accessToken, tokenExpiry)

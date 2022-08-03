@@ -143,7 +143,7 @@ if __name__ == '__main__':
 # App config
     st.set_page_config(layout='wide', initial_sidebar_state='auto', menu_items=None)
     with st.sidebar:
-        cutoff = st.select_slider('Warning MW cutoff',[x*10 for x in range(11)])
+        cutoff = st.select_slider('Warning MW cutoff', [x*10 for x in range(11)], value=50)
     st.title('Alberta Power Forecaster')
     hide_menu(True)
 
