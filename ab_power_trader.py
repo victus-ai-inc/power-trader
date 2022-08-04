@@ -199,28 +199,6 @@ if __name__ == '__main__':
 #     with col2:
 #         st.altair_chart(candlestick + area + rule, use_container_width=True)
 
-# # Outages chart
-#     st.subheader('Forecasted Outages (Daily)')
-#     #Create outages_df
-#     streamIds = [44648, 118361, 322689, 118362, 147262, 322675, 322682, 44651]
-#     streamNames = {44648:'Coal', 118361:'Gas', 322689:'Dual Fuel', 118362:'Hydro', 147262:'Wind', 322675:'Solar', 322682:'Energy Storage', 44651:'Biomass & Other'}
-#     years = [datetime.now().year, datetime.now().year+1, datetime.now().year+2]
-#     outage_df = stream_data(streamIds, streamNames, years)
-    
-#     # Reset index so dataframe can be plotted with Altair
-#     outage_df.reset_index(inplace=True)
-#     outage_df = pd.melt(outage_df, 
-#                     id_vars=['timeStamp'],
-#                     value_vars=['Coal', 'Gas', 'Dual Fuel', 'Hydro', 'Wind', 'Solar', 'Energy Storage', 'Biomass & Other'],
-#                     var_name='Source',
-#                     value_name='Value')
-#     # Outages area chart
-#     outage_area = alt.Chart(outage_df).mark_area(opacity=0.5).encode(
-#         x=alt.X('yearmonth(timeStamp):T', title=''),
-#         y=alt.Y('Value:Q', stack='zero', axis=alt.Axis(format=',f'), title='Outages (MW)'),
-#         color=alt.Color('Source:N', scale=alt.Scale(scheme='category20'), legend=alt.Legend(orient="top")),
-#         ).properties(width=1300)
-#     st.altair_chart(outage_area, use_container_width=True)
     
     placeholder = st.empty()
     for seconds in range(100000):
@@ -266,5 +244,27 @@ if __name__ == '__main__':
                 tooltip=['fuelType:N','timeStamp:T','hour:O', 'value:N']
             ).properties(width=1000, height=500)
             st.altair_chart(combo_area)
-
+        # Outages chart
+            st.subheader('Forecasted Outages (Daily)')
+            #Create outages_df
+            streamIds = [44648, 118361, 322689, 118362, 147262, 322675, 322682, 44651]
+            streamNames = {44648:'Coal', 118361:'Gas', 322689:'Dual Fuel', 118362:'Hydro', 147262:'Wind', 322675:'Solar', 322682:'Energy Storage', 44651:'Biomass & Other'}
+            years = [datetime.now().year, datetime.now().year+1, datetime.now().year+2]
+            outage_df = stream_data(streamIds, streamNames, years)
+            
+            # Reset index so dataframe can be plotted with Altair
+            outage_df.reset_index(inplace=True)
+            outage_df = pd.melt(outage_df, 
+                            id_vars=['timeStamp'],
+                            value_vars=['Coal', 'Gas', 'Dual Fuel', 'Hydro', 'Wind', 'Solar', 'Energy Storage', 'Biomass & Other'],
+                            var_name='Source',
+                            value_name='Value')
+            # Outages area chart
+            outage_area = alt.Chart(outage_df).mark_area(opacity=0.5).encode(
+                x=alt.X('yearmonth(timeStamp):T', title=''),
+                y=alt.Y('Value:Q', stack='zero', axis=alt.Axis(format=',f'), title='Outages (MW)'),
+                color=alt.Color('Source:N', scale=alt.Scale(scheme='category20'), legend=alt.Legend(orient="top")),
+                ).properties(width=1300)
+            st.altair_chart(outage_area, use_container_width=True)
+            
             time.sleep(1)
