@@ -143,16 +143,21 @@ grid_options = {
         },
     ],
 }
-
+import random
 @st.experimental_memo
 def testing():
-    df1 = outages().astype('int32').reset_index()
+    df1 = outages().astype('int32')
     df2 = outages().astype('int32').reset_index()
-    df2['Hydro'] = [x - 50 if x >=50 else x + 50 for x in df2['Hydro']]
-    df2['Solar'] = [x - 100 if x >=100 else x + 100 for x in df2['Solar']]
-    df2['Natural Gas'] = [x - 500 if x >=500 else x + 500 for x in df2['Natural Gas']]
+    df2['Hydro'] = [x - random.randint(0,51) if x >=50 else x + random.randint(0,51) for x in df2['Hydro']]
+    df2['Solar'] = [x - random.randint(0,51) if x >=100 else x + random.randint(0,51) for x in df2['Solar']]
+    df2['Natural Gas'] = [x - random.randint(0,51) if x >=500 else x + random.randint(0,51) for x in df2['Natural Gas']]
+    df2.set_index(['timeStamp'], inplace=True)
     df = df2 - df1
-    df
+    df = df.loc[:, (df != 0).any(axis=0)]
+    df.reset_index(inplace=True)
+    df.drop(0,inplace=True)
+    df = df.melt(id_vars=['timeStamp'])
+    df['timeStamp'] = df['timeStamp'].dt.strftime('%Y-%m')
     return df
 
 # Main code block
@@ -160,8 +165,8 @@ if __name__ == '__main__':
 
 # App config
     st.set_page_config(layout='wide', initial_sidebar_state='auto', menu_items=None)
-    with st.sidebar:
-        cutoff = st.select_slider('Warning MW cutoff', [x*10 for x in range(11)], value=50)
+    # with st.sidebar:
+    #     cutoff = st.select_slider('Warning MW cutoff', [x*10 for x in range(11)], value=50)
     st.title('Alberta Power Forecaster')
     hide_menu(True)
 
@@ -232,7 +237,7 @@ if __name__ == '__main__':
             kpi_df = previous_hour.merge(current_hour, how='left', on='fuelType', suffixes=('Previous','Current'))
             kpi_df['delta'] = kpi_df['valueCurrent'] - kpi_df['valuePrevious']
             kpi_df['absDelta'] = abs(kpi_df['delta'])
-            warning_list = list(kpi_df['fuelType'][kpi_df['absDelta'] > cutoff])
+            #warning_list = list(kpi_df['fuelType'][kpi_df['absDelta'] > cutoff])
             kpi_df.iloc[:,1:] = kpi_df.iloc[:,1:].applymap('{:.0f}'.format)
             # Displaying KPIs
             col1, col2, col3, col4, col5, col6, col7, col8 = st.columns(8)
@@ -245,10 +250,10 @@ if __name__ == '__main__':
             col7.metric(label=kpi_df.iloc[6,0], value=kpi_df.iloc[6,2], delta=kpi_df.iloc[6,3])
             col8.metric(label=kpi_df.iloc[7,0], value=kpi_df.iloc[7,2], delta=kpi_df.iloc[7,3])
             # KPI warning box
-            if len(warning_list) > 0:
-                l = len(warning_list)
-                for _ in range(l):
-                    st.error(f'{warning_list[_]} has a differential greater than {cutoff} MW over the previous hour.')
+            # if len(warning_list) > 0:
+            #     l = len(warning_list)
+            #     for _ in range(l):
+            #         st.error(f'{warning_list[_]} has a differential greater than {cutoff} MW over the previous hour.')
         # 14 day hist/real-time/forecast
             # Pull last 7 days data
             history_df = pull_grouped_hist()
@@ -270,6 +275,7 @@ if __name__ == '__main__':
             st.subheader('Forecasted Outages (Daily)')
             #Create outages_df
             outage_df = outages()
+            
             # Check and send alert if outages have changed by > 50 MW
 
             # if outage_df != old_outage_df:
@@ -286,18 +292,23 @@ if __name__ == '__main__':
                             value_name='Value')
             # Outages area chart
             outage_area = alt.Chart(outage_df).mark_area(opacity=0.7).encode(
-                x=alt.X('yearmonth(timeStamp):T', title=''),
+                x=alt.X('timeStamp:T', title=''),
                 y=alt.Y('Value:Q', stack='zero', axis=alt.Axis(format=',f'), title='Outages (MW)'),
                 color=alt.Color('Source:N', scale=alt.Scale(scheme='category20'), legend=alt.Legend(orient="top")),
                 )
             st.altair_chart(outage_area, use_container_width=True)
 
             df = testing()
-            test = alt.Chart(df).mark_bar().encode(
-                x='Month:T',
+            test = alt.Chart(df).mark_bar(cornerRadiusTopLeft=5, 
+                                            cornerRadiusTopRight=5,
+                                            cornerRadiusBottomLeft=5,
+                                            cornerRadiusBottomRight=5,
+                                            opacity=0.6
+                                            ).encode(
+                x=alt.X('yearmonth(timeStamp):T'),
                 y=alt.Y('value:Q', impute={'value':0}),
-                row='variable:N',
+                column='variable:N',
                 color=alt.condition(alt.datum.value < 0, alt.value('red'), alt.value('black')),
-            ).properties(height = 50)
-            st.altair_chart(test, use_container_width=True)
+            ).properties(height = 100)
+            st.altair_chart(test)
             time.sleep(1)
