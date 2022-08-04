@@ -94,6 +94,13 @@ def stream_data(streamIds, streamNames, years):
         stream_df = pd.concat([stream_df,year_df], axis=1, join='outer')
     return stream_df
 
+def outages():
+    streamIds = [44648, 118361, 322689, 118362, 147262, 322675, 322682, 44651]
+    streamNames = {44648:'Coal', 118361:'Natural Gas', 322689:'Dual Fuel', 118362:'Hydro', 147262:'Wind', 322675:'Solar', 322682:'Energy Storage', 44651:'Biomass & Other'}
+    years = [datetime.now().year, datetime.now().year+1, datetime.now().year+2]
+    outage_df = stream_data(streamIds, streamNames, years)
+    return outage_df
+
 # Pull historical data from Google BigQuery
 @st.experimental_memo
 def pull_grouped_hist():
@@ -136,6 +143,17 @@ grid_options = {
         },
     ],
 }
+
+@st.experimental_memo
+def testing():
+    df1 = outages().astype('int32').reset_index()
+    df2 = outages().astype('int32').reset_index()
+    df2['Hydro'] = [x - 50 if x >=50 else x + 50 for x in df2['Hydro']]
+    df2['Solar'] = [x - 100 if x >=100 else x + 100 for x in df2['Solar']]
+    df2['Natural Gas'] = [x - 500 if x >=500 else x + 500 for x in df2['Natural Gas']]
+    df = df2 - df1
+    df
+    return df
 
 # Main code block
 if __name__ == '__main__':
@@ -198,14 +216,17 @@ if __name__ == '__main__':
 #     # Adding layered chart to Col2
 #     with col2:
 #         st.altair_chart(candlestick + area + rule, use_container_width=True)
-
+    
+    # Initialize outages data - compares against live data to trigger alerts
+    old_outage_df = outages()
     
     placeholder = st.empty()
     for seconds in range(100000):
         # Pull live data
         current_df = current_data()
         with placeholder.container():
-        # Create dataframe for KPIs
+        # KPIs
+            # Create dataframe for KPIs
             current_hour = current_df[['fuelType','value']][current_df['hour']==datetime.now().hour]
             previous_hour = current_df[['fuelType','value']][current_df['hour']==datetime.now().hour-1]
             kpi_df = previous_hour.merge(current_hour, how='left', on='fuelType', suffixes=('Previous','Current'))
@@ -213,7 +234,7 @@ if __name__ == '__main__':
             kpi_df['absDelta'] = abs(kpi_df['delta'])
             warning_list = list(kpi_df['fuelType'][kpi_df['absDelta'] > cutoff])
             kpi_df.iloc[:,1:] = kpi_df.iloc[:,1:].applymap('{:.0f}'.format)
-        # Displaying KPIs
+            # Displaying KPIs
             col1, col2, col3, col4, col5, col6, col7, col8 = st.columns(8)
             col1.metric(label=kpi_df.iloc[0,0], value=kpi_df.iloc[0,2], delta=kpi_df.iloc[0,3])
             col2.metric(label=kpi_df.iloc[1,0], value=kpi_df.iloc[1,2], delta=kpi_df.iloc[1,3])
@@ -223,48 +244,60 @@ if __name__ == '__main__':
             col6.metric(label=kpi_df.iloc[5,0], value=kpi_df.iloc[5,2], delta=kpi_df.iloc[5,3])
             col7.metric(label=kpi_df.iloc[6,0], value=kpi_df.iloc[6,2], delta=kpi_df.iloc[6,3])
             col8.metric(label=kpi_df.iloc[7,0], value=kpi_df.iloc[7,2], delta=kpi_df.iloc[7,3])
-        # Warning box
+            # KPI warning box
             if len(warning_list) > 0:
                 l = len(warning_list)
                 for _ in range(l):
                     st.error(f'{warning_list[_]} has a differential greater than {cutoff} MW over the previous hour.')
-        # Pull last 7 days data
+        # 14 day hist/real-time/forecast
+            # Pull last 7 days data
             history_df = pull_grouped_hist()
-        # Combine last 7 days & live dataframes
-            st.subheader('Combo df (hourly)')
+            # Combine last 7 days & live dataframes
+            st.subheader('Real-time Supply')
             combo_df = pd.concat([history_df,current_df], axis=0)
             query = 'SELECT * FROM combo_df ORDER BY fuelType, timeStamp'
             combo_df = sqldf(query, globals())
             #st.write(combo_df)
-        # Base combo_df bar chart
+            # Base combo_df bar chart
             combo_area = alt.Chart(combo_df).mark_area(color='grey', opacity=0.7).encode(
                 x='timeStamp:T',
                 y='value:Q',
-                color=alt.Color('fuelType:N', scale=alt.Scale(scheme='category20')),
+                color=alt.Color('fuelType:N', scale=alt.Scale(scheme='category20'), legend=alt.Legend(orient="top")),
                 tooltip=['fuelType:N','timeStamp:T','hour:O', 'value:N']
-            ).properties(width=1000, height=500)
-            st.altair_chart(combo_area)
+            ).properties(height=400)
+            st.altair_chart(combo_area, use_container_width=True)
         # Outages chart
             st.subheader('Forecasted Outages (Daily)')
             #Create outages_df
-            streamIds = [44648, 118361, 322689, 118362, 147262, 322675, 322682, 44651]
-            streamNames = {44648:'Coal', 118361:'Gas', 322689:'Dual Fuel', 118362:'Hydro', 147262:'Wind', 322675:'Solar', 322682:'Energy Storage', 44651:'Biomass & Other'}
-            years = [datetime.now().year, datetime.now().year+1, datetime.now().year+2]
-            outage_df = stream_data(streamIds, streamNames, years)
-            
+            outage_df = outages()
+            # Check and send alert if outages have changed by > 50 MW
+
+            # if outage_df != old_outage_df:
+            #     #
+            #     st.write('OUTAGE DF CHANGED!!')
+            #     old_outage_df = outage_df
+
             # Reset index so dataframe can be plotted with Altair
             outage_df.reset_index(inplace=True)
             outage_df = pd.melt(outage_df, 
                             id_vars=['timeStamp'],
-                            value_vars=['Coal', 'Gas', 'Dual Fuel', 'Hydro', 'Wind', 'Solar', 'Energy Storage', 'Biomass & Other'],
+                            value_vars=['Coal', 'Natural Gas', 'Dual Fuel', 'Hydro', 'Wind', 'Solar', 'Energy Storage', 'Biomass & Other'],
                             var_name='Source',
                             value_name='Value')
             # Outages area chart
-            outage_area = alt.Chart(outage_df).mark_area(opacity=0.5).encode(
+            outage_area = alt.Chart(outage_df).mark_area(opacity=0.7).encode(
                 x=alt.X('yearmonth(timeStamp):T', title=''),
                 y=alt.Y('Value:Q', stack='zero', axis=alt.Axis(format=',f'), title='Outages (MW)'),
                 color=alt.Color('Source:N', scale=alt.Scale(scheme='category20'), legend=alt.Legend(orient="top")),
-                ).properties(width=1300)
+                )
             st.altair_chart(outage_area, use_container_width=True)
-            
+
+            df = testing()
+            test = alt.Chart(df).mark_bar().encode(
+                x='Month:T',
+                y=alt.Y('value:Q', impute={'value':0}),
+                row='variable:N',
+                color=alt.condition(alt.datum.value < 0, alt.value('red'), alt.value('black')),
+            ).properties(height = 50)
+            st.altair_chart(test, use_container_width=True)
             time.sleep(1)
