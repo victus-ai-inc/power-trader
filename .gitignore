@@ -138,4 +138,4 @@ credentials.txt
 ./jupyter_testing.ipynb
 
 # haf
-pull_nrg_data.py
+alerts.py
