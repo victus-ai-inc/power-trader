@@ -140,6 +140,5 @@ credentials.txt
 # Google Bigquery auth file
 /google-big-query.json
 
-live_test.py
-
-alerts.py
+# Alerts
+/alerts.py
