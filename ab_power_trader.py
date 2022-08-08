@@ -2,18 +2,19 @@
 import streamlit as st
 import pandas as pd
 import altair as alt
-import pull_nrg_data
 import ssl
 import json
 import http.client
 import certifi
+import time
+import pull_nrg_data
+import alerts
 from st_aggrid import AgGrid
 from datetime import datetime, date, timedelta
 from google.cloud import bigquery
 from google.oauth2 import service_account
 from google.cloud.exceptions import NotFound
 from pandasql import sqldf
-import time
 
 # Function to hide top and bottom menus on Streamlit app
 def hide_menu(bool):
@@ -147,13 +148,16 @@ import random
 @st.experimental_memo
 def testing():
     df1 = outages().astype('int32')
-    df2 = outages().astype('int32').reset_index()
-    df2['Hydro'] = [x - random.randint(0,51) if x >=50 else x + random.randint(0,51) for x in df2['Hydro']]
-    df2['Solar'] = [x - random.randint(0,51) if x >=100 else x + random.randint(0,51) for x in df2['Solar']]
-    df2['Natural Gas'] = [x - random.randint(0,51) if x >=500 else x + random.randint(0,51) for x in df2['Natural Gas']]
-    df2.set_index(['timeStamp'], inplace=True)
-    df = df2 - df1
-    df = df.loc[:, (df != 0).any(axis=0)]
+    old_outage_df = outages().astype('int32').reset_index()
+    old_outage_df['Hydro'] = [x - random.randint(0,50) if x >=50 else x + random.randint(0,50)for x in old_outage_df['Hydro']]
+    old_outage_df['Solar'] = [x - random.randint(0,50) if x >=100 else x + random.randint(0,50) for x in old_outage_df['Solar']]
+    old_outage_df['Natural Gas'] = [x - random.randint(0,5) if x >=500 else x + random.randint(0,50) for x in old_outage_df['Natural Gas']]
+    old_outage_df['Coal'] = [x - random.randint(0,50) if x >=50 else x + random.randint(0,50) for x in old_outage_df['Coal']]
+    old_outage_df.set_index(['timeStamp'], inplace=True)
+    df = old_outage_df - df1
+    #drop cols that do not have a change >=50
+    df = df.loc[:, (abs(df) >= 50).any(axis=0)]
+    df
     df.reset_index(inplace=True)
     df.drop(0,inplace=True)
     df = df.melt(id_vars=['timeStamp'])
@@ -222,13 +226,11 @@ if __name__ == '__main__':
 #     with col2:
 #         st.altair_chart(candlestick + area + rule, use_container_width=True)
     
-    # Initialize outages data - compares against live data to trigger alerts
-    old_outage_df = outages()
-    
     placeholder = st.empty()
     for seconds in range(100000):
         # Pull live data
         current_df = current_data()
+        old_outage_df = pd.read_csv('offset_testing.csv').set_index(['timeStamp'])
         with placeholder.container():
         # KPIs
             # Create dataframe for KPIs
@@ -262,7 +264,6 @@ if __name__ == '__main__':
             combo_df = pd.concat([history_df,current_df], axis=0)
             query = 'SELECT * FROM combo_df ORDER BY fuelType, timeStamp'
             combo_df = sqldf(query, globals())
-            #st.write(combo_df)
             # Base combo_df bar chart
             combo_area = alt.Chart(combo_df).mark_area(color='grey', opacity=0.7).encode(
                 x='timeStamp:T',
@@ -275,14 +276,6 @@ if __name__ == '__main__':
             st.subheader('Forecasted Outages (Daily)')
             #Create outages_df
             outage_df = outages()
-            
-            # Check and send alert if outages have changed by > 50 MW
-
-            # if outage_df != old_outage_df:
-            #     #
-            #     st.write('OUTAGE DF CHANGED!!')
-            #     old_outage_df = outage_df
-
             # Reset index so dataframe can be plotted with Altair
             outage_df.reset_index(inplace=True)
             outage_df = pd.melt(outage_df, 
@@ -298,17 +291,26 @@ if __name__ == '__main__':
                 )
             st.altair_chart(outage_area, use_container_width=True)
 
-            df = testing()
-            test = alt.Chart(df).mark_bar(cornerRadiusTopLeft=5, 
-                                            cornerRadiusTopRight=5,
-                                            cornerRadiusBottomLeft=5,
-                                            cornerRadiusBottomRight=5,
-                                            opacity=0.6
-                                            ).encode(
-                x=alt.X('yearmonth(timeStamp):T'),
-                y=alt.Y('value:Q', impute={'value':0}),
-                column='variable:N',
-                color=alt.condition(alt.datum.value < 0, alt.value('red'), alt.value('black')),
-            ).properties(height = 100)
-            st.altair_chart(test)
+            #TESTING!!
+            # ADD st.session_state
+            # https://docs.streamlit.io/library/api-reference/session-state
+            outage_test = outages().astype('int32')
+            # Check and send alert if outages have changed by > 50 MW
+            if (abs(outage_test-old_outage_df) >= 50).any().any():
+                st.subheader('ALERTS!')
+                old_outage_df = outage_test
+                #alerts.sms()
+                df = testing()
+                test = alt.Chart(df).mark_bar(cornerRadiusTopLeft=5, 
+                                                cornerRadiusTopRight=5,
+                                                cornerRadiusBottomLeft=5,
+                                                cornerRadiusBottomRight=5,
+                                                opacity=0.6
+                                                ).encode(
+                    x=alt.X('yearmonth(timeStamp):T'),
+                    y=alt.Y('value:Q', impute={'value':0}),
+                    column='variable:N',
+                    color=alt.condition(alt.datum.value < 0, alt.value('red'), alt.value('black')),
+                ).properties(height = 100)
+                st.altair_chart(test)
             time.sleep(1)
