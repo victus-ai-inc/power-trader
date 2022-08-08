@@ -135,10 +135,7 @@ credentials.txt
 .streamlit/secrets.toml
 
 # SQL Jupyter notebook
-#/jupyter_testing.ipynb
+./jupyter_testing.ipynb
 
-# Google Bigquery auth file
-/google-big-query.json
-
-# Alerts
-/alerts.py
+# haf
+pull_nrg_data.py
