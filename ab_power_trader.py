@@ -41,20 +41,48 @@ def current_data():
         except:
             pull_nrg_data.release_token(accessToken)
             pass
-    query = '''
+    non_zero_query = '''
         SELECT
+            timeStamp,
+            value,
             fuelType,
             strftime('%Y', timeStamp) AS year,
             strftime('%m', timeStamp) AS month,
             strftime('%d', timeStamp) AS day,
-            strftime('%H', timeStamp) AS hour,
-            timeStamp,
-            avg(value) AS value
+            strftime('%H', timeStamp) AS hour
         FROM current_df
-        GROUP BY fuelType, year, month, day, hour
+        WHERE value > 0
+        
+        ORDER BY fuelType, year, month, day, hour
         '''
-    current_df = sqldf(query, locals()).astype({'fuelType':'object', 'year':'int64','month':'int64', 'day':'int64', 'hour':'int64', 'timeStamp':'datetime64[ns]', 'value':'float64'})
-    return current_df
+    zero_query = '''
+        SELECT
+            timeStamp,
+            value,
+            fuelType,
+            strftime('%Y', timeStamp) AS year,
+            strftime('%m', timeStamp) AS month,
+            strftime('%d', timeStamp) AS day,
+            strftime('%H', timeStamp) AS hour
+        FROM current_df
+        WHERE fuelType NOT IN (
+            SELECT
+                fuelType
+            FROM current_df
+            WHERE value > 0
+            GROUP BY fuelType
+        )
+        
+        ORDER BY fuelType, year, month, day, hour
+    '''
+    # AVG(value) AS value,
+    # GROUP BY fuelType, year, month, day, hour
+    non_zero_df = sqldf(non_zero_query, locals())
+    zero_df = sqldf(zero_query, locals())
+    current_df = pd.concat([non_zero_df,zero_df], axis=0)
+    current_query = 'SELECT * FROM current_df ORDER BY fuelType, year, month, day, hour'
+    current_df = sqldf(current_query, locals())
+    return current_df.astype({'fuelType':'object', 'year':'int64','month':'int64', 'day':'int64', 'hour':'int64', 'timeStamp':'datetime64[ns]', 'value':'float64'})
 
 # Create outages dataframe from NRG data
 @st.experimental_memo
@@ -226,11 +254,16 @@ if __name__ == '__main__':
 #     with col2:
 #         st.altair_chart(candlestick + area + rule, use_container_width=True)
     
+# Cache outages dataframe in session_state if it doesn't already exist
+    if 'outages' not in st.session_state:
+        st.session_state['outages'] = outages()
+    st.session_state['outages']
+
     placeholder = st.empty()
     for seconds in range(100000):
         # Pull live data
         current_df = current_data()
-        old_outage_df = pd.read_csv('offset_testing.csv').set_index(['timeStamp'])
+        #old_outage_df = pd.read_csv('offset_testing.csv').set_index(['timeStamp'])
         with placeholder.container():
         # KPIs
             # Create dataframe for KPIs
@@ -264,27 +297,28 @@ if __name__ == '__main__':
             combo_df = pd.concat([history_df,current_df], axis=0)
             query = 'SELECT * FROM combo_df ORDER BY fuelType, timeStamp'
             combo_df = sqldf(query, globals())
+            combo_df
             # Base combo_df bar chart
             combo_area = alt.Chart(combo_df).mark_area(color='grey', opacity=0.7).encode(
                 x='timeStamp:T',
                 y='value:Q',
                 color=alt.Color('fuelType:N', scale=alt.Scale(scheme='category20'), legend=alt.Legend(orient="top")),
-                tooltip=['fuelType:N','timeStamp:T','hour:O', 'value:N']
-            ).properties(height=400)
+                tooltip=['fuelType:N','timeStamp:T','hour:O', 'value:Q']
+            ).properties(height=400).interactive()
             st.altair_chart(combo_area, use_container_width=True)
         # Outages chart
             st.subheader('Forecasted Outages (Daily)')
             #Create outages_df
-            outage_df = outages()
+            outage_df = outages().astype('int32')
             # Reset index so dataframe can be plotted with Altair
-            outage_df.reset_index(inplace=True)
-            outage_df = pd.melt(outage_df, 
+            outage_data = outage_df.reset_index(inplace=True)
+            outage_data = pd.melt(outage_data, 
                             id_vars=['timeStamp'],
                             value_vars=['Coal', 'Natural Gas', 'Dual Fuel', 'Hydro', 'Wind', 'Solar', 'Energy Storage', 'Biomass & Other'],
                             var_name='Source',
                             value_name='Value')
             # Outages area chart
-            outage_area = alt.Chart(outage_df).mark_area(opacity=0.7).encode(
+            outage_area = alt.Chart(outage_data).mark_area(opacity=0.7).encode(
                 x=alt.X('timeStamp:T', title=''),
                 y=alt.Y('Value:Q', stack='zero', axis=alt.Axis(format=',f'), title='Outages (MW)'),
                 color=alt.Color('Source:N', scale=alt.Scale(scheme='category20'), legend=alt.Legend(orient="top")),
@@ -294,9 +328,9 @@ if __name__ == '__main__':
             #TESTING!!
             # ADD st.session_state
             # https://docs.streamlit.io/library/api-reference/session-state
-            outage_test = outages().astype('int32')
+            outage_test = outages()
             # Check and send alert if outages have changed by > 50 MW
-            if (abs(outage_test-old_outage_df) >= 50).any().any():
+            if (abs(outage_df-old_outage_df) >= 50).any().any():
                 st.subheader('ALERTS!')
                 old_outage_df = outage_test
                 #alerts.sms()
