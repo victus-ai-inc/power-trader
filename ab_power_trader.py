@@ -27,6 +27,34 @@ def hide_menu(bool):
             """
         return st.markdown(hide_menu_style, unsafe_allow_html=True)
 
+# Pull historical data from Google BigQuery
+@st.experimental_memo
+def pull_grouped_hist():
+    # Google BigQuery auth
+    credentials = service_account.Credentials.from_service_account_info(st.secrets["gcp_service_account"])
+    # Pull data
+    query = '''
+    SELECT
+        DATETIME(
+            EXTRACT (YEAR FROM timeStamp), 
+            EXTRACT (MONTH FROM timeStamp),
+            EXTRACT (DAY FROM timeStamp),
+            EXTRACT (HOUR FROM timeStamp), 0, 0) AS timeStamp,
+        fuelType,
+        EXTRACT (YEAR FROM timeStamp) AS year,
+        EXTRACT (MONTH FROM timeStamp) AS month,
+        EXTRACT (DAY FROM timeStamp) AS day,
+        EXTRACT (HOUR FROM timeStamp) AS hour,
+        AVG(value) AS value
+    FROM nrgdata.hourly_data
+    WHERE timeStamp BETWEEN DATE_SUB(current_date(), INTERVAL 7 DAY) AND current_date()
+    GROUP BY fuelType, year, month, day, hour, timeStamp
+    ORDER BY fuelType, year, month, day, hour, timeStamp
+    '''
+    history_df = bigquery.Client(credentials=credentials).query(query).to_dataframe()
+    return history_df
+
+# Pull current day data from NRG
 def current_data():
     streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694]
     current_df = pd.DataFrame([])
@@ -41,49 +69,27 @@ def current_data():
         except:
             pull_nrg_data.release_token(accessToken)
             pass
-    non_zero_query = '''
+    current_query = '''
         SELECT
-            timeStamp,
-            value,
+            strftime('%Y-%m-%d %H:00:00', timeStamp) AS timeStamp,
             fuelType,
             strftime('%Y', timeStamp) AS year,
             strftime('%m', timeStamp) AS month,
             strftime('%d', timeStamp) AS day,
-            strftime('%H', timeStamp) AS hour
+            strftime('%H', timeStamp) AS hour,
+            AVG(value) AS value
         FROM current_df
-        WHERE value > 0
-        
-        ORDER BY fuelType, year, month, day, hour
+        GROUP BY fuelType, year, month, day, hour
+        ORDER BY fuelType, year, month, day, hour, timeStamp
         '''
-    zero_query = '''
-        SELECT
-            timeStamp,
-            value,
-            fuelType,
-            strftime('%Y', timeStamp) AS year,
-            strftime('%m', timeStamp) AS month,
-            strftime('%d', timeStamp) AS day,
-            strftime('%H', timeStamp) AS hour
-        FROM current_df
-        WHERE fuelType NOT IN (
-            SELECT
-                fuelType
-            FROM current_df
-            WHERE value > 0
-            GROUP BY fuelType
-        )
-        
-        ORDER BY fuelType, year, month, day, hour
-    '''
-    # AVG(value) AS value,
-    # GROUP BY fuelType, year, month, day, hour
-    non_zero_df = sqldf(non_zero_query, locals())
-    zero_df = sqldf(zero_query, locals())
-    current_df = pd.concat([non_zero_df,zero_df], axis=0)
-    current_query = 'SELECT * FROM current_df ORDER BY fuelType, year, month, day, hour'
     current_df = sqldf(current_query, locals())
-    return current_df.astype({'fuelType':'object', 'year':'int64','month':'int64', 'day':'int64', 'hour':'int64', 'timeStamp':'datetime64[ns]', 'value':'float64'})
-
+    return current_df.astype({'fuelType':'object', 'year':'int64','month':'int64', 'day':'int64', 'hour':'int64', 'value':'float64', 'timeStamp':'datetime64[ns]'})
+    #
+# DATETIME(
+#                 strftime('%Y', timeStamp),
+#                 strftime('%m', timeStamp),
+#                 strftime('%d', timeStamp),
+#                 strftime('%H', timeStamp), 0, 0) AS timeStamp,
 # Create outages dataframe from NRG data
 @st.experimental_memo
 def stream_data(streamIds, streamNames, years):
@@ -130,16 +136,6 @@ def outages():
     outage_df = stream_data(streamIds, streamNames, years)
     return outage_df
 
-# Pull historical data from Google BigQuery
-@st.experimental_memo
-def pull_grouped_hist():
-    # Google BigQuery auth
-    credentials = service_account.Credentials.from_service_account_info(st.secrets["gcp_service_account"])
-    # Pull data
-    query = 'SELECT * FROM nrgdata.grouped_hist WHERE timeStamp BETWEEN DATE_SUB(current_date(), INTERVAL 7 DAY) AND current_date()'
-    history_df = bigquery.Client(credentials=credentials).query(query).to_dataframe()
-    return history_df
-
 # Grid options for AgGrid Demand forecast table
 grid_options = {
     "defaultColDef":
@@ -185,7 +181,6 @@ def testing():
     df = old_outage_df - df1
     #drop cols that do not have a change >=50
     df = df.loc[:, (abs(df) >= 50).any(axis=0)]
-    df
     df.reset_index(inplace=True)
     df.drop(0,inplace=True)
     df = df.melt(id_vars=['timeStamp'])
@@ -199,7 +194,7 @@ if __name__ == '__main__':
     st.set_page_config(layout='wide', initial_sidebar_state='auto', menu_items=None)
     # with st.sidebar:
     #     cutoff = st.select_slider('Warning MW cutoff', [x*10 for x in range(11)], value=50)
-    st.title('Alberta Power Forecaster')
+    st.title('Alberta Power Supply/Demand')
     hide_menu(True)
 
 # Pull 24M Supply/Demand data
@@ -255,34 +250,53 @@ if __name__ == '__main__':
 #         st.altair_chart(candlestick + area + rule, use_container_width=True)
     
 # Cache outages dataframe in session_state if it doesn't already exist
-    if 'outages' not in st.session_state:
-        st.session_state['outages'] = outages()
-    st.session_state['outages']
+    # if 'outages' not in st.session_state:
+    #     st.session_state['outages'] = outages()
 
     placeholder = st.empty()
     for seconds in range(100000):
         # Pull live data
         current_df = current_data()
-        #old_outage_df = pd.read_csv('offset_testing.csv').set_index(['timeStamp'])
         with placeholder.container():
         # KPIs
-            # Create dataframe for KPIs
-            current_hour = current_df[['fuelType','value']][current_df['hour']==datetime.now().hour]
-            previous_hour = current_df[['fuelType','value']][current_df['hour']==datetime.now().hour-1]
+            # Create dataframe for KPIs from current_df
+            st.subheader('Current Hourly Average (MW)')
+            kpi_query = '''
+                SELECT
+                    AVG(value) AS value,
+                    fuelType,
+                    year, month, day, hour
+                FROM current_df
+                GROUP BY fuelType, year, month, day, hour
+                ORDER BY fuelType, year, month, day, hour
+            '''
+            kpi_df = sqldf(kpi_query, locals())
+            # Pull current and last hour KPIs
+            current_hour = kpi_df[['fuelType','value']][kpi_df['hour']==datetime.now().hour]
+            previous_hour = kpi_df[['fuelType','value']][kpi_df['hour']==datetime.now().hour-1]
+            # Merging current and last hour KPIs into one dataframe
             kpi_df = previous_hour.merge(current_hour, how='left', on='fuelType', suffixes=('Previous','Current'))
+            # Creating KPI delta calculation
             kpi_df['delta'] = kpi_df['valueCurrent'] - kpi_df['valuePrevious']
-            kpi_df['absDelta'] = abs(kpi_df['delta'])
-            #warning_list = list(kpi_df['fuelType'][kpi_df['absDelta'] > cutoff])
+            # Formatting numbers 
             kpi_df.iloc[:,1:] = kpi_df.iloc[:,1:].applymap('{:.0f}'.format)
             # Displaying KPIs
             col1, col2, col3, col4, col5, col6, col7, col8 = st.columns(8)
+            # Biomass & Other KPI
             col1.metric(label=kpi_df.iloc[0,0], value=kpi_df.iloc[0,2], delta=kpi_df.iloc[0,3])
+            # Coal KPI
             col2.metric(label=kpi_df.iloc[1,0], value=kpi_df.iloc[1,2], delta=kpi_df.iloc[1,3])
+            # Dual Fuel KPI
             col3.metric(label=kpi_df.iloc[2,0], value=kpi_df.iloc[2,2], delta=kpi_df.iloc[2,3])
+            # Energy Storage KPI
             col4.metric(label=kpi_df.iloc[3,0], value=kpi_df.iloc[3,2], delta=kpi_df.iloc[3,3])
+            # Hydro KPI
             col5.metric(label=kpi_df.iloc[4,0], value=kpi_df.iloc[4,2], delta=kpi_df.iloc[4,3])
+            # Natural Gas KPI
             col6.metric(label=kpi_df.iloc[5,0], value=kpi_df.iloc[5,2], delta=kpi_df.iloc[5,3])
+            # Solar KPI
             col7.metric(label=kpi_df.iloc[6,0], value=kpi_df.iloc[6,2], delta=kpi_df.iloc[6,3])
+            # Wind KPI
             col8.metric(label=kpi_df.iloc[7,0], value=kpi_df.iloc[7,2], delta=kpi_df.iloc[7,3])
             # KPI warning box
             # if len(warning_list) > 0:
@@ -295,9 +309,8 @@ if __name__ == '__main__':
             # Combine last 7 days & live dataframes
             st.subheader('Real-time Supply')
             combo_df = pd.concat([history_df,current_df], axis=0)
-            query = 'SELECT * FROM combo_df ORDER BY fuelType, timeStamp'
+            query = 'SELECT * FROM combo_df ORDER BY fuelType'
             combo_df = sqldf(query, globals())
-            combo_df
             # Base combo_df bar chart
             combo_area = alt.Chart(combo_df).mark_area(color='grey', opacity=0.7).encode(
                 x='timeStamp:T',
@@ -310,13 +323,13 @@ if __name__ == '__main__':
             st.subheader('Forecasted Outages (Daily)')
             #Create outages_df
             outage_df = outages().astype('int32')
-            # Reset index so dataframe can be plotted with Altair
-            outage_data = outage_df.reset_index(inplace=True)
+            #outage_data = outage_df.reset_index(inplace=True)
+            outage_data = outages().reset_index()
             outage_data = pd.melt(outage_data, 
                             id_vars=['timeStamp'],
                             value_vars=['Coal', 'Natural Gas', 'Dual Fuel', 'Hydro', 'Wind', 'Solar', 'Energy Storage', 'Biomass & Other'],
                             var_name='Source',
-                            value_name='Value')
+                            value_name='Value')          
             # Outages area chart
             outage_area = alt.Chart(outage_data).mark_area(opacity=0.7).encode(
                 x=alt.X('timeStamp:T', title=''),

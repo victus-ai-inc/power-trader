@@ -12,12 +12,11 @@ def resursion(i):
         APIdata = pull_nrg_data.pull_data(startDate.strftime('%m/%d/%Y'), endDate.strftime('%m/%d/%Y'), id, accessToken, tokenExpiry)
         pull_nrg_data.release_token(accessToken)
         APIdata['timeStamp'] = pd.to_datetime(APIdata['timeStamp'])
-        print(APIdata)
-        bigquery.Client(credentials=credentials).load_table_from_dataframe(APIdata, 'nrgdata.hourly_data')
+        #bigquery.Client(credentials=credentials).load_table_from_dataframe(APIdata, 'nrgdata.hourly_data')
     except:
         pull_nrg_data.release_token(accessToken)
         print(f'STREAM #{id} failed on iteration #{i}. Trying again')
-        if i < 101:
+        if i < 10:
             i += 1
             resursion(i)
 
@@ -26,7 +25,8 @@ if __name__ == '__main__':
     credentials = service_account.Credentials.from_service_account_info(st.secrets["gcp_service_account"])
 # Pull stream data
     streams = pd.read_csv('stream_codes.csv')
-    streamIds = [int(id) for id in streams[(streams['timeInterval']=='1 hr') & (streams['intervalType']=='supply')]['streamId']]
+    streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694]
+    #streamIds = [int(id) for id in streams[(streams['timeInterval']=='1 hr') & (streams['intervalType']=='supply')]['streamId']]
     year = [2020, 2021]
     stream_count = len(streamIds)
     count = 1
