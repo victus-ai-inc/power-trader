@@ -12,7 +12,7 @@ def resursion(i):
         APIdata = pull_nrg_data.pull_data(startDate.strftime('%m/%d/%Y'), endDate.strftime('%m/%d/%Y'), id, accessToken, tokenExpiry)
         pull_nrg_data.release_token(accessToken)
         APIdata['timeStamp'] = pd.to_datetime(APIdata['timeStamp'])
-        #bigquery.Client(credentials=credentials).load_table_from_dataframe(APIdata, 'nrgdata.hourly_data')
+        bigquery.Client(credentials=credentials).load_table_from_dataframe(APIdata, 'nrgdata.hourly_data')
     except:
         pull_nrg_data.release_token(accessToken)
         print(f'STREAM #{id} failed on iteration #{i}. Trying again')
@@ -27,13 +27,13 @@ if __name__ == '__main__':
     streams = pd.read_csv('stream_codes.csv')
     streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694]
     #streamIds = [int(id) for id in streams[(streams['timeInterval']=='1 hr') & (streams['intervalType']=='supply')]['streamId']]
-    year = [2020, 2021]
+    year = [2022]
     stream_count = len(streamIds)
     count = 1
     for id in streamIds:
         for yr in year:
-            startDate = date(yr,1,1)
-            endDate = date(yr+1,1,1)
+            startDate = date(yr,8,10)
+            endDate = date(yr,8,11)
             resursion(1)
         print(f'STREAM #{id} finished, {stream_count-count} streams remaining')
         count += 1

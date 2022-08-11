@@ -168,6 +168,7 @@ grid_options = {
         },
     ],
 }
+
 import random
 @st.experimental_memo
 def testing():
@@ -192,8 +193,8 @@ if __name__ == '__main__':
 
 # App config
     st.set_page_config(layout='wide', initial_sidebar_state='auto', menu_items=None)
-    # with st.sidebar:
-    #     cutoff = st.select_slider('Warning MW cutoff', [x*10 for x in range(11)], value=50)
+    with st.sidebar:
+        cutoff = st.select_slider('Warning MW cutoff', [x*10 for x in range(11)], value=100)
     st.title('Alberta Power Supply/Demand')
     hide_menu(True)
 
@@ -204,7 +205,6 @@ if __name__ == '__main__':
     years = [datetime.now().year, datetime.now().year+1, datetime.now().year+2]
     offset_df = stream_data(streamIds, streamNames, years)
     offset_df.rename(columns={'0':'Peak Hour', 2:'Expected Supply', 3:'Import Capacity', 4:'Load+Reserve', 5:'Surplus'}, inplace=True)
-    #st.write(offset_df)
 
 # # Offset demand table & chart
 #     st.subheader('Forecasted & Adjusted Demand')
@@ -252,6 +252,12 @@ if __name__ == '__main__':
 # Cache outages dataframe in session_state if it doesn't already exist
     # if 'outages' not in st.session_state:
     #     st.session_state['outages'] = outages()
+    old_outage_df = outages().astype('int32').reset_index()
+    old_outage_df['Hydro'] = [x - random.randint(0,50) if x >=50 else x + random.randint(0,50)for x in old_outage_df['Hydro']]
+    old_outage_df['Solar'] = [x - random.randint(0,50) if x >=100 else x + random.randint(0,50) for x in old_outage_df['Solar']]
+    old_outage_df['Natural Gas'] = [x - random.randint(0,5) if x >=500 else x + random.randint(0,50) for x in old_outage_df['Natural Gas']]
+    old_outage_df['Coal'] = [x - random.randint(0,50) if x >=50 else x + random.randint(0,50) for x in old_outage_df['Coal']]
+    old_outage_df.set_index(['timeStamp'], inplace=True)
 
     placeholder = st.empty()
     for seconds in range(100000):
@@ -278,6 +284,9 @@ if __name__ == '__main__':
             kpi_df = previous_hour.merge(current_hour, how='left', on='fuelType', suffixes=('Previous','Current'))
             # Creating KPI delta calculation
             kpi_df['delta'] = kpi_df['valueCurrent'] - kpi_df['valuePrevious']
+            # Creating list of warnings
+            kpi_df['absDelta'] = abs(kpi_df['delta'])
+            warning_list = list(kpi_df['fuelType'][kpi_df['absDelta'] > cutoff])
             # Formatting numbers 
             kpi_df.iloc[:,1:] = kpi_df.iloc[:,1:].applymap('{:.0f}'.format)
             # Displaying KPIs
@@ -299,10 +308,10 @@ if __name__ == '__main__':
             # Wind KPI
             col8.metric(label=kpi_df.iloc[7,0], value=kpi_df.iloc[7,2], delta=kpi_df.iloc[7,3])
             # KPI warning box
-            # if len(warning_list) > 0:
-            #     l = len(warning_list)
-            #     for _ in range(l):
-            #         st.error(f'{warning_list[_]} has a differential greater than {cutoff} MW over the previous hour.')
+            if len(warning_list) > 0:
+                l = len(warning_list)
+                for _ in range(l):
+                    st.error(f'{warning_list[_]} has a differential greater than {cutoff} MW over the previous hour.')
         # 14 day hist/real-time/forecast
             # Pull last 7 days data
             history_df = pull_grouped_hist()
@@ -313,8 +322,8 @@ if __name__ == '__main__':
             combo_df = sqldf(query, globals())
             # Base combo_df bar chart
             combo_area = alt.Chart(combo_df).mark_area(color='grey', opacity=0.7).encode(
-                x='timeStamp:T',
-                y='value:Q',
+                x=alt.X('timeStamp:T', title=''),
+                y=alt.Y('value:Q', title='Current Supply (MW)'),
                 color=alt.Color('fuelType:N', scale=alt.Scale(scheme='category20'), legend=alt.Legend(orient="top")),
                 tooltip=['fuelType:N','timeStamp:T','hour:O', 'value:Q']
             ).properties(height=400).interactive()
@@ -341,11 +350,11 @@ if __name__ == '__main__':
             #TESTING!!
             # ADD st.session_state
             # https://docs.streamlit.io/library/api-reference/session-state
-            outage_test = outages()
+            outage_df = outages().astype('int32')
             # Check and send alert if outages have changed by > 50 MW
-            if (abs(outage_df-old_outage_df) >= 50).any().any():
-                st.subheader('ALERTS!')
-                old_outage_df = outage_test
+            if (abs(outage_df-old_outage_df) >= 30).any().any():
+                st.subheader('Outage Alerts')
+                old_outage_df = old_outage_df
                 #alerts.sms()
                 df = testing()
                 test = alt.Chart(df).mark_bar(cornerRadiusTopLeft=5, 
@@ -355,9 +364,10 @@ if __name__ == '__main__':
                                                 opacity=0.6
                                                 ).encode(
                     x=alt.X('yearmonth(timeStamp):T'),
-                    y=alt.Y('value:Q', impute={'value':0}),
+                    y=alt.Y('value:Q', impute={'value':0},title=''),
                     column='variable:N',
                     color=alt.condition(alt.datum.value < 0, alt.value('red'), alt.value('black')),
                 ).properties(height = 100)
                 st.altair_chart(test)
+                st.stop()
             time.sleep(1)
