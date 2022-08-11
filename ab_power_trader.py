@@ -23,6 +23,7 @@ def hide_menu(bool):
             <style>
             #MainMenu {visibility: hidden;}
             footer {visibility: hidden;}
+            .css-1j15ncu {visibility: hidden;}
             </style>
             """
         return st.markdown(hide_menu_style, unsafe_allow_html=True)
@@ -273,8 +274,8 @@ if __name__ == '__main__':
             '''
             kpi_df = sqldf(kpi_query, globals())
             # Pull current and last hour KPIs
-            current_hour = kpi_df[['fuelType','value']][kpi_df['hour']==datetime.now().hour-6]
-            previous_hour = kpi_df[['fuelType','value']][kpi_df['hour']==datetime.now().hour-7]
+            current_hour = kpi_df[['fuelType','value']][kpi_df['hour']==datetime.now().hour]
+            previous_hour = kpi_df[['fuelType','value']][kpi_df['hour']==datetime.now().hour-1]
             # Merging current and last hour KPIs into one dataframe
             kpi_df = previous_hour.merge(current_hour, how='left', on='fuelType', suffixes=('Previous','Current'))
             # Creating KPI delta calculation
