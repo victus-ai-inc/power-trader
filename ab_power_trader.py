@@ -187,7 +187,7 @@ def testing():
 if __name__ == '__main__':
 
 # App config
-    st.set_page_config(layout='wide', initial_sidebar_state='auto', menu_items=None)
+    st.set_page_config(layout='wide', initial_sidebar_state='collapsed', menu_items=None)
     with st.sidebar:
         cutoff = st.select_slider('Warning MW cutoff', [x*10 for x in range(11)], value=100)
     st.title('Alberta Power Supply/Demand')
@@ -349,7 +349,7 @@ if __name__ == '__main__':
             # Check and send alert if outages have changed by > 50 MW
             if (abs(outage_df-old_outage_df) >= cutoff).any().any():
                 st.subheader('Outage Alerts')
-                old_outage_df = old_outage_df
+                outage_df = old_outage_df
                 alerts.sms()
                 df = testing()
                 test = alt.Chart(df).mark_bar(cornerRadiusTopLeft=5, 
@@ -364,5 +364,5 @@ if __name__ == '__main__':
                     color=alt.condition(alt.datum.value < 0, alt.value('red'), alt.value('black')),
                 ).properties(height = 100)
                 st.altair_chart(test)
-                st.stop()
+                #st.stop()
             time.sleep(1)
