@@ -507,4 +507,184 @@ streamId,assetCode,streamName,fuelType,subfuelType,timeInterval,intervalType
 946,WB4,Wabamun #4,Coal,Coal,5 min,reserve
 1457,WWDC,Weldwood,Biomass & Other,Biomass & Other,5 min,reserve
 94038,WWD2,Weldwood #2,Biomass & Other,Biomass & Other,5 min,reserve
-278763,,24M Supply Demand Forecast,Demand Forecast,Demand Forecast,,
+129795,ANC1,AB Newsprint,Natural Gas,Simple Gas,1 hr,supply
+2011,ALS1,Air Liquide Scotford #1,Natural Gas,Cogen,1 hr,supply
+93311,HMT1,AltaGas Harmattan,Natural Gas,Cogen,1 hr,supply
+2038,AFG1,APF Athabasca,Biomass & Other,Biomass & Other,1 hr,supply
+93928,ARD1,Ardenville Wind,Wind,Wind,1 hr,supply
+1964,APS1,ATCO Scotford Upgrader,Natural Gas,Cogen,1 hr,supply
+45136,ALP1,Bantry,Natural Gas,Simple Gas,1 hr,supply
+2015,SCR1,Base Plant,Natural Gas,Cogen,1 hr,supply
+1973,BR3,Battle River#3,Coal,Coal,1 hr,supply
+1974,BR4,Battle River#4,Natural Gas,Gas Fired,1 hr,supply
+1975,BR5,Battle River#5,Natural Gas,Gas Fired,1 hr,supply
+24042,BCR2,Bear Creek 2,Natural Gas,Cogen,1 hr,supply
+1963,BCRK,Bear Creek,Natural Gas,Cogen,1 hr,supply
+237689,BHL1,Bellshill,Natural Gas,Simple Gas,1 hr,supply
+2004,BIG,Bighorn,Hydro,Hydro,1 hr,supply
+244323,BFD1,Blackfalds,Natural Gas,Cogen,1 hr,supply
+135615,BSR1,Blackspring Ridge,Wind,Wind,1 hr,supply
+83935,BTR1,Blue Trail Wind,Wind,Wind,1 hr,supply
+327195,BON1,Bonnybrook,Biomass & Other,Biomass & Other,1 hr,supply
+2019,BOW1,Bow River Hydro,Hydro,Hydro,1 hr,supply
+2005,BRA,Brazeau,Hydro,Hydro,1 hr,supply
+337716,BRK1,Brooks Solar 1,Solar,Solar,1 hr,supply
+337712,BRK2,Brooks Solar 2,Solar,Solar,1 hr,supply
+198888,BSC1,Brooks Solar,Solar,Solar,1 hr,supply
+2035,PW01,Buck Lake,Natural Gas,Natural Gas,1 hr,supply
+155938,BUL1,BUL1 Bull Creek,Wind,Wind,1 hr,supply
+155941,BUL2,BUL2 Bull Creek,Wind,Wind,1 hr,supply
+292583,BRD1,Burdett BRD1,Solar,Solar,1 hr,supply
+292605,BUR1,Burdett BUR1,Solar,Solar,1 hr,supply
+156449,CRG1,Camrose,Natural Gas,Cogen,1 hr,supply
+41615,CCMH,Cancarb Medicine Hat,Biomass & Other,Biomass & Other,1 hr,supply
+2028,TC01,Carseland Cogen,Natural Gas,Cogen,1 hr,supply
+133176,GEN5,Carson Creek,Natural Gas,Simple Gas,1 hr,supply
+2032,CR1,Castle River #1,Wind,Wind,1 hr,supply
+245350,CRR2,Castle Rock Ridge 2,Wind,Wind,1 hr,supply
+111880,CRR1,Castle Rock Wind Farm,Wind,Wind,1 hr,supply
+1958,EC01,Cavalier,Natural Gas,Combined Cycle,1 hr,supply
+2021,CHIN,Chin Chutte,Hydro,Hydro,1 hr,supply
+161769,CL01,Christina Lake,Natural Gas,Cogen,1 hr,supply
+292586,CLR1,Claresholm 1,Solar,Solar,1 hr,supply
+292589,CLR2,Claresholm 2,Solar,Solar,1 hr,supply
+41373,ENC1,Cloverbar #1,Natural Gas,Simple Gas,1 hr,supply
+63349,ENC2,Cloverbar #2,Natural Gas,Simple Gas,1 hr,supply
+84988,ENC3,Cloverbar #3,Natural Gas,Simple Gas,1 hr,supply
+46133,CNR5,CNRL Horizon,Natural Gas,Cogen,1 hr,supply
+245399,COD1,Coaldale,Natural Gas,Cogen,1 hr,supply
+337725,COL1,Coaldale Solar,Solar,Solar,1 hr,supply
+2022,CRE3,Cowley Ridge,Wind,Wind,1 hr,supply
+84985,CRS1,CRS1 Crossfield #1,Natural Gas,Simple Gas,1 hr,supply
+84995,CRS2,CRS2 Crossfield #2,Natural Gas,Simple Gas,1 hr,supply
+84992,CRS3,CRS3 Crossfield #3,Natural Gas,Simple Gas,1 hr,supply
+1962,OMRH,CUPC Oldman River,Hydro,Hydro,1 hr,supply
+102253,DAI1,Daishowa,Biomass & Other,Biomass & Other,1 hr,supply
+2039,DKSN,Dickson Dam,Hydro,Hydro,1 hr,supply
+2023,DOWG,DOW Hydrocarbon,Natural Gas,Cogen,1 hr,supply
+2025,DV1,Drayton Valley Power,Biomass,Biomass,1 hr,supply
+2024,DRW1,Drywood,Natural Gas,Simple Gas,1 hr,supply
+338125,NMK1,East Strathmore Namaka,Solar,Solar,1 hr,supply
+5024,TLM2,Edson,Natural Gas,Cogen,1 hr,supply
+336892,NPC3,Elmworth,Natural Gas,Simple Gas,1 hr,supply
+2402,EC04,Encana Foster Creek,Natural Gas,Cogen,1 hr,supply
+2044,CAL1,ENMAX Calgary Energy Centre,Natural Gas,Combined Cycle,1 hr,supply
+137053,EGC1,ENMAX Shepard,Natural Gas,Combined Cycle,1 hr,supply
+24045,TAB1,Enmax Taber,Wind,Wind,1 hr,supply
+290411,ERV1,eReserve1 Rycroft,Energy Storage,Energy Storage,1 hr,supply
+327412,ERV2,eReserve2 Buffalo Creek,Energy Storage,Energy Storage,1 hr,supply
+155850,SCR6,Firebag,Natural Gas,Cogen,1 hr,supply
+194379,FH1,Fort Hills,Natural Gas,Cogen,1 hr,supply
+2010,FNG1,Fort Nelson,Natural Gas,Combined Cycle,1 hr,supply
+1982,GN1,Genesee #1,Coal,Coal,1 hr,supply
+1983,GN2,Genesee #2,Coal,Coal,1 hr,supply
+4854,GN3,Genesee #3,Coal,Coal,1 hr,supply
+93929,NEP1,Ghost Pine,Wind,Wind,1 hr,supply
+2027,GOC1,Gold Creek,Biomass & Other,Biomass & Other,1 hr,supply
+5027,GPEC,Grande Prairie EcoPower,Biomass & Other,Biomass & Other,1 hr,supply
+1976,HRM,H.R. Milner,Natural Gas,Simple Gas,1 hr,supply
+118034,HAL1,Halkirk Wind Power Facility,Wind,Wind,1 hr,supply
+326973,HYS1,Hays,Solar,Solar,1 hr,supply
+335527,HRT1,Heartland Petrochemical,Natural Gas,Cogen,1 hr,supply
+147294,MFG1,High River,Natural Gas,Natural Gas,1 hr,supply
+161491,HSM1,House Mountain,Natural Gas,Natural Gas,1 hr,supply
+256553,HUL1,Hull,Solar,Solar,1 hr,supply
+256976,INF1,Innisfail,Solar,Solar,1 hr,supply
+5628,ICP1,Irrican Hydro,Hydro,Hydro,1 hr,supply
+326979,JER1,Jenner,Solar,Solar,1 hr,supply
+2012,JOF1,Joffre #1,Natural Gas,Cogen,1 hr,supply
+138627,GEN6,Judy Creek,Natural Gas,Simple Gas,1 hr,supply
+140964,IOR3,Kearl,Natural Gas,Cogen,1 hr,supply
+1965,KH1,Keephills #1,Coal,Coal,1 hr,supply
+1966,KH2,Keephills #2,Natural Gas,Gas Fired,1 hr,supply
+93933,KH3,Keephills #3,Natural Gas,Gas Fired,1 hr,supply
+8411,KHW1,Kettles Hill Wind,Wind,Wind,1 hr,supply
+2033,ME03,Lethbridge Burdett,Natural Gas,Simple Gas,1 hr,supply
+2034,ME04,Lethbridge Coaldale,Natural Gas,Simple Gas,1 hr,supply
+1960,ME02,Lethbridge Taber,Natural Gas,Simple Gas,1 hr,supply
+156446,PEC1,Lindbergh,Natural Gas,Cogen,1 hr,supply
+3433,MKRC,MacKay River,Natural Gas,Cogen,1 hr,supply
+2041,IOR1,Mahkeses,Natural Gas,Cogen,1 hr,supply
+2736,AKE1,McBride Lake,Wind,Wind,1 hr,supply
+2018,CMH1,Medicine Hat,Natural Gas,Combined Cycle,1 hr,supply
+83942,MEG1,MEG1 Christina Lake,Natural Gas,Cogen,1 hr,supply
+241634,MUL1,Mulligan,Natural Gas,Cogen,1 hr,supply
+2040,MKR1,Muskeg River,Natural Gas,Cogen,1 hr,supply
+140245,IOR2,Nabiye,Natural Gas,Cogen,1 hr,supply
+2030,NX01,Nexen Inc #1,Natural Gas,Combined Cycle,1 hr,supply
+41370,NX02,Nexen Inc #2,Natural Gas,Cogen,1 hr,supply
+46130,NPP1,Northern Prairie Power Project,Natural Gas,Simple Gas,1 hr,supply
+4502,NPC1,NPC1 Denis St. Pierre,Natural Gas,Natural Gas,1 hr,supply
+141175,NPC2,NPC2 JL Landry,Natural Gas,Simple Gas,1 hr,supply
+127171,NRG3,NRGreen Cogen,Biomass & Other,Biomass & Other,1 hr,supply
+137050,OWF1,Oldman 2 Wind Farm 1,Wind,Wind,1 hr,supply
+45135,ALP2,Parkland,Natural Gas,Simple Gas,1 hr,supply
+155853,SCR5,Poplar Creek,Natural Gas,Cogen,1 hr,supply
+1992,PH1,Poplar Hill,Natural Gas,Simple Gas,1 hr,supply
+1991,PR1,Primrose #1,Natural Gas,Cogen,1 hr,supply
+1979,RB1,Rainbow #1,Natural Gas,Natural Gas,1 hr,supply
+1980,RB2,Rainbow #2,Natural Gas,Natural Gas,1 hr,supply
+1981,RB3,Rainbow #3,Natural Gas,Natural Gas,1 hr,supply
+1959,RB5,Rainbow #5,Natural Gas,Simple Gas,1 hr,supply
+2006,RL1,Rainbow Lake #1,Natural Gas,Cogen,1 hr,supply
+147545,NAT1,Ralston,Natural Gas,Simple Gas,1 hr,supply
+335531,RTL1,Rattlesnake Ridge Wind,Wind,Wind,1 hr,supply
+2014,RYMD,Raymond Reservoir,Hydro,Hydro,1 hr,supply
+2029,TC02,Redwater Cogen,Natural Gas,Cogen,1 hr,supply
+245353,RIV1,Riverview,Wind,Wind,1 hr,supply
+292608,SET1,S. Edmonton Terminal,Natural Gas,Simple Gas,1 hr,supply
+244320,SDH1,Saddle Hills,Natural Gas,Cogen,1 hr,supply
+1971,SH1,Sheerness #1,Natural Gas,Gas Fired,1 hr,supply
+1972,SH2,Sheerness #2,Natural Gas,Gas Fired,1 hr,supply
+43967,SHCG,Shell Caroline,Natural Gas,Cogen,1 hr,supply
+161480,SLP1,Slave Lake,Biomass & Other,Biomass & Other,1 hr,supply
+14606,GWW1,Soderglen Wind,Wind,Wind,1 hr,supply
+278202,IOR4,Strathcona,Natural Gas,Cogen,1 hr,supply
+336971,STR1,Strathmore 1,Solar,Solar,1 hr,supply
+336975,STR2,Strathmore 2,Solar,Solar,1 hr,supply
+1977,ST1,Sturgeon #1,Natural Gas,Natural Gas,1 hr,supply
+1978,ST2,Sturgeon #2,Natural Gas,Natural Gas,1 hr,supply
+278208,SUF1,Suffield,Solar,Solar,1 hr,supply
+4772,IEW1,Summerview 1,Wind,Wind,1 hr,supply
+86412,IEW2,Summerview 2,Wind,Wind,1 hr,supply
+290373,SUM1,Summerview,Energy Storage,Energy Storage,1 hr,supply
+15081,SCR3,Suncor Chin Chute,Wind,Wind,1 hr,supply
+4533,SCR2,Suncor Magrath,Wind,Wind,1 hr,supply
+101788,SCR4,Suncor Wintering Hills,Wind,Wind,1 hr,supply
+1897,SD1,Sundance #1,Coal,Coal,1 hr,supply
+1898,SD2,Sundance #2,Coal,Coal,1 hr,supply
+1899,SD3,Sundance #3,Coal,Coal,1 hr,supply
+1900,SD4,Sundance #4,Coal,Coal,1 hr,supply
+1901,SD5,Sundance #5,Coal,Coal,1 hr,supply
+1902,SD6,Sundance #6,Natural Gas,Gas Fired,1 hr,supply
+2016,SCL1,Syncrude,Natural Gas,Cogen,1 hr,supply
+1957,TAY1,Taylor Hydro 1,Hydro,Hydro,1 hr,supply
+8408,TAY2,Taylor Wind,Wind,Wind,1 hr,supply
+336691,TVS1,Travers,Solar,Solar,1 hr,supply
+2037,UOA1,U of A,Natural Gas,Cogen,1 hr,supply
+124129,UOC1,U of C,Natural Gas,Cogen,1 hr,supply
+2031,VVW1,Valley View #1,Natural Gas,Simple Gas,1 hr,supply
+45320,VVW2,Valley View 2,Natural Gas,Simple Gas,1 hr,supply
+254131,VXH1,Vauxhall,Solar,Solar,1 hr,supply
+1970,WB4,Wabamun #4,Coal,Coal,1 hr,supply
+94041,WWD1,Weldwood #1,Biomass & Other,Biomass & Other,1 hr,supply
+94042,WWD2,Weldwood #2,Biomass & Other,Biomass & Other,1 hr,supply
+1961,WWDC,Weldwood,Biomass & Other,Biomass & Other,1 hr,supply
+140972,WCD1,West Cadotte,Natural Gas,Simple Gas,1 hr,supply
+292592,PMB1,West Pembina,Natural Gas,Simple Gas,1 hr,supply
+292602,WEF1,Westfield Yellow Lake,Solar,Solar,1 hr,supply
+2017,WST1,Westlock,Biomass & Other,Biomass & Other,1 hr,supply
+98497,WEY1,Weyerhaeuser,Biomass & Other,Biomass & Other,1 hr,supply
+2026,EAGL,Whitecourt Power,Biomass & Other,Biomass & Other,1 hr,supply
+327191,WHT2,Whitla 2,Wind,Wind,1 hr,supply
+244986,WHT1,Whitla,Wind,Wind,1 hr,supply
+322574,WRW1,Windrise,Wind,Wind,1 hr,supply
+86,,Coal,Coal,Coal,5 min,supply
+322684,,Dual Fuel,Dual Fuel,Dual Fuel,5 min,supply
+322677,,Energy Storage,Energy Storage,Energy Storage,5 min,supply
+87,,Hydro,Hydro,Hydro,5 min,supply
+85,,Natural Gas,Natural Gas,Natural Gas,5 min,supply
+23695,,Biomass & Other,Biomass & Other,Biomass & Other,5 min,supply
+322665,,Solar,Solar,Solar,5 min,supply
+23694,,Wind,Wind,Wind,5 min,supply
+278763,,24M Supply Demand Forecast,,Demand Forecast,,
