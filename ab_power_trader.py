@@ -265,7 +265,6 @@ if __name__ == '__main__':
         current_df = current_data()
         with placeholder.container():
         # KPIs
-            current_df
             # Create dataframe for KPIs from current_df
             st.subheader('Current Hourly Average (MW)')
             kpi_query = '''
@@ -278,7 +277,7 @@ if __name__ == '__main__':
                 ORDER BY fuelType, year, month, day, hour
             '''
             kpi_df = sqldf(kpi_query, globals())
-            kpi_df
+            kpi_df['hour']==datetime.now().hour
             # Pull current and last hour KPIs
             current_hour = kpi_df[['fuelType','value']][kpi_df['hour']==datetime.now().hour]
             previous_hour = kpi_df[['fuelType','value']][kpi_df['hour']==datetime.now().hour-1]
