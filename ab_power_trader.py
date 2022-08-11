@@ -84,12 +84,7 @@ def current_data():
         '''
     current_df = sqldf(current_query, locals())
     return current_df.astype({'fuelType':'object', 'year':'int64','month':'int64', 'day':'int64', 'hour':'int64', 'value':'float64', 'timeStamp':'datetime64[ns]'})
-    #
-# DATETIME(
-#                 strftime('%Y', timeStamp),
-#                 strftime('%m', timeStamp),
-#                 strftime('%d', timeStamp),
-#                 strftime('%H', timeStamp), 0, 0) AS timeStamp,
+
 # Create outages dataframe from NRG data
 @st.experimental_memo
 def stream_data(streamIds, streamNames, years):
@@ -352,7 +347,7 @@ if __name__ == '__main__':
             # https://docs.streamlit.io/library/api-reference/session-state
             outage_df = outages().astype('int32')
             # Check and send alert if outages have changed by > 50 MW
-            if (abs(outage_df-old_outage_df) >= 30).any().any():
+            if (abs(outage_df-old_outage_df) >= cutoff).any().any():
                 st.subheader('Outage Alerts')
                 old_outage_df = old_outage_df
                 #alerts.sms()
