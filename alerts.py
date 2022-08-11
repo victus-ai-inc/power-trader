@@ -30,7 +30,7 @@ def sms():
     msg = MIMEMultipart()
     for gw in sms_gateways:
         msg['To'] = gw
-        body = f'NEW ALERT:\n{datetime.now().strftime("%a %b %d, %Y @ %-I:%M%p")}\nhttps://bit.ly/3zFIAj8'
+        body = f'NEW ALERT:\n{datetime.now().strftime("%a %b %d, %Y @ %-I:%M%p")}\nhttps://bit.ly/3bRcJE3'
         msg.attach(MIMEText(body, 'plain'))
         sms = msg.as_string()
         server.sendmail(email, gw, sms)
