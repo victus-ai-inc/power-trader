@@ -5,3 +5,4 @@ streamlit-aggrid
 google-cloud-bigquery
 twilio
 pandasql
+db-dtypes
