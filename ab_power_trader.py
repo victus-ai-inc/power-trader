@@ -350,7 +350,7 @@ if __name__ == '__main__':
             if (abs(outage_df-old_outage_df) >= cutoff).any().any():
                 st.subheader('Outage Alerts')
                 old_outage_df = old_outage_df
-                #alerts.sms()
+                alerts.sms()
                 df = testing()
                 test = alt.Chart(df).mark_bar(cornerRadiusTopLeft=5, 
                                                 cornerRadiusTopRight=5,
