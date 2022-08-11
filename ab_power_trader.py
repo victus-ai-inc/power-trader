@@ -283,6 +283,7 @@ if __name__ == '__main__':
             previous_hour = kpi_df[['fuelType','value']][kpi_df['hour']==datetime.now().hour-1]
             # Merging current and last hour KPIs into one dataframe
             kpi_df = previous_hour.merge(current_hour, how='left', on='fuelType', suffixes=('Previous','Current'))
+            kpi_df
             # Creating KPI delta calculation
             kpi_df['delta'] = kpi_df['valueCurrent'] - kpi_df['valuePrevious']
             # Creating list of warnings
