@@ -289,6 +289,7 @@ if __name__ == '__main__':
             warning_list = list(kpi_df['fuelType'][kpi_df['absDelta'] > cutoff])
             # Formatting numbers 
             kpi_df.iloc[:,1:] = kpi_df.iloc[:,1:].applymap('{:.0f}'.format)
+            kpi_df
             # Displaying KPIs
             col1, col2, col3, col4, col5, col6, col7, col8 = st.columns(8)
             # Biomass & Other KPI
