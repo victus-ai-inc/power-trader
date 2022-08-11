@@ -277,7 +277,8 @@ if __name__ == '__main__':
                 ORDER BY fuelType, year, month, day, hour
             '''
             kpi_df = sqldf(kpi_query, globals())
-            kpi_df['hour']==datetime.now().hour
+            kpi_df
+            datetime.now().hour
             # Pull current and last hour KPIs
             current_hour = kpi_df[['fuelType','value']][kpi_df['hour']==datetime.now().hour]
             previous_hour = kpi_df[['fuelType','value']][kpi_df['hour']==datetime.now().hour-1]
