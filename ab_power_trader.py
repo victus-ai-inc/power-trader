@@ -280,8 +280,8 @@ if __name__ == '__main__':
             kpi_df
             datetime.now().hour
             # Pull current and last hour KPIs
-            current_hour = kpi_df[['fuelType','value']][kpi_df['hour']==datetime.now().hour]
-            previous_hour = kpi_df[['fuelType','value']][kpi_df['hour']==datetime.now().hour-1]
+            current_hour = kpi_df[['fuelType','value']][kpi_df['hour']==datetime.now().hour-6]
+            previous_hour = kpi_df[['fuelType','value']][kpi_df['hour']==datetime.now().hour-7]
             current_hour
             previous_hour
             # Merging current and last hour KPIs into one dataframe
