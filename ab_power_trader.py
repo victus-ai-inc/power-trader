@@ -277,25 +277,18 @@ if __name__ == '__main__':
                 ORDER BY fuelType, year, month, day, hour
             '''
             kpi_df = sqldf(kpi_query, globals())
-            kpi_df
-            datetime.now().hour
             # Pull current and last hour KPIs
             current_hour = kpi_df[['fuelType','value']][kpi_df['hour']==datetime.now().hour-6]
             previous_hour = kpi_df[['fuelType','value']][kpi_df['hour']==datetime.now().hour-7]
-            current_hour
-            previous_hour
             # Merging current and last hour KPIs into one dataframe
             kpi_df = previous_hour.merge(current_hour, how='left', on='fuelType', suffixes=('Previous','Current'))
-            kpi_df
             # Creating KPI delta calculation
             kpi_df['delta'] = kpi_df['valueCurrent'] - kpi_df['valuePrevious']
             # Creating list of warnings
             kpi_df['absDelta'] = abs(kpi_df['delta'])
             warning_list = list(kpi_df['fuelType'][kpi_df['absDelta'] > cutoff])
-            kpi_df
             # Formatting numbers 
             kpi_df.iloc[:,1:] = kpi_df.iloc[:,1:].applymap('{:.0f}'.format)
-            kpi_df
             # Displaying KPIs
             col1, col2, col3, col4, col5, col6, col7, col8 = st.columns(8)
             # Biomass & Other KPI
