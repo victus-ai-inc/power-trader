@@ -28,6 +28,49 @@ def hide_menu(bool):
             """
         return st.markdown(hide_menu_style, unsafe_allow_html=True)
 
+# Creating access token that will be shared by all app users
+@st.experimental_singleton
+def getToken():
+    if 'accessToken' not in st.session_state or st.session_state['tokenExpiry'] <= datetime.now():
+        accessToken, tokenExpiry = pull_nrg_data.getToken()
+        st.session_state['accessToken'] = accessToken
+        st.session_state['tokenExpiry'] = tokenExpiry
+    else:
+        accessToken = st.session_state['accessToken']
+        tokenExpiry = st.session_state['tokenExpiry']
+    return accessToken, tokenExpiry
+
+def token():
+    if tokenExpiry <= datetime.now():
+        pull_nrg_data.release_token(accessToken)
+        getToken.clear()
+    return getToken()
+
+def kpi(current_df):
+    kpi_query = '''
+        SELECT
+            AVG(value) AS value,
+            fuelType,
+            year, month, day, hour
+        FROM current_df
+        GROUP BY fuelType, year, month, day, hour
+        ORDER BY fuelType, year, month, day, hour
+    '''
+    kpi_df = sqldf(kpi_query, globals())
+    # Pull current and last hour KPIs
+    current_hour = kpi_df[['fuelType','value']][kpi_df['hour']==datetime.now().hour]
+    previous_hour = kpi_df[['fuelType','value']][kpi_df['hour']==datetime.now().hour-1]
+    # Merging current and last hour KPIs into one dataframe
+    kpi_df = previous_hour.merge(current_hour, how='left', on='fuelType', suffixes=('Previous','Current'))
+    # Creating KPI delta calculation
+    kpi_df['delta'] = kpi_df['valueCurrent'] - kpi_df['valuePrevious']
+    # Creating list of warnings
+    kpi_df['absDelta'] = abs(kpi_df['delta'])
+    warning_list = list(kpi_df['fuelType'][kpi_df['absDelta'] > cutoff])
+    # Formatting numbers 
+    kpi_df.iloc[:,1:] = kpi_df.iloc[:,1:].applymap('{:.0f}'.format)
+    return kpi_df, warning_list
+
 # Pull historical data from Google BigQuery
 @st.experimental_memo
 def pull_grouped_hist():
@@ -56,20 +99,17 @@ def pull_grouped_hist():
     return history_df
 
 # Pull current day data from NRG
-def current_data():
+def current_data(tokenExpiry):
     streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694]
     current_df = pd.DataFrame([])
     today = datetime.now()
-    for id in streamIds:
-        accessToken, tokenExpiry = pull_nrg_data.getToken()
-        try:
+    accessToken, tokenExpiry = token()
+    with st.spinner('Gathering Real Time Data'):
+        for id in streamIds:
+            #accessToken, tokenExpiry = pull_nrg_data.getToken()
             APIdata = pull_nrg_data.pull_data(today.strftime('%m/%d/%Y'), today.strftime('%m/%d/%Y'), id, accessToken, tokenExpiry)
-            pull_nrg_data.release_token(accessToken)
             APIdata['timeStamp'] = pd.to_datetime(APIdata['timeStamp'])
             current_df = pd.concat([current_df, APIdata], axis=0)
-        except:
-            pull_nrg_data.release_token(accessToken)
-            pass
     current_query = '''
         SELECT
             strftime('%Y-%m-%d %H:00:00', timeStamp) AS timeStamp,
@@ -94,7 +134,7 @@ def stream_data(streamIds, streamNames, years):
         server = 'api.nrgstream.com'
         year_df = pd.DataFrame([])
         for yr in years:
-            accessToken, tokenExpiry = pull_nrg_data.getToken()
+            accessToken, tokenExpiry = token()
             # Define start & end dates
             startDate = date(yr,1,1).strftime('%m/%d/%Y')
             endDate = date(yr,12,31).strftime('%m/%d/%Y')
@@ -184,24 +224,6 @@ def testing():
     df['timeStamp'] = df['timeStamp'].dt.strftime('%Y-%m')
     return df
 
-# Main code block
-if __name__ == '__main__':
-
-# App config
-    st.set_page_config(layout='wide', initial_sidebar_state='collapsed', menu_items=None)
-    with st.sidebar:
-        cutoff = st.select_slider('Warning MW cutoff', [x*10 for x in range(11)], value=100)
-    st.title('Alberta Power Supply/Demand')
-    hide_menu(True)
-
-# Pull 24M Supply/Demand data
-    #st.subheader('24M Supply/Demand data (Daily)')
-    streamIds = [278763]
-    streamNames = {278763:'0'}
-    years = [datetime.now().year, datetime.now().year+1, datetime.now().year+2]
-    offset_df = stream_data(streamIds, streamNames, years)
-    offset_df.rename(columns={'0':'Peak Hour', 2:'Expected Supply', 3:'Import Capacity', 4:'Load+Reserve', 5:'Surplus'}, inplace=True)
-
 # # Offset demand table & chart
 #     st.subheader('Forecasted & Adjusted Demand')
 #     # Creating cols for Streamlit app
@@ -244,7 +266,27 @@ if __name__ == '__main__':
 #     # Adding layered chart to Col2
 #     with col2:
 #         st.altair_chart(candlestick + area + rule, use_container_width=True)
+
+# Main code block
+if __name__ == '__main__':
     
+# App config
+    st.set_page_config(layout='wide', initial_sidebar_state='collapsed', menu_items=None)
+    with st.sidebar:
+        cutoff = st.select_slider('Warning MW cutoff', [_ * 10 for _ in range(11)], value=100)
+    st.title('Alberta Power Supply/Demand')
+    hide_menu(True)
+
+    # Get & save access token to cache
+    accessToken, tokenExpiry = getToken()
+# Pull 24M Supply/Demand data
+    #st.subheader('24M Supply/Demand data (Daily)')
+    # streamIds = [278763]
+    # streamNames = {278763:'0'}
+    # years = [datetime.now().year, datetime.now().year+1, datetime.now().year+2]
+    # offset_df = stream_data(streamIds, streamNames, years)
+    # offset_df.rename(columns={'0':'Peak Hour', 2:'Expected Supply', 3:'Import Capacity', 4:'Load+Reserve', 5:'Surplus'}, inplace=True)
+
 # Cache outages dataframe in session_state if it doesn't already exist
     # if 'outages' not in st.session_state:
     #     st.session_state['outages'] = outages()
@@ -258,61 +300,32 @@ if __name__ == '__main__':
     placeholder = st.empty()
     for seconds in range(100000):
         # Pull live data
-        current_df = current_data()
+        current_df = current_data(tokenExpiry)
         with placeholder.container():
         # KPIs
             # Create dataframe for KPIs from current_df
             st.subheader('Current Hourly Average (MW)')
-            kpi_query = '''
-                SELECT
-                    AVG(value) AS value,
-                    fuelType,
-                    year, month, day, hour
-                FROM current_df
-                GROUP BY fuelType, year, month, day, hour
-                ORDER BY fuelType, year, month, day, hour
-            '''
-            kpi_df = sqldf(kpi_query, globals())
-            # Pull current and last hour KPIs
-            current_hour = kpi_df[['fuelType','value']][kpi_df['hour']==datetime.now().hour]
-            previous_hour = kpi_df[['fuelType','value']][kpi_df['hour']==datetime.now().hour-1]
-            # Merging current and last hour KPIs into one dataframe
-            kpi_df = previous_hour.merge(current_hour, how='left', on='fuelType', suffixes=('Previous','Current'))
-            # Creating KPI delta calculation
-            kpi_df['delta'] = kpi_df['valueCurrent'] - kpi_df['valuePrevious']
-            # Creating list of warnings
-            kpi_df['absDelta'] = abs(kpi_df['delta'])
-            warning_list = list(kpi_df['fuelType'][kpi_df['absDelta'] > cutoff])
-            # Formatting numbers 
-            kpi_df.iloc[:,1:] = kpi_df.iloc[:,1:].applymap('{:.0f}'.format)
+            kpi_df, warning_list = kpi(current_df)
             # Displaying KPIs
             col1, col2, col3, col4, col5, col6, col7, col8 = st.columns(8)
-            # Biomass & Other KPI
-            col1.metric(label=kpi_df.iloc[0,0], value=kpi_df.iloc[0,2], delta=kpi_df.iloc[0,3])
-            # Coal KPI
-            col2.metric(label=kpi_df.iloc[1,0], value=kpi_df.iloc[1,2], delta=kpi_df.iloc[1,3])
-            # Dual Fuel KPI
-            col3.metric(label=kpi_df.iloc[2,0], value=kpi_df.iloc[2,2], delta=kpi_df.iloc[2,3])
-            # Energy Storage KPI
-            col4.metric(label=kpi_df.iloc[3,0], value=kpi_df.iloc[3,2], delta=kpi_df.iloc[3,3])
-            # Hydro KPI
-            col5.metric(label=kpi_df.iloc[4,0], value=kpi_df.iloc[4,2], delta=kpi_df.iloc[4,3])
-            # Natural Gas KPI
-            col6.metric(label=kpi_df.iloc[5,0], value=kpi_df.iloc[5,2], delta=kpi_df.iloc[5,3])
-            # Solar KPI
-            col7.metric(label=kpi_df.iloc[6,0], value=kpi_df.iloc[6,2], delta=kpi_df.iloc[6,3])
-            # Wind KPI
-            col8.metric(label=kpi_df.iloc[7,0], value=kpi_df.iloc[7,2], delta=kpi_df.iloc[7,3])
+            col1.metric(label=kpi_df.iloc[0,0], value=kpi_df.iloc[0,2], delta=kpi_df.iloc[0,3]) # Biomass & Other
+            col2.metric(label=kpi_df.iloc[1,0], value=kpi_df.iloc[1,2], delta=kpi_df.iloc[1,3]) # Coal
+            col3.metric(label=kpi_df.iloc[2,0], value=kpi_df.iloc[2,2], delta=kpi_df.iloc[2,3]) # Dual Fuel
+            col4.metric(label=kpi_df.iloc[3,0], value=kpi_df.iloc[3,2], delta=kpi_df.iloc[3,3]) # Energy Storage
+            col5.metric(label=kpi_df.iloc[4,0], value=kpi_df.iloc[4,2], delta=kpi_df.iloc[4,3]) # Hydro
+            col6.metric(label=kpi_df.iloc[5,0], value=kpi_df.iloc[5,2], delta=kpi_df.iloc[5,3]) # Natural Gas
+            col7.metric(label=kpi_df.iloc[6,0], value=kpi_df.iloc[6,2], delta=kpi_df.iloc[6,3]) # Solar
+            col8.metric(label=kpi_df.iloc[7,0], value=kpi_df.iloc[7,2], delta=kpi_df.iloc[7,3]) # Wind
             # KPI warning box
             if len(warning_list) > 0:
                 l = len(warning_list)
                 for _ in range(l):
                     st.error(f'{warning_list[_]} has a differential greater than {cutoff} MW over the previous hour.')
         # 14 day hist/real-time/forecast
+            st.subheader('Real-time Supply')
             # Pull last 7 days data
             history_df = pull_grouped_hist()
             # Combine last 7 days & live dataframes
-            st.subheader('Real-time Supply')
             combo_df = pd.concat([history_df,current_df], axis=0)
             query = 'SELECT * FROM combo_df ORDER BY fuelType'
             combo_df = sqldf(query, globals())
@@ -344,14 +357,12 @@ if __name__ == '__main__':
             st.altair_chart(outage_area, use_container_width=True)
 
             #TESTING!!
-            # ADD st.session_state
-            # https://docs.streamlit.io/library/api-reference/session-state
             outage_df = outages().astype('int32')
             # Check and send alert if outages have changed by > 50 MW
             if (abs(outage_df-old_outage_df) >= cutoff).any().any():
                 st.subheader('Outage Alerts')
                 outage_df = old_outage_df
-                alerts.sms()
+                #alerts.sms()
                 df = testing()
                 test = alt.Chart(df).mark_bar(cornerRadiusTopLeft=5, 
                                                 cornerRadiusTopRight=5,
