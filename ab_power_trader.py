@@ -99,17 +99,17 @@ def pull_grouped_hist():
     return history_df
 
 # Pull current day data from NRG
+st.experimental_singleton(show_spinner=True)
 def current_data(tokenExpiry):
     streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694]
     current_df = pd.DataFrame([])
     today = datetime.now()
     accessToken, tokenExpiry = token()
-    with st.spinner('Gathering Real Time Data'):
-        for id in streamIds:
-            #accessToken, tokenExpiry = pull_nrg_data.getToken()
-            APIdata = pull_nrg_data.pull_data(today.strftime('%m/%d/%Y'), today.strftime('%m/%d/%Y'), id, accessToken, tokenExpiry)
-            APIdata['timeStamp'] = pd.to_datetime(APIdata['timeStamp'])
-            current_df = pd.concat([current_df, APIdata], axis=0)
+    for id in streamIds:
+        APIdata = pull_nrg_data.pull_data(today.strftime('%m/%d/%Y'), today.strftime('%m/%d/%Y'), id, accessToken, tokenExpiry)
+        APIdata['timeStamp'] = pd.to_datetime(APIdata['timeStamp'])
+        current_df = pd.concat([current_df, APIdata], axis=0)
+    st.write('got data')
     current_query = '''
         SELECT
             strftime('%Y-%m-%d %H:00:00', timeStamp) AS timeStamp,
@@ -124,7 +124,7 @@ def current_data(tokenExpiry):
         ORDER BY fuelType, year, month, day, hour, timeStamp
         '''
     current_df = sqldf(current_query, locals())
-    return current_df.astype({'fuelType':'object', 'year':'int64','month':'int64', 'day':'int64', 'hour':'int64', 'value':'float64', 'timeStamp':'datetime64[ns]'})
+    return current_df.astype({'fuelType':'object', 'year':'int64','month':'int64', 'day':'int64', 'hour':'int64', 'value':'float64', 'timeStamp':'datetime64[ns]'}), today
 
 # Create outages dataframe from NRG data
 @st.experimental_memo
@@ -300,10 +300,12 @@ if __name__ == '__main__':
     placeholder = st.empty()
     for seconds in range(100000):
         # Pull live data
-        current_df = current_data(tokenExpiry)
+        current_df, last_update = current_data(tokenExpiry)
+        #last_update = last_update
         with placeholder.container():
         # KPIs
             # Create dataframe for KPIs from current_df
+            st.write(f"Last updated: {last_update.strftime('%a %b %d @ %X')}")
             st.subheader('Current Hourly Average (MW)')
             kpi_df, warning_list = kpi(current_df)
             # Displaying KPIs

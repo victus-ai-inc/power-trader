@@ -45,6 +45,7 @@ def get_streamInfo(streamId):
     return streamInfo
 
 # Use token to pull data
+st.experimental_singleton(show_spinner=True)
 def pull_data(fromDate, toDate, streamId, accessToken, tokenExpiry):
     # Setup the path for data request
     server = 'api.nrgstream.com'
@@ -56,6 +57,8 @@ def pull_data(fromDate, toDate, streamId, accessToken, tokenExpiry):
     res = conn.getresponse()
     if res.code != 200:
         conn.close()
+        time.sleep(5)
+        st.write('trying')
         pull_data(fromDate, toDate, streamId, accessToken, tokenExpiry)
     # Load json data & create pandas df
     else:
