@@ -46,6 +46,84 @@ def token():
         getToken.clear()
     return getToken()
 
+@st.experimental_memo
+def get_streamInfo(streamId):
+    streamInfo = pd.read_csv('stream_codes.csv')
+    streamInfo = streamInfo[streamInfo['streamId']==streamId]
+    return streamInfo
+
+#@st.experimental_singleton
+def http_connect():
+    server = 'api.nrgstream.com'
+    context = ssl.create_default_context(cafile=certifi.where())
+    conn = http.client.HTTPSConnection(server, context=context)
+    return conn
+
+def pull_data(fromDate, toDate, streamId, accessToken, tokenExpiry):
+    # Setup the path for data request
+    conn = http_connect()
+    conn
+    path = f'/api/StreamData/{streamId}?fromDate={fromDate}&toDate={toDate}'
+    headers = {'Accept': 'Application/json', 'Authorization': f'Bearer {accessToken}'}
+    conn.request('GET', path, None, headers)
+    res = conn.getresponse()
+    if res.code != 200:
+        st.write(f'trying, code = {res.code}')
+        res.read()
+        conn.close()
+        time.sleep(5)
+        pull_data(fromDate, toDate, streamId, accessToken, tokenExpiry)
+    # Load json data & create pandas df
+    else:
+        jsonData = json.loads(res.read().decode('utf-8'))
+        df = pd.json_normalize(jsonData, record_path='data')
+        # Rename df cols
+        df.rename(columns={0:'timeStamp', 1:'value'}, inplace=True)
+        # Add streamInfo cols to df
+        streamInfo = get_streamInfo(streamId)
+        assetCode = streamInfo.iloc[0,1]
+        streamName = streamInfo.iloc[0,2]
+        fuelType = streamInfo.iloc[0,3]
+        subfuelType = streamInfo.iloc[0,4]
+        timeInterval = streamInfo.iloc[0,5]
+        intervalType = streamInfo.iloc[0,6]
+        df = df.assign(streamId=streamId, assetCode=assetCode, streamName=streamName, fuelType=fuelType, \
+                        subfuelType=subfuelType, timeInterval=timeInterval, intervalType=intervalType)
+        # Changing 'value' col to numeric and filling in NA's with previous value in col
+        df.replace(to_replace={'value':''}, value=0, inplace=True)
+        df['value'] = pd.to_numeric(df['value'])
+        df.fillna(method='ffill', inplace=True)
+        conn.close()
+    return df
+
+# Pull current day data from NRG
+@st.experimental_memo(suppress_st_warning=True)
+def current_data(tokenExpiry):
+    streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694]
+    current_df = pd.DataFrame([])
+    today = datetime.now()
+    accessToken, tokenExpiry = token()
+    for id in streamIds:
+        APIdata = pull_data(today.strftime('%m/%d/%Y'), today.strftime('%m/%d/%Y'), id, accessToken, tokenExpiry)
+        APIdata['timeStamp'] = pd.to_datetime(APIdata['timeStamp'])
+        current_df = pd.concat([current_df, APIdata], axis=0)
+    current_query = '''
+        SELECT
+            strftime('%Y-%m-%d %H:00:00', timeStamp) AS timeStamp,
+            fuelType,
+            strftime('%Y', timeStamp) AS year,
+            strftime('%m', timeStamp) AS month,
+            strftime('%d', timeStamp) AS day,
+            strftime('%H', timeStamp) AS hour,
+            AVG(value) AS value
+        FROM current_df
+        GROUP BY fuelType, year, month, day, hour
+        ORDER BY fuelType, year, month, day, hour, timeStamp
+        '''
+    current_df = sqldf(current_query, locals())
+    return current_df.astype({'fuelType':'object', 'year':'int64','month':'int64', 'day':'int64', 'hour':'int64', 'value':'float64', 'timeStamp':'datetime64[ns]'}), today
+
+# Create KPIs
 def kpi(current_df):
     kpi_query = '''
         SELECT
@@ -97,34 +175,6 @@ def pull_grouped_hist():
     '''
     history_df = bigquery.Client(credentials=credentials).query(query).to_dataframe()
     return history_df
-
-# Pull current day data from NRG
-st.experimental_singleton(show_spinner=True)
-def current_data(tokenExpiry):
-    streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694]
-    current_df = pd.DataFrame([])
-    today = datetime.now()
-    accessToken, tokenExpiry = token()
-    for id in streamIds:
-        APIdata = pull_nrg_data.pull_data(today.strftime('%m/%d/%Y'), today.strftime('%m/%d/%Y'), id, accessToken, tokenExpiry)
-        APIdata['timeStamp'] = pd.to_datetime(APIdata['timeStamp'])
-        current_df = pd.concat([current_df, APIdata], axis=0)
-    st.write('got data')
-    current_query = '''
-        SELECT
-            strftime('%Y-%m-%d %H:00:00', timeStamp) AS timeStamp,
-            fuelType,
-            strftime('%Y', timeStamp) AS year,
-            strftime('%m', timeStamp) AS month,
-            strftime('%d', timeStamp) AS day,
-            strftime('%H', timeStamp) AS hour,
-            AVG(value) AS value
-        FROM current_df
-        GROUP BY fuelType, year, month, day, hour
-        ORDER BY fuelType, year, month, day, hour, timeStamp
-        '''
-    current_df = sqldf(current_query, locals())
-    return current_df.astype({'fuelType':'object', 'year':'int64','month':'int64', 'day':'int64', 'hour':'int64', 'value':'float64', 'timeStamp':'datetime64[ns]'}), today
 
 # Create outages dataframe from NRG data
 @st.experimental_memo
@@ -269,7 +319,6 @@ def testing():
 
 # Main code block
 if __name__ == '__main__':
-    
 # App config
     st.set_page_config(layout='wide', initial_sidebar_state='collapsed', menu_items=None)
     with st.sidebar:
@@ -277,8 +326,9 @@ if __name__ == '__main__':
     st.title('Alberta Power Supply/Demand')
     hide_menu(True)
 
-    # Get & save access token to cache
+# Get & save access token to cache
     accessToken, tokenExpiry = getToken()
+
 # Pull 24M Supply/Demand data
     #st.subheader('24M Supply/Demand data (Daily)')
     # streamIds = [278763]
@@ -305,8 +355,7 @@ if __name__ == '__main__':
         with placeholder.container():
         # KPIs
             # Create dataframe for KPIs from current_df
-            st.write(f"Last updated: {last_update.strftime('%a %b %d @ %X')}")
-            st.subheader('Current Hourly Average (MW)')
+            st.subheader('Current Supply - Hourly Average (MW)')
             kpi_df, warning_list = kpi(current_df)
             # Displaying KPIs
             col1, col2, col3, col4, col5, col6, col7, col8 = st.columns(8)
@@ -318,6 +367,7 @@ if __name__ == '__main__':
             col6.metric(label=kpi_df.iloc[5,0], value=kpi_df.iloc[5,2], delta=kpi_df.iloc[5,3]) # Natural Gas
             col7.metric(label=kpi_df.iloc[6,0], value=kpi_df.iloc[6,2], delta=kpi_df.iloc[6,3]) # Solar
             col8.metric(label=kpi_df.iloc[7,0], value=kpi_df.iloc[7,2], delta=kpi_df.iloc[7,3]) # Wind
+            st.write(f"Last update: {last_update.strftime('%a, %b %d @ %X')}")
             # KPI warning box
             if len(warning_list) > 0:
                 l = len(warning_list)
@@ -337,7 +387,7 @@ if __name__ == '__main__':
                 y=alt.Y('value:Q', title='Current Supply (MW)'),
                 color=alt.Color('fuelType:N', scale=alt.Scale(scheme='category20'), legend=alt.Legend(orient="top")),
                 tooltip=['fuelType:N','timeStamp:T','hour:O', 'value:Q']
-            ).properties(height=400).interactive()
+            ).properties(height=400)
             st.altair_chart(combo_area, use_container_width=True)
         # Outages chart
             st.subheader('Forecasted Outages (Daily)')
@@ -378,5 +428,5 @@ if __name__ == '__main__':
                     color=alt.condition(alt.datum.value < 0, alt.value('red'), alt.value('black')),
                 ).properties(height = 100)
                 st.altair_chart(test)
-                #st.stop()
-            time.sleep(1)
+            current_data.clear()
+            time.sleep(10)
