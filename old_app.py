@@ -328,7 +328,9 @@ if __name__ == '__main__':
 
 # Get & save access token to cache
     accessToken, tokenExpiry = getToken()
-
+    accessToken
+    tokenExpiry 
+    st.session_state
 # Pull 24M Supply/Demand data
     #st.subheader('24M Supply/Demand data (Daily)')
     # streamIds = [278763]
@@ -350,6 +352,7 @@ if __name__ == '__main__':
     placeholder = st.empty()
     for seconds in range(100000):
         # Pull live data
+        #st.session_state['test_df']
         current_df, last_update = current_data(tokenExpiry)
         #last_update = last_update
         with placeholder.container():
