@@ -14,6 +14,19 @@ from google.oauth2 import service_account
 from google.cloud.exceptions import NotFound
 from pandasql import sqldf
 
+# Function to hide top and bottom menus on Streamlit app
+def hide_menu(bool):
+    if bool == True:
+        hide_menu_style = """
+            <style>
+            #MainMenu {visibility: hidden;}
+            footer {visibility: hidden;}
+            .css-1j15ncu {visibility: hidden;}
+            .css-14x9thb {visibility: hidden;}
+            </style>
+            """
+        return st.markdown(hide_menu_style, unsafe_allow_html=True)
+
 def getToken():
     username = st.secrets["nrg_username"]
     password = st.secrets["nrg_password"]
@@ -151,12 +164,43 @@ def kpi(current_df):
     kpi_df['delta'] = kpi_df['valueCurrent'] - kpi_df['valuePrevious']
     # Creating list of warnings
     kpi_df['absDelta'] = abs(kpi_df['delta'])
-    warning_list = list(kpi_df['fuelType'][kpi_df['absDelta'] > cutoff])
+    warning_list = list(kpi_df['fuelType'][kpi_df['absDelta'] > 50])
     # Formatting numbers 
     kpi_df.iloc[:,1:] = kpi_df.iloc[:,1:].applymap('{:.0f}'.format)
     return kpi_df, warning_list
 
-cutoff = 50
+# Pull historical data from Google BigQuery
+@st.experimental_memo
+def pull_grouped_hist():
+    # Google BigQuery auth
+    credentials = service_account.Credentials.from_service_account_info(st.secrets["gcp_service_account"])
+    # Pull data
+    query = '''
+    SELECT
+        DATETIME(
+            EXTRACT (YEAR FROM timeStamp), 
+            EXTRACT (MONTH FROM timeStamp),
+            EXTRACT (DAY FROM timeStamp),
+            EXTRACT (HOUR FROM timeStamp), 0, 0) AS timeStamp,
+        fuelType,
+        EXTRACT (YEAR FROM timeStamp) AS year,
+        EXTRACT (MONTH FROM timeStamp) AS month,
+        EXTRACT (DAY FROM timeStamp) AS day,
+        EXTRACT (HOUR FROM timeStamp) AS hour,
+        AVG(value) AS value
+    FROM nrgdata.hourly_data
+    WHERE timeStamp BETWEEN DATE_SUB(current_date(), INTERVAL 7 DAY) AND current_date()
+    GROUP BY fuelType, year, month, day, hour, timeStamp
+    ORDER BY fuelType, year, month, day, hour, timeStamp
+    '''
+    history_df = bigquery.Client(credentials=credentials).query(query).to_dataframe()
+    return history_df
+
+# App config
+st.set_page_config(layout='wide', initial_sidebar_state='collapsed', menu_items=None)
+st.title('Alberta Power Supply/Demand')
+hide_menu(True)
+
 placeholder = st.empty()
 for seconds in range(100000):
     # Pull live data
@@ -186,4 +230,21 @@ for seconds in range(100000):
         if len(warning_list) > 0:
             l = len(warning_list)
             for _ in range(l):
-                st.error(f'{warning_list[_]} has a differential greater than {cutoff} MW over the previous hour.')
+                st.error(f'{warning_list[_]} has a differential greater than 50 MW over the previous hour.')
+
+# 14 day hist/real-time/forecast
+        st.subheader('Real-time Supply')
+        # Pull last 7 days data
+        history_df = pull_grouped_hist()
+        # Combine last 7 days & live dataframes
+        combo_df = pd.concat([history_df,current_df], axis=0)
+        query = 'SELECT * FROM combo_df ORDER BY fuelType'
+        combo_df = sqldf(query, globals())
+        # Base combo_df bar chart
+        combo_area = alt.Chart(combo_df).mark_area(color='grey', opacity=0.7).encode(
+            x=alt.X('timeStamp:T', title=''),
+            y=alt.Y('value:Q', title='Current Supply (MW)'),
+            color=alt.Color('fuelType:N', scale=alt.Scale(scheme='category20'), legend=alt.Legend(orient="top")),
+            tooltip=['fuelType:N','timeStamp:T','hour:O', 'value:Q']
+        ).properties(height=400)
+        st.altair_chart(combo_area, use_container_width=True)
