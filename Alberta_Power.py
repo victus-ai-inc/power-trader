@@ -118,56 +118,40 @@ def pull_data(fromDate, toDate, streamId, accessToken, tokenExpiry):
 # Pull current day data from NRG
 @st.experimental_memo(suppress_st_warning=True, ttl=20)
 def current_data():
-    streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694]
-    current_df = pd.DataFrame([])
+    streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694, 120, 124947, 122]
+    realtime_df = pd.DataFrame([])
     today = datetime.now()
     for id in streamIds:
         accessToken, tokenExpiry = getToken()
         APIdata = pull_data(today.strftime('%m/%d/%Y'), today.strftime('%m/%d/%Y'), id, accessToken, tokenExpiry)
         APIdata['timeStamp'] = pd.to_datetime(APIdata['timeStamp'])
-        current_df = pd.concat([current_df, APIdata], axis=0)
+        realtime_df = pd.concat([realtime_df, APIdata], axis=0)
         release_token(accessToken)
-    current_query = '''
-        SELECT
-            strftime('%Y-%m-%d %H:00:00', timeStamp) AS timeStamp,
-            fuelType,
-            strftime('%Y', timeStamp) AS year,
-            strftime('%m', timeStamp) AS month,
-            strftime('%d', timeStamp) AS day,
-            strftime('%H', timeStamp) AS hour,
-            AVG(value) AS value
-        FROM current_df
-        GROUP BY fuelType, year, month, day, hour
-        ORDER BY fuelType, year, month, day, hour, timeStamp
-        '''
-    current_df = sqldf(current_query, locals())
-    return current_df.astype({'fuelType':'object', 'year':'int64','month':'int64', 'day':'int64', 'hour':'int64', 'value':'float64', 'timeStamp':'datetime64[ns]'}), today
+    return realtime_df, today
 
 # Create KPIs
-def kpi(current_df):
-    kpi_query = '''
-        SELECT
-            AVG(value) AS value,
-            fuelType,
-            year, month, day, hour
-        FROM current_df
-        GROUP BY fuelType, year, month, day, hour
-        ORDER BY fuelType, year, month, day, hour
-    '''
-    kpi_df = sqldf(kpi_query, globals())
-    # Pull current and last hour KPIs
-    current_hour = kpi_df[['fuelType','value']][kpi_df['hour']==datetime.now().hour]
-    previous_hour = kpi_df[['fuelType','value']][kpi_df['hour']==datetime.now().hour-1]
-    # Merging current and last hour KPIs into one dataframe
-    kpi_df = previous_hour.merge(current_hour, how='left', on='fuelType', suffixes=('Previous','Current'))
+def kpi(left_df, right_df, title):
+    # Merging KPIs into one dataframe
+    kpi_df = left_df.merge(right_df, how='left', on='fuelType', suffixes=('Previous','Current'))
     # Creating KPI delta calculation
     kpi_df['delta'] = kpi_df['valueCurrent'] - kpi_df['valuePrevious']
-    # Creating list of warnings
     kpi_df['absDelta'] = abs(kpi_df['delta'])
-    warning_list = list(kpi_df['fuelType'][kpi_df['absDelta'] > 50])
     # Formatting numbers 
     kpi_df.iloc[:,1:] = kpi_df.iloc[:,1:].applymap('{:.0f}'.format)
-    return kpi_df, warning_list
+    col1, col2, col3, col4, col5, col6, col7, col8, col9, col10, col11 = st.columns(11)
+    with col1:
+        st.subheader(title)
+    col2.metric(label=kpi_df.iloc[7,0], value=kpi_df.iloc[7,2], delta=kpi_df.iloc[7,3]) # Natural Gas
+    col3.metric(label=kpi_df.iloc[5,0], value=kpi_df.iloc[5,2], delta=kpi_df.iloc[5,3]) # Hydro
+    col4.metric(label=kpi_df.iloc[4,0], value=kpi_df.iloc[4,2], delta=kpi_df.iloc[4,3]) # Energy Storage
+    col5.metric(label=kpi_df.iloc[9,0], value=kpi_df.iloc[9,2], delta=kpi_df.iloc[9,3]) # Solar
+    col6.metric(label=kpi_df.iloc[10,0], value=kpi_df.iloc[10,2], delta=kpi_df.iloc[10,3]) # Wind
+    col7.metric(label=kpi_df.iloc[3,0], value=kpi_df.iloc[3,2], delta=kpi_df.iloc[3,3]) # Dual Fuel
+    col8.metric(label=kpi_df.iloc[2,0], value=kpi_df.iloc[2,2], delta=kpi_df.iloc[2,3]) # Coal
+    col9.metric(label=kpi_df.iloc[0,0], value=kpi_df.iloc[0,2], delta=kpi_df.iloc[0,3]) # BC
+    col10.metric(label=kpi_df.iloc[6,0], value=kpi_df.iloc[6,2], delta=kpi_df.iloc[6,3]) # Montanta
+    col11.metric(label=kpi_df.iloc[8,0], value=kpi_df.iloc[8,2], delta=kpi_df.iloc[8,3]) # Sask
+    return kpi_df
 
 # Pull historical data from Google BigQuery
 @st.experimental_memo
@@ -196,44 +180,84 @@ def pull_grouped_hist():
     history_df = bigquery.Client(credentials=credentials).query(query).to_dataframe()
     return history_df
 
+def header(url):
+    st.markdown(f'<p style="text-align:center;background-color:#0066cc;color:#33ff33;font-size:40px;border-radius:2%;">{url}</p>', unsafe_allow_html=True)
+
 # App config
 st.set_page_config(layout='wide', initial_sidebar_state='collapsed', menu_items=None)
-st.title('Alberta Power Supply/Demand')
+color_scheme = ['#1f77b4', '#aec7e8', '#ff7f0e', ' #ffbb78', '#2ca02c', '#98df8a','#d62728', '#7f7f7f']
 hide_menu(True)
 
 placeholder = st.empty()
 for seconds in range(100000):
     # Pull live data
     try:
-        current_df, last_update = current_data()
+        realtime_df, last_update = current_data()
     except:
         with st.spinner('Gathering Live Data Streams'):
             time.sleep(10)
-        current_df, last_update = current_data()
+        realtime_df, last_update = current_data()
     with placeholder.container():
     # KPIs
-        # Create dataframe for KPIs from current_df
-        st.subheader('Current Supply - Hourly Average (MW)')
-        kpi_df, warning_list = kpi(current_df)
-        # Displaying KPIs
-        col1, col2, col3, col4, col5, col6, col7, col8 = st.columns(8)
-        col1.metric(label=kpi_df.iloc[0,0], value=kpi_df.iloc[0,2], delta=kpi_df.iloc[0,3]) # Biomass & Other
-        col2.metric(label=kpi_df.iloc[1,0], value=kpi_df.iloc[1,2], delta=kpi_df.iloc[1,3]) # Coal
-        col3.metric(label=kpi_df.iloc[2,0], value=kpi_df.iloc[2,2], delta=kpi_df.iloc[2,3]) # Dual Fuel
-        col4.metric(label=kpi_df.iloc[3,0], value=kpi_df.iloc[3,2], delta=kpi_df.iloc[3,3]) # Energy Storage
-        col5.metric(label=kpi_df.iloc[4,0], value=kpi_df.iloc[4,2], delta=kpi_df.iloc[4,3]) # Hydro
-        col6.metric(label=kpi_df.iloc[5,0], value=kpi_df.iloc[5,2], delta=kpi_df.iloc[5,3]) # Natural Gas
-        col7.metric(label=kpi_df.iloc[6,0], value=kpi_df.iloc[6,2], delta=kpi_df.iloc[6,3]) # Solar
-        col8.metric(label=kpi_df.iloc[7,0], value=kpi_df.iloc[7,2], delta=kpi_df.iloc[7,3]) # Wind
+        current_query = '''
+        SELECT
+            strftime('%Y-%m-%d %H:00:00', timeStamp) AS timeStamp,
+            fuelType,
+            strftime('%Y', timeStamp) AS year,
+            strftime('%m', timeStamp) AS month,
+            strftime('%d', timeStamp) AS day,
+            strftime('%H', timeStamp) AS hour,
+            AVG(value) AS value
+        FROM realtime_df
+        GROUP BY fuelType, year, month, day, hour
+        ORDER BY fuelType, year, month, day, hour, timeStamp
+        '''
+        current_df = sqldf(current_query, locals()).astype({'fuelType':'object', 'year':'int64','month':'int64', 'day':'int64', 'hour':'int64', 'value':'float64', 'timeStamp':'datetime64[ns]'})
+        
+        # Real Time KPIs
+        realtime = realtime_df[['fuelType','value','timeStamp']][realtime_df['timeStamp']==max(realtime_df['timeStamp'])]
+        if len(realtime) < 8:
+            realtime = realtime_df[['fuelType','value','timeStamp']][realtime_df['timeStamp']==max(realtime_df['timeStamp']-timedelta(0,3600,0))]
+        realtime.drop('timeStamp', axis=1, inplace=True)
+        realtime = realtime.astype({'fuelType':'object','value':'float64'})
+        previousHour = current_df[['fuelType','value']][current_df['hour']==datetime.now().hour-1]
+        currentHour = current_df[['fuelType','value']][current_df['hour']==datetime.now().hour]
+        
+        kpi_df = kpi(previousHour, realtime, 'Real Time')
+        kpi(previousHour, currentHour, 'Hourly Average')
+        warning_list = list(kpi_df['fuelType'][kpi_df['absDelta'].astype('int64') > 50])
+
         st.write(f"Last update: {last_update.strftime('%a, %b %d @ %X')}")
         # KPI warning box
-        if len(warning_list) > 0:
-            l = len(warning_list)
-            for _ in range(l):
-                st.error(f'{warning_list[_]} has a differential greater than 50 MW over the previous hour.')
+        col1, col2 = st.columns(2)
+        # Real time alerts
+        with col1:
+            if len(warning_list) > 0:
+                l = len(warning_list)
+                for _ in range(l):
+                    #st.error(f'{warning_list[_]} has a differential greater than 100 MW over the previous hour.')
+                    st.error(f'{warning_list[_]}')
+                    header('NOTICE')
+        # with col2:
+        #     # Outage & intertie alerts
 
 # 14 day hist/real-time/forecast
         st.subheader('Real-time Supply')
+        current_query = '''
+        SELECT
+            strftime('%Y-%m-%d %H:00:00', timeStamp) AS timeStamp,
+            fuelType,
+            strftime('%Y', timeStamp) AS year,
+            strftime('%m', timeStamp) AS month,
+            strftime('%d', timeStamp) AS day,
+            strftime('%H', timeStamp) AS hour,
+            AVG(value) AS value
+        FROM realtime_df
+        WHERE fuelType NOT IN ('BC','Montana','Saskatchewan')
+        GROUP BY fuelType, year, month, day, hour
+        ORDER BY fuelType, year, month, day, hour, timeStamp
+        '''
+        current_df= sqldf(current_query, locals()).astype({'fuelType':'object', 'year':'int64','month':'int64', 'day':'int64', 'hour':'int64', 'value':'float64', 'timeStamp':'datetime64[ns]'})
         # Pull last 7 days data
         history_df = pull_grouped_hist()
         # Combine last 7 days & live dataframes
@@ -244,7 +268,6 @@ for seconds in range(100000):
         combo_area = alt.Chart(combo_df).mark_area(color='grey', opacity=0.7).encode(
             x=alt.X('timeStamp:T', title=''),
             y=alt.Y('value:Q', title='Current Supply (MW)'),
-            color=alt.Color('fuelType:N', scale=alt.Scale(scheme='category20'), legend=alt.Legend(orient="top")),
-            tooltip=['fuelType:N','timeStamp:T','hour:O', 'value:Q']
+            color=alt.Color('fuelType:N', scale=alt.Scale(range=color_scheme), legend=alt.Legend(orient="top"))
         ).properties(height=400)
         st.altair_chart(combo_area, use_container_width=True)

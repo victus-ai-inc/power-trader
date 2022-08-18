@@ -687,4 +687,7 @@ streamId,assetCode,streamName,fuelType,subfuelType,timeInterval,intervalType
 23695,,Biomass & Other,Biomass & Other,Biomass & Other,5 min,supply
 322665,,Solar,Solar,Solar,5 min,supply
 23694,,Wind,Wind,Wind,5 min,supply
+120,,BC,BC,BC,5 min,supply
+124947,,Montana,Montana,Montana,5 min,supply
+122,,Saskatchewan,Saskatchewan,Saskatchewan,5 min,supply
 278763,,24M Supply Demand Forecast,,Demand Forecast,,
