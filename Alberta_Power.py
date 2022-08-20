@@ -13,6 +13,7 @@ from google.cloud import bigquery
 from google.oauth2 import service_account
 from google.cloud.exceptions import NotFound
 from pandasql import sqldf
+import random
 
 # Function to hide top and bottom menus on Streamlit app
 def hide_menu(bool):
@@ -26,6 +27,22 @@ def hide_menu(bool):
             </style>
             """
         return st.markdown(hide_menu_style, unsafe_allow_html=True)
+
+def warning(url):
+    st.markdown(f'''<p style="border-radius: 6px;
+     -webkit-border-radius: 6px;
+     background-color: rgba(255, 64, 0, .1);
+     background-position: 9px 0px;
+     background-repeat: no-repeat;
+     border: solid 1px rgba(157, 41, 45, .2);
+     border-radius: 6px;
+     line-height: 18px;
+     overflow: hidden;
+     font-size:24px;
+     font-weight: bold;
+     color: rgba(157, 41, 45, 0.6);
+     text-align: center;
+     padding: 15px 10px;">{url}</p>''', unsafe_allow_html=True)
 
 def getToken():
     username = st.secrets["nrg_username"]
@@ -121,9 +138,9 @@ def current_data():
     streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694, 120, 124947, 122]
     realtime_df = pd.DataFrame([])
     today = datetime.now()
-    for id in streamIds:
+    for streamId in streamIds:
         accessToken, tokenExpiry = getToken()
-        APIdata = pull_data(today.strftime('%m/%d/%Y'), today.strftime('%m/%d/%Y'), id, accessToken, tokenExpiry)
+        APIdata = pull_data(today.strftime('%m/%d/%Y'), today.strftime('%m/%d/%Y'), streamId, accessToken, tokenExpiry)
         APIdata['timeStamp'] = pd.to_datetime(APIdata['timeStamp'])
         realtime_df = pd.concat([realtime_df, APIdata], axis=0)
         release_token(accessToken)
@@ -180,8 +197,19 @@ def pull_grouped_hist():
     history_df = bigquery.Client(credentials=credentials).query(query).to_dataframe()
     return history_df
 
-def header(url):
-    st.markdown(f'<p style="text-align:center;background-color:#0066cc;color:#33ff33;font-size:40px;border-radius:2%;">{url}</p>', unsafe_allow_html=True)
+@st.experimental_memo(suppress_st_warning=True)
+def outages():
+    streamIds = [44648, 118361, 322689, 118362, 147262, 322675, 322682, 44651]
+    years = [datetime.now().year, datetime.now().year+1, datetime.now().year+2]
+    outages_df = pd.DataFrame([])
+    for streamId in streamIds:
+        accessToken, tokenExpiry = getToken() 
+        for year in years:    
+            APIdata = pull_data(date(year,1,1).strftime('%m/%d/%Y'), date(year+1,1,1).strftime('%m/%d/%Y'), streamId, accessToken, tokenExpiry)
+            APIdata['timeStamp'] = pd.to_datetime(APIdata['timeStamp'])
+            outages_df = pd.concat([outages_df, APIdata], axis=0)
+        release_token(accessToken)
+    return outages_df
 
 # App config
 st.set_page_config(layout='wide', initial_sidebar_state='collapsed', menu_items=None)
@@ -199,6 +227,7 @@ for seconds in range(100000):
         realtime_df, last_update = current_data()
     with placeholder.container():
     # KPIs
+        outage_df = outages()
         current_query = '''
         SELECT
             strftime('%Y-%m-%d %H:00:00', timeStamp) AS timeStamp,
@@ -217,13 +246,13 @@ for seconds in range(100000):
         # Real Time KPIs
         realtime = realtime_df[['fuelType','value','timeStamp']][realtime_df['timeStamp']==max(realtime_df['timeStamp'])]
         if len(realtime) < 8:
-            realtime = realtime_df[['fuelType','value','timeStamp']][realtime_df['timeStamp']==max(realtime_df['timeStamp']-timedelta(0,3600,0))]
+            realtime = realtime_df[['fuelType','value','timeStamp']][realtime_df['timeStamp']==max(realtime_df['timeStamp']-timedelta(0,300,0))]
         realtime.drop('timeStamp', axis=1, inplace=True)
         realtime = realtime.astype({'fuelType':'object','value':'float64'})
         previousHour = current_df[['fuelType','value']][current_df['hour']==datetime.now().hour-1]
         currentHour = current_df[['fuelType','value']][current_df['hour']==datetime.now().hour]
         
-        kpi_df = kpi(previousHour, realtime, 'Real Time')
+        kpi_df = kpi(previousHour, realtime, 'Real Time')  
         kpi(previousHour, currentHour, 'Hourly Average')
         warning_list = list(kpi_df['fuelType'][kpi_df['absDelta'].astype('int64') > 50])
 
@@ -231,17 +260,15 @@ for seconds in range(100000):
         # KPI warning box
         col1, col2 = st.columns(2)
         # Real time alerts
+        warning_list
         with col1:
             if len(warning_list) > 0:
-                l = len(warning_list)
-                for _ in range(l):
-                    #st.error(f'{warning_list[_]} has a differential greater than 100 MW over the previous hour.')
-                    st.error(f'{warning_list[_]}')
-                    header('NOTICE')
+                for _ in range(len(warning_list)):
+                    warning(f'{warning_list[_]}')
         # with col2:
         #     # Outage & intertie alerts
 
-# 14 day hist/real-time/forecast
+    # 14 day hist/real-time/forecast
         st.subheader('Real-time Supply')
         current_query = '''
         SELECT
@@ -271,3 +298,21 @@ for seconds in range(100000):
             color=alt.Color('fuelType:N', scale=alt.Scale(range=color_scheme), legend=alt.Legend(orient="top"))
         ).properties(height=400)
         st.altair_chart(combo_area, use_container_width=True)
+    # Outages chart
+        # st.subheader('Forecasted Outages (Daily)')
+        # outage_data = outage_df.reset_index(inplace=True)
+        # outage_data = pd.melt(outage_data, 
+        #                 id_vars=['timeStamp'],
+        #                 value_vars=['Coal', 'Natural Gas', 'Dual Fuel', 'Hydro', 'Wind', 'Solar', 'Energy Storage', 'Biomass & Other'],
+        #                 var_name='Source',
+        #                 value_name='Value')          
+        # # Outages area chart
+        # outage_area = alt.Chart(outage_data).mark_area(opacity=0.7).encode(
+        #     x=alt.X('timeStamp:T', title=''),
+        #     y=alt.Y('Value:Q', stack='zero', axis=alt.Axis(format=',f'), title='Outages (MW)'),
+        #     color=alt.Color('Source:N', scale=alt.Scale(scheme='category20'), legend=alt.Legend(orient="top")),
+        #     )
+        # st.altair_chart(outage_area, use_container_width=True)
+    
+        warning_list = []
+        time.sleep(1)

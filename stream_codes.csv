@@ -679,15 +679,24 @@ streamId,assetCode,streamName,fuelType,subfuelType,timeInterval,intervalType
 327191,WHT2,Whitla 2,Wind,Wind,1 hr,supply
 244986,WHT1,Whitla,Wind,Wind,1 hr,supply
 322574,WRW1,Windrise,Wind,Wind,1 hr,supply
-86,,Coal,Coal,Coal,5 min,supply
-322684,,Dual Fuel,Dual Fuel,Dual Fuel,5 min,supply
-322677,,Energy Storage,Energy Storage,Energy Storage,5 min,supply
-87,,Hydro,Hydro,Hydro,5 min,supply
-85,,Natural Gas,Natural Gas,Natural Gas,5 min,supply
-23695,,Biomass & Other,Biomass & Other,Biomass & Other,5 min,supply
-322665,,Solar,Solar,Solar,5 min,supply
-23694,,Wind,Wind,Wind,5 min,supply
-120,,BC,BC,BC,5 min,supply
-124947,,Montana,Montana,Montana,5 min,supply
-122,,Saskatchewan,Saskatchewan,Saskatchewan,5 min,supply
-278763,,24M Supply Demand Forecast,,Demand Forecast,,
+120,BC,BC,BC,BC,5 min,supply
+23695,BIO,Biomass & Other,Biomass & Other,Biomass & Other,5 min,supply
+86,COAL,Coal,Coal,Coal,5 min,supply
+322684,DUAL,Dual Fuel,Dual Fuel,Dual Fuel,5 min,supply
+87,HYDRO,Hydro,Hydro,Hydro,5 min,supply
+124947,MONT,Montana,Montana,Montana,5 min,supply
+85,NATGAS,Natural Gas,Natural Gas,Natural Gas,5 min,supply
+122,SASK,Saskatchewan,Saskatchewan,Saskatchewan,5 min,supply
+322665,SOLAR,Solar,Solar,Solar,5 min,supply
+322677,STORAGE,Energy Storage,Energy Storage,Energy Storage,5 min,supply
+23694,WIND,Wind,Wind,Wind,5 min,supply
+44648,COAL,Coal,Coal,Coal,month,outages
+118361,NATGAS,Natural Gas,Natural Gas,Natural Gas,month,outages
+322689,DUAL,Dual Fuel,Dual Fuel,Dual Fuel,month,outages
+118362,HYDRO,Hydro,Hydro,Hydro,month,outages
+147262,WIND,Wind,Wind,Wind,month,outages
+322675,SOLAR,Solar,Solar,Solar,month,outages
+322682,STORAGE,Energy Storage,Energy Storage,Energy Storage,month,outages
+44651,BIO,Biomass & Other,Biomass & Other,Biomass & Other,month,outages
+124,INTERTIE,Intertie,Intertie,Intertie,month,outages
+278763,24M-S&D,24M Supply Demand Forecast,24M Supply Demand Forecast,24M Supply Demand Forecast,month,supply
