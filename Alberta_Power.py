@@ -1,3 +1,5 @@
+from re import L
+from turtle import width
 import streamlit as st
 import pandas as pd
 import altair as alt
@@ -209,110 +211,141 @@ def outages():
             APIdata['timeStamp'] = pd.to_datetime(APIdata['timeStamp'])
             outages_df = pd.concat([outages_df, APIdata], axis=0)
         release_token(accessToken)
+    outages_df.drop(['streamId','assetCode','streamName','subfuelType','timeInterval','intervalType'],axis=1,inplace=True)
     return outages_df
 
 # App config
 st.set_page_config(layout='wide', initial_sidebar_state='collapsed', menu_items=None)
+color_domain = ['Biomass & Other', 'Coal', 'Dual Fuel', 'Energy Storage', 'Hydro', 'Natural Gas', 'Solar', 'Wind']
 color_scheme = ['#1f77b4', '#aec7e8', '#ff7f0e', ' #ffbb78', '#2ca02c', '#98df8a','#d62728', '#7f7f7f']
 hide_menu(True)
+
+old_outage_df = outages().astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})
+old_outage_df['value'] = [i-random.random()*102 if i > 100 else i+random.random()*102 for i in old_outage_df['value']]
 
 placeholder = st.empty()
 for seconds in range(100000):
     # Pull live data
-    try:
-        realtime_df, last_update = current_data()
-    except:
-        with st.spinner('Gathering Live Data Streams'):
-            time.sleep(10)
-        realtime_df, last_update = current_data()
+    # try:
+    #     realtime_df, last_update = current_data()
+    # except:
+    #     with st.spinner('Gathering Live Data Streams'):
+    #         time.sleep(10)
+    #     realtime_df, last_update = current_data()
     with placeholder.container():
     # KPIs
-        outage_df = outages()
-        current_query = '''
-        SELECT
-            strftime('%Y-%m-%d %H:00:00', timeStamp) AS timeStamp,
-            fuelType,
-            strftime('%Y', timeStamp) AS year,
-            strftime('%m', timeStamp) AS month,
-            strftime('%d', timeStamp) AS day,
-            strftime('%H', timeStamp) AS hour,
-            AVG(value) AS value
-        FROM realtime_df
-        GROUP BY fuelType, year, month, day, hour
-        ORDER BY fuelType, year, month, day, hour, timeStamp
-        '''
-        current_df = sqldf(current_query, locals()).astype({'fuelType':'object', 'year':'int64','month':'int64', 'day':'int64', 'hour':'int64', 'value':'float64', 'timeStamp':'datetime64[ns]'})
+        outage_df = outages().astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})
+    #     current_query = '''
+    #     SELECT
+    #         strftime('%Y-%m-%d %H:00:00', timeStamp) AS timeStamp,
+    #         fuelType,
+    #         strftime('%Y', timeStamp) AS year,
+    #         strftime('%m', timeStamp) AS month,
+    #         strftime('%d', timeStamp) AS day,
+    #         strftime('%H', timeStamp) AS hour,
+    #         AVG(value) AS value
+    #     FROM realtime_df
+    #     GROUP BY fuelType, year, month, day, hour
+    #     ORDER BY fuelType, year, month, day, hour, timeStamp
+    #     '''
+    #     current_df = sqldf(current_query, locals()).astype({'fuelType':'object', 'year':'int64','month':'int64', 'day':'int64', 'hour':'int64', 'value':'float64', 'timeStamp':'datetime64[ns]'})
         
-        # Real Time KPIs
-        realtime = realtime_df[['fuelType','value','timeStamp']][realtime_df['timeStamp']==max(realtime_df['timeStamp'])]
-        if len(realtime) < 8:
-            realtime = realtime_df[['fuelType','value','timeStamp']][realtime_df['timeStamp']==max(realtime_df['timeStamp']-timedelta(0,300,0))]
-        realtime.drop('timeStamp', axis=1, inplace=True)
-        realtime = realtime.astype({'fuelType':'object','value':'float64'})
-        previousHour = current_df[['fuelType','value']][current_df['hour']==datetime.now().hour-1]
-        currentHour = current_df[['fuelType','value']][current_df['hour']==datetime.now().hour]
+    #     # Real Time KPIs
+    #     realtime = realtime_df[['fuelType','value','timeStamp']][realtime_df['timeStamp']==max(realtime_df['timeStamp'])]
+    #     if len(realtime) < 8:
+    #         realtime = realtime_df[['fuelType','value','timeStamp']][realtime_df['timeStamp']==max(realtime_df['timeStamp']-timedelta(0,300,0))]
+    #     realtime.drop('timeStamp', axis=1, inplace=True)
+    #     realtime = realtime.astype({'fuelType':'object','value':'float64'})
+    #     previousHour = current_df[['fuelType','value']][current_df['hour']==datetime.now().hour-1]
+    #     currentHour = current_df[['fuelType','value']][current_df['hour']==datetime.now().hour]
         
-        kpi_df = kpi(previousHour, realtime, 'Real Time')  
-        kpi(previousHour, currentHour, 'Hourly Average')
-        warning_list = list(kpi_df['fuelType'][kpi_df['absDelta'].astype('int64') > 50])
+    #     kpi_df = kpi(previousHour, realtime, 'Real Time')
+    #     kpi_df
+    #     kpi(previousHour, currentHour, 'Hourly Average')
+    #     warning_list = list(kpi_df['fuelType'][kpi_df['absDelta'].astype('int64') > 50])
 
-        st.write(f"Last update: {last_update.strftime('%a, %b %d @ %X')}")
-        # KPI warning box
-        col1, col2 = st.columns(2)
-        # Real time alerts
-        warning_list
-        with col1:
-            if len(warning_list) > 0:
-                for _ in range(len(warning_list)):
-                    warning(f'{warning_list[_]}')
-        # with col2:
-        #     # Outage & intertie alerts
+    #     st.write(f"Last update: {last_update.strftime('%a, %b %d @ %X')}")
+    #     # KPI warning box
+    #     col1, col2 = st.columns(2)
+    #     # Real time alerts
+    #     warning_list
+    #     with col1:
+    #         if len(warning_list) > 0:
+    #             for _ in range(len(warning_list)):
+    #                 warning(f'{warning_list[_]}')
+    #     # with col2:
+    #     #     # Outage & intertie alerts
 
-    # 14 day hist/real-time/forecast
-        st.subheader('Real-time Supply')
-        current_query = '''
-        SELECT
-            strftime('%Y-%m-%d %H:00:00', timeStamp) AS timeStamp,
-            fuelType,
-            strftime('%Y', timeStamp) AS year,
-            strftime('%m', timeStamp) AS month,
-            strftime('%d', timeStamp) AS day,
-            strftime('%H', timeStamp) AS hour,
-            AVG(value) AS value
-        FROM realtime_df
-        WHERE fuelType NOT IN ('BC','Montana','Saskatchewan')
-        GROUP BY fuelType, year, month, day, hour
-        ORDER BY fuelType, year, month, day, hour, timeStamp
-        '''
-        current_df= sqldf(current_query, locals()).astype({'fuelType':'object', 'year':'int64','month':'int64', 'day':'int64', 'hour':'int64', 'value':'float64', 'timeStamp':'datetime64[ns]'})
-        # Pull last 7 days data
-        history_df = pull_grouped_hist()
-        # Combine last 7 days & live dataframes
-        combo_df = pd.concat([history_df,current_df], axis=0)
-        query = 'SELECT * FROM combo_df ORDER BY fuelType'
-        combo_df = sqldf(query, globals())
-        # Base combo_df bar chart
-        combo_area = alt.Chart(combo_df).mark_area(color='grey', opacity=0.7).encode(
-            x=alt.X('timeStamp:T', title=''),
-            y=alt.Y('value:Q', title='Current Supply (MW)'),
-            color=alt.Color('fuelType:N', scale=alt.Scale(range=color_scheme), legend=alt.Legend(orient="top"))
-        ).properties(height=400)
-        st.altair_chart(combo_area, use_container_width=True)
+    # # 14 day hist/real-time/forecast
+    #     st.subheader('Real-time Supply')
+    #     current_query = '''
+    #     SELECT
+    #         strftime('%Y-%m-%d %H:00:00', timeStamp) AS timeStamp,
+    #         fuelType,
+    #         strftime('%Y', timeStamp) AS year,
+    #         strftime('%m', timeStamp) AS month,
+    #         strftime('%d', timeStamp) AS day,
+    #         strftime('%H', timeStamp) AS hour,
+    #         AVG(value) AS value
+    #     FROM realtime_df
+    #     WHERE fuelType NOT IN ('BC','Montana','Saskatchewan')
+    #     GROUP BY fuelType, year, month, day, hour
+    #     ORDER BY fuelType, year, month, day, hour, timeStamp
+    #     '''
+    #     current_df= sqldf(current_query, locals()).astype({'fuelType':'object', 'year':'int64','month':'int64', 'day':'int64', 'hour':'int64', 'value':'float64', 'timeStamp':'datetime64[ns]'})
+    #     # Pull last 7 days data
+    #     history_df = pull_grouped_hist()
+    #     # Combine last 7 days & live dataframes
+    #     combo_df = pd.concat([history_df,current_df], axis=0)
+    #     query = 'SELECT * FROM combo_df ORDER BY fuelType'
+    #     combo_df = sqldf(query, globals())
+    #     # Base combo_df bar chart
+    #     combo_area = alt.Chart(combo_df).mark_area(color='grey', opacity=0.7).encode(
+    #         x=alt.X('timeStamp:T', title=''),
+    #         y=alt.Y('value:Q', title='Current Supply (MW)'),
+    #         color=alt.Color('fuelType:N', scale=alt.Scale(domain=color_domain,range=color_scheme), legend=alt.Legend(orient="top"))
+    #     ).properties(height=400)
+    #     st.altair_chart(combo_area, use_container_width=True)
     # Outages chart
-        # st.subheader('Forecasted Outages (Daily)')
-        # outage_data = outage_df.reset_index(inplace=True)
-        # outage_data = pd.melt(outage_data, 
-        #                 id_vars=['timeStamp'],
-        #                 value_vars=['Coal', 'Natural Gas', 'Dual Fuel', 'Hydro', 'Wind', 'Solar', 'Energy Storage', 'Biomass & Other'],
-        #                 var_name='Source',
-        #                 value_name='Value')          
-        # # Outages area chart
-        # outage_area = alt.Chart(outage_data).mark_area(opacity=0.7).encode(
-        #     x=alt.X('timeStamp:T', title=''),
-        #     y=alt.Y('Value:Q', stack='zero', axis=alt.Axis(format=',f'), title='Outages (MW)'),
-        #     color=alt.Color('Source:N', scale=alt.Scale(scheme='category20'), legend=alt.Legend(orient="top")),
-        #     )
-        # st.altair_chart(outage_area, use_container_width=True)
-    
+        st.subheader('Forecasted Outages (Daily)')        
+        # Outages area chart
+        outage_area = alt.Chart(outage_df).mark_area(opacity=0.7).encode(
+            x=alt.X('timeStamp:T', title=''),
+            y=alt.Y('value:Q', stack='zero', axis=alt.Axis(format=',f'), title='Outages (MW)'),
+            color=alt.Color('fuelType:N', scale=alt.Scale(domain=color_domain,range=color_scheme), legend=alt.Legend(orient="top")),
+            )
+        st.altair_chart(outage_area, use_container_width=True)
+
+        alerts_df = outage_df
+        alerts_df['value'] = outage_df['value'] - old_outage_df['value']
+        #alerts_df = alerts_df[abs(alerts_df['value']) >= 50]
+        alerts_df['timeStamp'] = alerts_df['timeStamp'] + timedelta(1,0,0)
+        #st.write((abs(outage_df['value']-old_outage_df['value']) >= 79).any())       
+        # alerts_chart = alt.Chart(alerts_df).mark_bar(cornerRadiusTopLeft=5, 
+        #                                         cornerRadiusTopRight=5,
+        #                                         cornerRadiusBottomLeft=5,
+        #                                         cornerRadiusBottomRight=5,
+        #                                         opacity=0.7).encode(
+        #     x=alt.X('yearmonth(timeStamp):T', stack='zero', scale=alt.Scale(domain=(min(outage_df['timeStamp']), max(outage_df['timeStamp'])+ timedelta(31,0,0)))),
+        #     y=alt.Y('value:Q', title=''),
+        #     color=alt.Color('fuelType:N',scale=alt.Scale(domain=color_domain,range=color_scheme), legend=alt.Legend(orient="top"))
+        # ).properties(height=300)
+        alerts_df = alerts_df[alerts_df['fuelType']=='Coal']
+        gt0 = alerts_df
+        gt0
+        gt0['value'] = [i if i>=0 else 0 for i in gt0['value']]
+        gt0
+        alerts_df
+
+        alerts_chart = alt.Chart(alerts_df).mark_area().encode(
+            x=alt.X('yearmonth(timeStamp):T',scale=alt.Scale(zero=False,nice=False)),
+            y='value:Q',
+            #color=alt.Color('fuelType:N',scale=alt.Scale(domain=color_domain,range=color_scheme)),
+            opacity=alt.value(0.6)
+        ).properties(height=300)
+
+        line = alt.Chart(pd.DataFrame({'y': [0]})).mark_rule().encode(y='y')
+
+        st.altair_chart(alerts_chart, use_container_width=True)
         warning_list = []
         time.sleep(1)
