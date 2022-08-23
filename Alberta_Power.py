@@ -8,7 +8,6 @@ import json
 import http.client
 import certifi
 import time
-import alerts
 from st_aggrid import AgGrid
 from datetime import datetime, date, timedelta
 from google.cloud import bigquery
@@ -30,21 +29,29 @@ def hide_menu(bool):
             """
         return st.markdown(hide_menu_style, unsafe_allow_html=True)
 
-def warning(url):
+def warning(type, lst):
+    if type == 'warning':
+        background_color = 'rgba(214, 39, 40, .1)'
+        border_color = 'rgba(214, 39, 40, .2)'
+        text_color = 'rgba(214, 39, 40, 0.6)'
+    elif type == 'alert':
+        background_color = 'rgba(31, 119, 180, .1)'
+        border_color = 'rgba(31, 119, 180, .2)'
+        text_color = 'rgba(31, 119, 180, 0.6)'
     st.markdown(f'''<p style="border-radius: 6px;
      -webkit-border-radius: 6px;
-     background-color: rgba(255, 64, 0, .1);
+     background-color: {background_color};
      background-position: 9px 0px;
      background-repeat: no-repeat;
-     border: solid 1px rgba(157, 41, 45, .2);
+     border: solid 1px {border_color};
      border-radius: 6px;
      line-height: 18px;
      overflow: hidden;
      font-size:24px;
      font-weight: bold;
-     color: rgba(157, 41, 45, 0.6);
+     color: {text_color};
      text-align: center;
-     padding: 15px 10px;">{url}</p>''', unsafe_allow_html=True)
+     padding: 15px 10px;">{lst}</p>''', unsafe_allow_html=True)
 
 def getToken():
     username = st.secrets["nrg_username"]
@@ -199,7 +206,7 @@ def pull_grouped_hist():
     history_df = bigquery.Client(credentials=credentials).query(query).to_dataframe()
     return history_df
 
-@st.experimental_memo(suppress_st_warning=True)
+@st.experimental_memo(suppress_st_warning=True, ttl=600)
 def outages():
     streamIds = [44648, 118361, 322689, 118362, 147262, 322675, 322682, 44651]
     years = [datetime.now().year, datetime.now().year+1, datetime.now().year+2]
@@ -214,14 +221,39 @@ def outages():
     outages_df.drop(['streamId','assetCode','streamName','subfuelType','timeInterval','intervalType'],axis=1,inplace=True)
     return outages_df
 
+def make_alert_chart(df, fuelType, theme):
+    chart = alt.Chart(df).mark_bar(opacity=0.7, color=theme[fuelType]).encode(
+            x=alt.X('yearmonth(timeStamp):T', axis=alt.Axis(labelAngle=90), title=''),
+            y=alt.Y('value:Q', title='MW'),
+        ).properties(height=150)
+    return chart
+
+def alert_charts(diff, theme):
+    st.subheader('Intertie & Outage Alerts')
+    for fuelType in alert_list:
+        st.write(fuelType)
+        gt0 = make_alert_chart(diff[['timeStamp','fuelType','gt0']].rename(columns={'gt0':'value'}), fuelType, theme)
+        lt0 = make_alert_chart(diff[['timeStamp','fuelType','lt0']].rename(columns={'lt0':'value'}), fuelType, theme)
+        line = alt.Chart(pd.DataFrame({'y':[0]})).mark_rule().encode(y='y')
+        st.altair_chart(gt0+lt0+line, use_container_width=True)
+
+def alerts():
+    pass
+    
 # App config
 st.set_page_config(layout='wide', initial_sidebar_state='collapsed', menu_items=None)
-color_domain = ['Biomass & Other', 'Coal', 'Dual Fuel', 'Energy Storage', 'Hydro', 'Natural Gas', 'Solar', 'Wind']
-color_scheme = ['#1f77b4', '#aec7e8', '#ff7f0e', ' #ffbb78', '#2ca02c', '#98df8a','#d62728', '#7f7f7f']
+theme = {'Biomass & Other':'#1f77b4', 
+            'Coal':'#aec7e8',
+            'Dual Fuel':'#ff7f0e',
+            'Energy Storage':'#ffbb78',
+            'Hydro':'#2ca02c',
+            'Natural Gas':'#98df8a',
+            'Solar':'#d62728',
+            'Wind':'#7f7f7f'}
 hide_menu(True)
 
 old_outage_df = outages().astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})
-old_outage_df['value'] = [i-random.random()*102 if i > 100 else i+random.random()*102 for i in old_outage_df['value']]
+alert_list = []
 
 placeholder = st.empty()
 for seconds in range(100000):
@@ -232,49 +264,62 @@ for seconds in range(100000):
     #     with st.spinner('Gathering Live Data Streams'):
     #         time.sleep(10)
     #     realtime_df, last_update = current_data()
-    with placeholder.container():
-    # KPIs
-        outage_df = outages().astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})
-    #     current_query = '''
-    #     SELECT
-    #         strftime('%Y-%m-%d %H:00:00', timeStamp) AS timeStamp,
-    #         fuelType,
-    #         strftime('%Y', timeStamp) AS year,
-    #         strftime('%m', timeStamp) AS month,
-    #         strftime('%d', timeStamp) AS day,
-    #         strftime('%H', timeStamp) AS hour,
-    #         AVG(value) AS value
-    #     FROM realtime_df
-    #     GROUP BY fuelType, year, month, day, hour
-    #     ORDER BY fuelType, year, month, day, hour, timeStamp
-    #     '''
-    #     current_df = sqldf(current_query, locals()).astype({'fuelType':'object', 'year':'int64','month':'int64', 'day':'int64', 'hour':'int64', 'value':'float64', 'timeStamp':'datetime64[ns]'})
-        
-    #     # Real Time KPIs
-    #     realtime = realtime_df[['fuelType','value','timeStamp']][realtime_df['timeStamp']==max(realtime_df['timeStamp'])]
-    #     if len(realtime) < 8:
-    #         realtime = realtime_df[['fuelType','value','timeStamp']][realtime_df['timeStamp']==max(realtime_df['timeStamp']-timedelta(0,300,0))]
-    #     realtime.drop('timeStamp', axis=1, inplace=True)
-    #     realtime = realtime.astype({'fuelType':'object','value':'float64'})
-    #     previousHour = current_df[['fuelType','value']][current_df['hour']==datetime.now().hour-1]
-    #     currentHour = current_df[['fuelType','value']][current_df['hour']==datetime.now().hour]
-        
-    #     kpi_df = kpi(previousHour, realtime, 'Real Time')
-    #     kpi_df
-    #     kpi(previousHour, currentHour, 'Hourly Average')
-    #     warning_list = list(kpi_df['fuelType'][kpi_df['absDelta'].astype('int64') > 50])
+    # Pull outage data
+    # try:
+    #   outage_df = outages().astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})
+    # except:
+    #   with st.spinner('Gathering Intertie & Outage Data'):
+    #         time.sleep(10)
+    #   outage_df = outages().astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})
+    outage_df = pd.read_csv('./offsets_changes.csv').astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})       
+    diff = pd.merge(outage_df, old_outage_df, on=['timeStamp','fuelType'], suffixes=('_new','_old'))
+    diff['diff_value'] = diff['value_old'] - diff['value_new']
+    diff['gt0'] = [i if i > 0 else 0 for i in diff['diff_value']]
+    diff['lt0'] = [i if i < 0 else 0 for i in diff['diff_value']]
 
-    #     st.write(f"Last update: {last_update.strftime('%a, %b %d @ %X')}")
-    #     # KPI warning box
-    #     col1, col2 = st.columns(2)
-    #     # Real time alerts
-    #     warning_list
-    #     with col1:
-    #         if len(warning_list) > 0:
-    #             for _ in range(len(warning_list)):
-    #                 warning(f'{warning_list[_]}')
-    #     # with col2:
-    #     #     # Outage & intertie alerts
+    with placeholder.container():      
+    # KPIs
+        # current_query = '''
+        # SELECT
+        #     strftime('%Y-%m-%d %H:00:00', timeStamp) AS timeStamp,
+        #     fuelType,
+        #     strftime('%Y', timeStamp) AS year,
+        #     strftime('%m', timeStamp) AS month,
+        #     strftime('%d', timeStamp) AS day,
+        #     strftime('%H', timeStamp) AS hour,
+        #     AVG(value) AS value
+        # FROM realtime_df
+        # GROUP BY fuelType, year, month, day, hour
+        # ORDER BY fuelType, year, month, day, hour, timeStamp
+        # '''
+        # current_df = sqldf(current_query, locals()).astype({'fuelType':'object', 'year':'int64','month':'int64', 'day':'int64', 'hour':'int64', 'value':'float64', 'timeStamp':'datetime64[ns]'})
+        
+        # # Real Time KPIs
+        # realtime = realtime_df[['fuelType','value','timeStamp']][realtime_df['timeStamp']==max(realtime_df['timeStamp'])]
+        # if len(realtime) < 8:
+        #     realtime = realtime_df[['fuelType','value','timeStamp']][realtime_df['timeStamp']==max(realtime_df['timeStamp']-timedelta(0,300,0))]
+        # realtime.drop('timeStamp', axis=1, inplace=True)
+        # realtime = realtime.astype({'fuelType':'object','value':'float64'})
+        # previousHour = current_df[['fuelType','value']][current_df['hour']==datetime.now().hour-1]
+        # currentHour = current_df[['fuelType','value']][current_df['hour']==datetime.now().hour]
+        
+        # kpi_df = kpi(previousHour, realtime, 'Real Time')
+        # kpi(previousHour, currentHour, 'Hourly Average')
+        # warning_list = list(kpi_df['fuelType'][kpi_df['absDelta'].astype('int64') >= 50])
+
+        # st.write(f"Last update: {last_update.strftime('%a, %b %d @ %X')}")
+        # # KPI warning box
+        # col1, col2 = st.columns(2)
+        # # Real time alerts
+        # with col1:
+        #     if len(warning_list) > 0:
+        #         for _ in range(len(warning_list)):
+        #             warning('warning', f'{warning_list[_]}')
+        # # Outage & intertie alerts
+        # with col2:
+        #     if len(alert_list) > 0:
+        #         for _ in range(len(alert_list)):
+        #             warning('alert', f'{alert_list[_]}')
 
     # # 14 day hist/real-time/forecast
     #     st.subheader('Real-time Supply')
@@ -303,49 +348,24 @@ for seconds in range(100000):
     #     combo_area = alt.Chart(combo_df).mark_area(color='grey', opacity=0.7).encode(
     #         x=alt.X('timeStamp:T', title=''),
     #         y=alt.Y('value:Q', title='Current Supply (MW)'),
-    #         color=alt.Color('fuelType:N', scale=alt.Scale(domain=color_domain,range=color_scheme), legend=alt.Legend(orient="top"))
+    #         color=alt.Color('fuelType:N', scale=alt.Scale(domain=list(theme.keys()),range=list(theme.values())), legend=alt.Legend(orient="top"))
     #     ).properties(height=400)
     #     st.altair_chart(combo_area, use_container_width=True)
+
     # Outages chart
-        st.subheader('Forecasted Outages (Daily)')        
+        st.subheader('Monthly Forecasted Outages')
         # Outages area chart
-        outage_area = alt.Chart(outage_df).mark_area(opacity=0.7).encode(
-            x=alt.X('timeStamp:T', title=''),
+        outage_area = alt.Chart(outage_df).mark_bar(opacity=0.7).encode(
+            x=alt.X('yearmonth(timeStamp):T', title='', axis=alt.Axis(labelAngle=90)),
             y=alt.Y('value:Q', stack='zero', axis=alt.Axis(format=',f'), title='Outages (MW)'),
-            color=alt.Color('fuelType:N', scale=alt.Scale(domain=color_domain,range=color_scheme), legend=alt.Legend(orient="top")),
+            color=alt.Color('fuelType:N', scale=alt.Scale(domain=list(theme.keys()),range=list(theme.values())), legend=alt.Legend(orient="top")),
+            tooltip=['fuelType','value','timeStamp']
             )
         st.altair_chart(outage_area, use_container_width=True)
-
-        alerts_df = outage_df
-        alerts_df['value'] = outage_df['value'] - old_outage_df['value']
-        #alerts_df = alerts_df[abs(alerts_df['value']) >= 50]
-        alerts_df['timeStamp'] = alerts_df['timeStamp'] + timedelta(1,0,0)
-        #st.write((abs(outage_df['value']-old_outage_df['value']) >= 79).any())       
-        # alerts_chart = alt.Chart(alerts_df).mark_bar(cornerRadiusTopLeft=5, 
-        #                                         cornerRadiusTopRight=5,
-        #                                         cornerRadiusBottomLeft=5,
-        #                                         cornerRadiusBottomRight=5,
-        #                                         opacity=0.7).encode(
-        #     x=alt.X('yearmonth(timeStamp):T', stack='zero', scale=alt.Scale(domain=(min(outage_df['timeStamp']), max(outage_df['timeStamp'])+ timedelta(31,0,0)))),
-        #     y=alt.Y('value:Q', title=''),
-        #     color=alt.Color('fuelType:N',scale=alt.Scale(domain=color_domain,range=color_scheme), legend=alt.Legend(orient="top"))
-        # ).properties(height=300)
-        alerts_df = alerts_df[alerts_df['fuelType']=='Coal']
-        gt0 = alerts_df
-        gt0
-        gt0['value'] = [i if i>=0 else 0 for i in gt0['value']]
-        gt0
-        alerts_df
-
-        alerts_chart = alt.Chart(alerts_df).mark_area().encode(
-            x=alt.X('yearmonth(timeStamp):T',scale=alt.Scale(zero=False,nice=False)),
-            y='value:Q',
-            #color=alt.Color('fuelType:N',scale=alt.Scale(domain=color_domain,range=color_scheme)),
-            opacity=alt.value(0.6)
-        ).properties(height=300)
-
-        line = alt.Chart(pd.DataFrame({'y': [0]})).mark_rule().encode(y='y')
-
-        st.altair_chart(alerts_chart, use_container_width=True)
+        
+        if (abs(diff['diff_value']) > 100).any():
+            alert_list = list(set(diff['fuelType'][abs(diff['diff_value'])>0]))
+            alert_charts(diff, theme)
+        
         warning_list = []
         time.sleep(1)
