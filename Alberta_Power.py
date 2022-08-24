@@ -1,5 +1,3 @@
-from re import L
-from turtle import width
 import streamlit as st
 import pandas as pd
 import altair as alt
@@ -253,6 +251,7 @@ theme = {'Biomass & Other':'#1f77b4',
 hide_menu(True)
 
 old_outage_df = outages().astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})
+cutoff = 100
 alert_list = []
 
 placeholder = st.empty()
@@ -305,7 +304,7 @@ for seconds in range(100000):
         
         kpi_df = kpi(previousHour, realtime, 'Real Time')
         kpi(previousHour, currentHour, 'Hourly Average')
-        warning_list = list(kpi_df['fuelType'][kpi_df['absDelta'].astype('int64') >= 100])
+        warning_list = list(kpi_df['fuelType'][kpi_df['absDelta'].astype('int64') >= cutoff])
 
         st.write(f"Last update: {last_update.strftime('%a, %b %d @ %X')}")
         # KPI warning box
@@ -363,7 +362,7 @@ for seconds in range(100000):
             )
         st.altair_chart(outage_area, use_container_width=True)
         
-        if (abs(diff['diff_value']) > 100).any():
+        if (abs(diff['diff_value']) > cutoff).any():
             alert_list = list(set(diff['fuelType'][abs(diff['diff_value'])>0]))
             alert_charts(diff, theme)
         
