@@ -258,20 +258,20 @@ alert_list = []
 placeholder = st.empty()
 for seconds in range(100000):
     # Pull live data
-    # try:
-    #     realtime_df, last_update = current_data()
-    # except:
-    #     with st.spinner('Gathering Live Data Streams'):
-    #         time.sleep(10)
-    #     realtime_df, last_update = current_data()
+    try:
+        realtime_df, last_update = current_data()
+    except:
+        with st.spinner('Gathering Live Data Streams'):
+            time.sleep(10)
+        realtime_df, last_update = current_data()
     # Pull outage data
-    # try:
+    try:
+      outage_df = outages().astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})
+    except:
+      with st.spinner('Gathering Intertie & Outage Data'):
+            time.sleep(10)
     #   outage_df = outages().astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})
-    # except:
-    #   with st.spinner('Gathering Intertie & Outage Data'):
-    #         time.sleep(10)
-    #   outage_df = outages().astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})
-    outage_df = pd.read_csv('./offsets_changes.csv').astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})       
+    outage_df = pd.read_csv('./offsets_changes.csv').astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})     
     diff = pd.merge(outage_df, old_outage_df, on=['timeStamp','fuelType'], suffixes=('_new','_old'))
     diff['diff_value'] = diff['value_old'] - diff['value_new']
     diff['gt0'] = [i if i > 0 else 0 for i in diff['diff_value']]
@@ -279,78 +279,78 @@ for seconds in range(100000):
 
     with placeholder.container():      
     # KPIs
-        # current_query = '''
-        # SELECT
-        #     strftime('%Y-%m-%d %H:00:00', timeStamp) AS timeStamp,
-        #     fuelType,
-        #     strftime('%Y', timeStamp) AS year,
-        #     strftime('%m', timeStamp) AS month,
-        #     strftime('%d', timeStamp) AS day,
-        #     strftime('%H', timeStamp) AS hour,
-        #     AVG(value) AS value
-        # FROM realtime_df
-        # GROUP BY fuelType, year, month, day, hour
-        # ORDER BY fuelType, year, month, day, hour, timeStamp
-        # '''
-        # current_df = sqldf(current_query, locals()).astype({'fuelType':'object', 'year':'int64','month':'int64', 'day':'int64', 'hour':'int64', 'value':'float64', 'timeStamp':'datetime64[ns]'})
+        current_query = '''
+        SELECT
+            strftime('%Y-%m-%d %H:00:00', timeStamp) AS timeStamp,
+            fuelType,
+            strftime('%Y', timeStamp) AS year,
+            strftime('%m', timeStamp) AS month,
+            strftime('%d', timeStamp) AS day,
+            strftime('%H', timeStamp) AS hour,
+            AVG(value) AS value
+        FROM realtime_df
+        GROUP BY fuelType, year, month, day, hour
+        ORDER BY fuelType, year, month, day, hour, timeStamp
+        '''
+        current_df = sqldf(current_query, locals()).astype({'fuelType':'object', 'year':'int64','month':'int64', 'day':'int64', 'hour':'int64', 'value':'float64', 'timeStamp':'datetime64[ns]'})
         
-        # # Real Time KPIs
-        # realtime = realtime_df[['fuelType','value','timeStamp']][realtime_df['timeStamp']==max(realtime_df['timeStamp'])]
-        # if len(realtime) < 8:
-        #     realtime = realtime_df[['fuelType','value','timeStamp']][realtime_df['timeStamp']==max(realtime_df['timeStamp']-timedelta(0,300,0))]
-        # realtime.drop('timeStamp', axis=1, inplace=True)
-        # realtime = realtime.astype({'fuelType':'object','value':'float64'})
-        # previousHour = current_df[['fuelType','value']][current_df['hour']==datetime.now().hour-1]
-        # currentHour = current_df[['fuelType','value']][current_df['hour']==datetime.now().hour]
+        # Real Time KPIs
+        realtime = realtime_df[['fuelType','value','timeStamp']][realtime_df['timeStamp']==max(realtime_df['timeStamp'])]
+        if len(realtime) < 8:
+            realtime = realtime_df[['fuelType','value','timeStamp']][realtime_df['timeStamp']==max(realtime_df['timeStamp']-timedelta(0,300,0))]
+        realtime.drop('timeStamp', axis=1, inplace=True)
+        realtime = realtime.astype({'fuelType':'object','value':'float64'})
+        previousHour = current_df[['fuelType','value']][current_df['hour']==datetime.now().hour-1]
+        currentHour = current_df[['fuelType','value']][current_df['hour']==datetime.now().hour]
         
-        # kpi_df = kpi(previousHour, realtime, 'Real Time')
-        # kpi(previousHour, currentHour, 'Hourly Average')
-        # warning_list = list(kpi_df['fuelType'][kpi_df['absDelta'].astype('int64') >= 50])
+        kpi_df = kpi(previousHour, realtime, 'Real Time')
+        kpi(previousHour, currentHour, 'Hourly Average')
+        warning_list = list(kpi_df['fuelType'][kpi_df['absDelta'].astype('int64') >= 50])
 
-        # st.write(f"Last update: {last_update.strftime('%a, %b %d @ %X')}")
-        # # KPI warning box
-        # col1, col2 = st.columns(2)
-        # # Real time alerts
-        # with col1:
-        #     if len(warning_list) > 0:
-        #         for _ in range(len(warning_list)):
-        #             warning('warning', f'{warning_list[_]}')
-        # # Outage & intertie alerts
-        # with col2:
-        #     if len(alert_list) > 0:
-        #         for _ in range(len(alert_list)):
-        #             warning('alert', f'{alert_list[_]}')
+        st.write(f"Last update: {last_update.strftime('%a, %b %d @ %X')}")
+        # KPI warning box
+        col1, col2 = st.columns(2)
+        # Real time alerts
+        with col1:
+            if len(warning_list) > 0:
+                for _ in range(len(warning_list)):
+                    warning('warning', f'{warning_list[_]}')
+        # Outage & intertie alerts
+        with col2:
+            if len(alert_list) > 0:
+                for _ in range(len(alert_list)):
+                    warning('alert', f'{alert_list[_]}')
 
-    # # 14 day hist/real-time/forecast
-    #     st.subheader('Real-time Supply')
-    #     current_query = '''
-    #     SELECT
-    #         strftime('%Y-%m-%d %H:00:00', timeStamp) AS timeStamp,
-    #         fuelType,
-    #         strftime('%Y', timeStamp) AS year,
-    #         strftime('%m', timeStamp) AS month,
-    #         strftime('%d', timeStamp) AS day,
-    #         strftime('%H', timeStamp) AS hour,
-    #         AVG(value) AS value
-    #     FROM realtime_df
-    #     WHERE fuelType NOT IN ('BC','Montana','Saskatchewan')
-    #     GROUP BY fuelType, year, month, day, hour
-    #     ORDER BY fuelType, year, month, day, hour, timeStamp
-    #     '''
-    #     current_df= sqldf(current_query, locals()).astype({'fuelType':'object', 'year':'int64','month':'int64', 'day':'int64', 'hour':'int64', 'value':'float64', 'timeStamp':'datetime64[ns]'})
-    #     # Pull last 7 days data
-    #     history_df = pull_grouped_hist()
-    #     # Combine last 7 days & live dataframes
-    #     combo_df = pd.concat([history_df,current_df], axis=0)
-    #     query = 'SELECT * FROM combo_df ORDER BY fuelType'
-    #     combo_df = sqldf(query, globals())
-    #     # Base combo_df bar chart
-    #     combo_area = alt.Chart(combo_df).mark_area(color='grey', opacity=0.7).encode(
-    #         x=alt.X('timeStamp:T', title=''),
-    #         y=alt.Y('value:Q', title='Current Supply (MW)'),
-    #         color=alt.Color('fuelType:N', scale=alt.Scale(domain=list(theme.keys()),range=list(theme.values())), legend=alt.Legend(orient="top"))
-    #     ).properties(height=400)
-    #     st.altair_chart(combo_area, use_container_width=True)
+    # 14 day hist/real-time/forecast
+        st.subheader('Real-time Supply')
+        current_query = '''
+        SELECT
+            strftime('%Y-%m-%d %H:00:00', timeStamp) AS timeStamp,
+            fuelType,
+            strftime('%Y', timeStamp) AS year,
+            strftime('%m', timeStamp) AS month,
+            strftime('%d', timeStamp) AS day,
+            strftime('%H', timeStamp) AS hour,
+            AVG(value) AS value
+        FROM realtime_df
+        WHERE fuelType NOT IN ('BC','Montana','Saskatchewan')
+        GROUP BY fuelType, year, month, day, hour
+        ORDER BY fuelType, year, month, day, hour, timeStamp
+        '''
+        current_df= sqldf(current_query, locals()).astype({'fuelType':'object', 'year':'int64','month':'int64', 'day':'int64', 'hour':'int64', 'value':'float64', 'timeStamp':'datetime64[ns]'})
+        # Pull last 7 days data
+        history_df = pull_grouped_hist()
+        # Combine last 7 days & live dataframes
+        combo_df = pd.concat([history_df,current_df], axis=0)
+        query = 'SELECT * FROM combo_df ORDER BY fuelType'
+        combo_df = sqldf(query, globals())
+        # Base combo_df bar chart
+        combo_area = alt.Chart(combo_df).mark_area(color='grey', opacity=0.7).encode(
+            x=alt.X('timeStamp:T', title=''),
+            y=alt.Y('value:Q', title='Current Supply (MW)'),
+            color=alt.Color('fuelType:N', scale=alt.Scale(domain=list(theme.keys()),range=list(theme.values())), legend=alt.Legend(orient="top"))
+        ).properties(height=400)
+        st.altair_chart(combo_area, use_container_width=True)
 
     # Outages chart
         st.subheader('Monthly Forecasted Outages')
