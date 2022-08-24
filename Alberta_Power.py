@@ -155,7 +155,6 @@ def current_data():
 
 # Create KPIs
 def kpi(left_df, right_df, title):
-    left_df, right_df
     # Merging KPIs into one dataframe
     kpi_df = left_df.merge(right_df, how='left', on='fuelType', suffixes=('Previous','Current'))
     # Creating KPI delta calculation
@@ -302,7 +301,7 @@ for seconds in range(100000):
         realtime = realtime.astype({'fuelType':'object','value':'float64'})
         previousHour = current_df[['fuelType','value']][current_df['hour']==datetime.now().hour-1]
         currentHour = current_df[['fuelType','value']][current_df['hour']==datetime.now().hour]
-        
+        previousHour
         kpi_df = kpi(previousHour, realtime, 'Real Time')
         kpi(previousHour, currentHour, 'Hourly Average')
         warning_list = list(kpi_df['fuelType'][kpi_df['absDelta'].astype('int64') >= cutoff])
