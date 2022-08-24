@@ -251,6 +251,7 @@ theme = {'Biomass & Other':'#1f77b4',
 hide_menu(True)
 
 old_outage_df = outages().astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})
+old_outage_df.to_csv('./offsets.csv')
 cutoff = 100
 alert_list = []
 
