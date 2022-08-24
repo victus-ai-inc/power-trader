@@ -305,7 +305,7 @@ for seconds in range(100000):
         
         kpi_df = kpi(previousHour, realtime, 'Real Time')
         kpi(previousHour, currentHour, 'Hourly Average')
-        warning_list = list(kpi_df['fuelType'][kpi_df['absDelta'].astype('int64') >= 50])
+        warning_list = list(kpi_df['fuelType'][kpi_df['absDelta'].astype('int64') >= 100])
 
         st.write(f"Last update: {last_update.strftime('%a, %b %d @ %X')}")
         # KPI warning box
