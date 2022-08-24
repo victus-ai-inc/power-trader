@@ -204,7 +204,7 @@ def pull_grouped_hist():
     history_df = bigquery.Client(credentials=credentials).query(query).to_dataframe()
     return history_df
 
-@st.experimental_memo(suppress_st_warning=True, ttl=600)
+@st.experimental_memo(suppress_st_warning=True, ttl=60)
 def outages():
     streamIds = [44648, 118361, 322689, 118362, 147262, 322675, 322682, 44651]
     years = [datetime.now().year, datetime.now().year+1, datetime.now().year+2]
@@ -228,15 +228,25 @@ def make_alert_chart(df, fuelType, theme):
 
 def alert_charts(diff, theme):
     st.subheader('Intertie & Outage Alerts')
-    for fuelType in alert_list:
+    for fuelType in st.session_state['alert_list']:
         st.write(fuelType)
-        gt0 = make_alert_chart(diff[['timeStamp','fuelType','gt0']].rename(columns={'gt0':'value'}), fuelType, theme)
-        lt0 = make_alert_chart(diff[['timeStamp','fuelType','lt0']].rename(columns={'lt0':'value'}), fuelType, theme)
+        gt0 = diff[['timeStamp','fuelType','gt0']][diff['fuelType']==fuelType]
+        lt0 = diff[['timeStamp','fuelType','lt0']][diff['fuelType']==fuelType]
+        gt0 = make_alert_chart(gt0.rename(columns={'gt0':'value'}), fuelType, theme)
+        lt0 = make_alert_chart(lt0.rename(columns={'lt0':'value'}), fuelType, theme)
         line = alt.Chart(pd.DataFrame({'y':[0]})).mark_rule().encode(y='y')
         st.altair_chart(gt0+lt0+line, use_container_width=True)
 
+@st.experimental_memo(suppress_st_warning=True, ttl=10)
 def alerts():
-    pass
+    outage_df = pd.read_csv('./offsets_changes.csv').astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})     
+    diff = pd.merge(outage_df, old_outage_df, on=['timeStamp','fuelType'], suffixes=('_new','_old'))
+    diff['diff_value'] = diff['value_old'] - diff['value_new']
+    diff['gt0'] = [i if i > 0 else 0 for i in diff['diff_value']]
+    diff['lt0'] = [i if i < 0 else 0 for i in diff['diff_value']]
+    alert_list = list(set(diff['fuelType'][abs(diff['diff_value'])>cutoff]))
+    st.session_state['alert_list'] = alert_list
+    return diff, alert_list
     
 # App config
 st.set_page_config(layout='wide', initial_sidebar_state='collapsed', menu_items=None)
@@ -251,12 +261,13 @@ theme = {'Biomass & Other':'#1f77b4',
 hide_menu(True)
 
 old_outage_df = outages().astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})
-old_outage_df.to_csv('./offsets.csv')
 cutoff = 100
-alert_list = []
+if 'alert_list' not in st.session_state:
+    st.session_state['alert_list'] = []
+alert_list = st.session_state['alert_list']
 
 placeholder = st.empty()
-for seconds in range(100000):
+for seconds in range(300):
     # Pull live data
     try:
         realtime_df, last_update = current_data()
@@ -266,18 +277,17 @@ for seconds in range(100000):
         realtime_df, last_update = current_data()
     # Pull outage data
     try:
-      outage_df = outages().astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})
+        #outage_df = outages().astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})
+        outage_df = pd.read_csv('./offsets_changes.csv').astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})  
     except:
       with st.spinner('Gathering Intertie & Outage Data'):
             time.sleep(10)
-    #   outage_df = outages().astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})
-    outage_df = pd.read_csv('./offsets_changes.csv').astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})     
-    diff = pd.merge(outage_df, old_outage_df, on=['timeStamp','fuelType'], suffixes=('_new','_old'))
-    diff['diff_value'] = diff['value_old'] - diff['value_new']
-    diff['gt0'] = [i if i > 0 else 0 for i in diff['diff_value']]
-    diff['lt0'] = [i if i < 0 else 0 for i in diff['diff_value']]
+            #outage_df = outages().astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})
+            outage_df = pd.read_csv('./offsets_changes.csv').astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})     
 
-    with placeholder.container():      
+    diff, alert_list = alerts()
+    
+    with placeholder.container():
     # KPIs
         current_query = '''
         SELECT
@@ -293,15 +303,16 @@ for seconds in range(100000):
         ORDER BY fuelType, year, month, day, hour, timeStamp
         '''
         current_df = sqldf(current_query, locals()).astype({'fuelType':'object', 'year':'int64','month':'int64', 'day':'int64', 'hour':'int64', 'value':'float64', 'timeStamp':'datetime64[ns]'})
-        
         # Real Time KPIs
         realtime = realtime_df[['fuelType','value','timeStamp']][realtime_df['timeStamp']==max(realtime_df['timeStamp'])]
         if len(realtime) < 8:
-            realtime = realtime_df[['fuelType','value','timeStamp']][realtime_df['timeStamp']==max(realtime_df['timeStamp']-timedelta(0,300,0))]
+            realtime = realtime_df[['fuelType','value','timeStamp']][realtime_df['timeStamp']==max(realtime_df['timeStamp']-timedelta(minutes=50))]
         realtime.drop('timeStamp', axis=1, inplace=True)
         realtime = realtime.astype({'fuelType':'object','value':'float64'})
         previousHour = current_df[['fuelType','value']][current_df['hour']==datetime.now().hour-1]
         currentHour = current_df[['fuelType','value']][current_df['hour']==datetime.now().hour]
+        if currentHour['value'].isnull().values.any():
+            st.experimental_rerun()
         
         kpi_df = kpi(previousHour, realtime, 'Real Time')
         kpi(previousHour, currentHour, 'Hourly Average')
@@ -317,9 +328,9 @@ for seconds in range(100000):
                     warning('warning', f'{warning_list[_]}')
         # Outage & intertie alerts
         with col2:
-            if len(alert_list) > 0:
-                for _ in range(len(alert_list)):
-                    warning('alert', f'{alert_list[_]}')
+            if len(st.session_state['alert_list']) > 0:
+                for _ in range(len(st.session_state['alert_list'])):
+                    warning('alert', f"{st.session_state['alert_list'][_]}")
 
     # 14 day hist/real-time/forecast
         st.subheader('Real-time Supply')
@@ -363,9 +374,9 @@ for seconds in range(100000):
             )
         st.altair_chart(outage_area, use_container_width=True)
         
-        if (abs(diff['diff_value']) > cutoff).any():
-            alert_list = list(set(diff['fuelType'][abs(diff['diff_value'])>0]))
+        if (len(st.session_state['alert_list'])>0):
             alert_charts(diff, theme)
-        
         warning_list = []
+        st.write(f'App will reload in {300-seconds} seconds')
         time.sleep(1)
+st.experimental_rerun()
