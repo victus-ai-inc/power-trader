@@ -1,3 +1,4 @@
+from email import header
 import streamlit as st
 import pandas as pd
 import altair as alt
@@ -6,6 +7,8 @@ import json
 import http.client
 import certifi
 import time
+import pickle
+import alerts
 from st_aggrid import AgGrid
 from datetime import datetime, date, timedelta
 from google.cloud import bigquery
@@ -52,34 +55,39 @@ def warning(type, lst):
      padding: 15px 10px;">{lst}</p>''', unsafe_allow_html=True)
 
 def getToken():
-    username = st.secrets["nrg_username"]
-    password = st.secrets["nrg_password"]
-    server = 'api.nrgstream.com'
-    tokenPath = '/api/security/token'
-    tokenPayload = f'grant_type=password&username={username}&password={password}'
-    headers = {"Content-type": "application/x-www-form-urlencoded"}
-    # Connect to API server to get a token
-    context = ssl.create_default_context(cafile=certifi.where())
-    conn = http.client.HTTPSConnection(server,context=context)
-    conn.request('POST', tokenPath, tokenPayload, headers)
-    res = conn.getresponse()
-    res_code = res.status
-    # Check if the response is good
-    if res_code == 200:
-        res_data = res.read()
-        # Decode the token into an object
-        jsonData = json.loads(res_data.decode('utf-8'))
-        accessToken = jsonData['access_token']
-        # Calculate new expiry date
-        tokenExpiry = datetime.now() + timedelta(seconds=5)
-        #tokenExpiry = datetime.now() + timedelta(seconds=jsonData['expires_in'])
-    elif res_code == 400:
-        res.read()
-        release_token(accessToken)
-        getToken()
-    else:
-        res_data = res.read()
-    conn.close()
+    try:
+        username = st.secrets["nrg_username"]
+        password = st.secrets["nrg_password"]
+        server = 'api.nrgstream.com'
+        tokenPath = '/api/security/token'
+        tokenPayload = f'grant_type=password&username={username}&password={password}'
+        headers = {"Content-type": "application/x-www-form-urlencoded"}
+        # Connect to API server to get a token
+        context = ssl.create_default_context(cafile=certifi.where())
+        conn = http.client.HTTPSConnection(server,context=context)
+        conn.request('POST', tokenPath, tokenPayload, headers)
+        res = conn.getresponse()
+        res_code = res.status
+        # Check if the response is good
+        if res_code == 200:
+            res_data = res.read()
+            # Decode the token into an object
+            jsonData = json.loads(res_data.decode('utf-8'))
+            accessToken = jsonData['access_token']
+            # Calculate new expiry date
+            tokenExpiry = datetime.now() + timedelta(seconds=5)
+            #tokenExpiry = datetime.now() + timedelta(seconds=jsonData['expires_in'])
+        elif res_code == 400:
+            res.read()
+            release_token(accessToken)
+            getToken()
+        else:
+            res_data = res.read()
+        conn.close()
+    except:
+        with st.spinner('Attempting to access database...'):
+            time.sleep(5)
+            st.experimental_rerun()
     return accessToken, tokenExpiry
 
 def release_token(accessToken):
@@ -140,7 +148,7 @@ def pull_data(fromDate, toDate, streamId, accessToken, tokenExpiry):
     return df
 
 # Pull current day data from NRG
-@st.experimental_memo(suppress_st_warning=True, ttl=20)
+@st.experimental_memo(suppress_st_warning=True, ttl=30)
 def current_data():
     streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694, 120, 124947, 122]
     realtime_df = pd.DataFrame([])
@@ -210,7 +218,7 @@ def outages():
     years = [datetime.now().year, datetime.now().year+1, datetime.now().year+2]
     outages_df = pd.DataFrame([])
     for streamId in streamIds:
-        accessToken, tokenExpiry = getToken() 
+        accessToken, tokenExpiry = getToken()
         for year in years:    
             APIdata = pull_data(date(year,1,1).strftime('%m/%d/%Y'), date(year+1,1,1).strftime('%m/%d/%Y'), streamId, accessToken, tokenExpiry)
             APIdata['timeStamp'] = pd.to_datetime(APIdata['timeStamp'])
@@ -238,7 +246,7 @@ def alert_charts(diff, theme):
         st.altair_chart(gt0+lt0+line, use_container_width=True)
 
 @st.experimental_memo(suppress_st_warning=True, ttl=10)
-def alerts():
+def alert():
     outage_df = pd.read_csv('./offsets_changes.csv').astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})     
     diff = pd.merge(outage_df, old_outage_df, on=['timeStamp','fuelType'], suffixes=('_new','_old'))
     diff['diff_value'] = diff['value_old'] - diff['value_new']
@@ -246,8 +254,19 @@ def alerts():
     diff['lt0'] = [i if i < 0 else 0 for i in diff['diff_value']]
     alert_list = list(set(diff['fuelType'][abs(diff['diff_value'])>cutoff]))
     st.session_state['alert_list'] = alert_list
+    # Load alerts dict from pickle
+    with open('./alerts.pickle', 'rb') as handle:
+        alert_dict = pickle.load(handle)
+    # Update alerts dict if warning greater than 7 days ago
+    for i in alert_list:
+        if (datetime.now() - timedelta(seconds=20)) > alert_dict[i]:
+            alert_dict[i] = datetime.now()
+            alerts.sms()
+    # Save alerts dict to pickle
+    with open('./alerts.pickle', 'wb') as handle:
+        pickle.dump(alert_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
     return diff, alert_list
-    
+
 # App config
 st.set_page_config(layout='wide', initial_sidebar_state='collapsed', menu_items=None)
 theme = {'Biomass & Other':'#1f77b4', 
@@ -267,7 +286,7 @@ if 'alert_list' not in st.session_state:
 alert_list = st.session_state['alert_list']
 
 placeholder = st.empty()
-for seconds in range(300):
+for seconds in range(60):
     # Pull live data
     try:
         realtime_df, last_update = current_data()
@@ -285,7 +304,7 @@ for seconds in range(300):
             #outage_df = outages().astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})
             outage_df = pd.read_csv('./offsets_changes.csv').astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})     
 
-    diff, alert_list = alerts()
+    diff, alert_list = alert()
     
     with placeholder.container():
     # KPIs
@@ -311,12 +330,15 @@ for seconds in range(300):
         realtime = realtime.astype({'fuelType':'object','value':'float64'})
         previousHour = current_df[['fuelType','value']][current_df['hour']==datetime.now().hour-1]
         currentHour = current_df[['fuelType','value']][current_df['hour']==datetime.now().hour]
-        if currentHour['value'].isnull().values.any():
-            st.experimental_rerun()
         
         kpi_df = kpi(previousHour, realtime, 'Real Time')
         kpi(previousHour, currentHour, 'Hourly Average')
-        warning_list = list(kpi_df['fuelType'][kpi_df['absDelta'].astype('int64') >= cutoff])
+        try:
+            warning_list = list(kpi_df['fuelType'][kpi_df['absDelta'].astype('int64') >= cutoff])
+        except:
+            with st.spinner('Failed to gather live data. Waiting to reload...'):
+                time.sleep(10)
+            st.experimental_rerun()
 
         st.write(f"Last update: {last_update.strftime('%a, %b %d @ %X')}")
         # KPI warning box
@@ -359,7 +381,8 @@ for seconds in range(300):
         combo_area = alt.Chart(combo_df).mark_area(color='grey', opacity=0.7).encode(
             x=alt.X('timeStamp:T', title=''),
             y=alt.Y('value:Q', title='Current Supply (MW)'),
-            color=alt.Color('fuelType:N', scale=alt.Scale(domain=list(theme.keys()),range=list(theme.values())), legend=alt.Legend(orient="top"))
+            color=alt.Color('fuelType:N', scale=alt.Scale(domain=list(theme.keys()),range=list(theme.values())), legend=alt.Legend(orient="top")),
+            tooltip=['yearmonthdatehours(timeStamp)']
         ).properties(height=400)
         st.altair_chart(combo_area, use_container_width=True)
 
@@ -377,6 +400,6 @@ for seconds in range(300):
         if (len(st.session_state['alert_list'])>0):
             alert_charts(diff, theme)
         warning_list = []
-        st.write(f'App will reload in {300-seconds} seconds')
+        st.write(f'App will reload in {60-seconds} seconds')
         time.sleep(1)
 st.experimental_rerun()
