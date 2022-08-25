@@ -259,7 +259,7 @@ def alert():
         alert_dict = pickle.load(handle)
     # Update alerts dict if warning greater than 7 days ago
     for i in alert_list:
-        if (datetime.now() - timedelta(seconds=20)) > alert_dict[i]:
+        if (datetime.now() - timedelta(days=7)) > alert_dict[i]:
             alert_dict[i] = datetime.now()
             alerts.sms()
     # Save alerts dict to pickle
