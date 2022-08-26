@@ -15,7 +15,6 @@ from google.cloud import bigquery
 from google.oauth2 import service_account
 from google.cloud.exceptions import NotFound
 from pandasql import sqldf
-import random
 
 # Function to hide top and bottom menus on Streamlit app
 def hide_menu(bool):
@@ -185,11 +184,28 @@ def kpi(left_df, right_df, title):
     col11.metric(label=kpi_df.iloc[8,0], value=kpi_df.iloc[8,2], delta=kpi_df.iloc[8,3]) # Sask
     return kpi_df
 
-# Pull historical data from Google BigQuery
-@st.experimental_memo
+# Update and pull historical data from Google BigQuery
+@st.experimental_memo(suppress_st_warning=True)
 def pull_grouped_hist():
     # Google BigQuery auth
     credentials = service_account.Credentials.from_service_account_info(st.secrets["gcp_service_account"])
+    # Check if yesterday's data has been added to BigQuery
+    query = '''
+    SELECT *
+    FROM nrgdata.hourly_data
+    WHERE timeStamp BETWEEN DATE_SUB(current_date(), INTERVAL 1 DAY) AND current_date()
+    '''
+    updated = bigquery.Client(credentials=credentials).query(query).to_dataframe().empty
+    if updated == True:
+        streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694]
+        yesterday = datetime.now() - timedelta(days=1)
+        for streamId in streamIds:
+            accessToken, tokenExpiry = getToken()
+            APIdata = pull_data(yesterday.strftime('%m/%d/%Y'), yesterday.strftime('%m/%d/%Y'), streamId, accessToken, tokenExpiry)
+            APIdata['timeStamp'] = pd.to_datetime(APIdata['timeStamp'])
+            bigquery.Client(credentials=credentials).load_table_from_dataframe(APIdata, 'nrgdata.hourly_data')
+            release_token(accessToken)
+        alerts.sms2()
     # Pull data
     query = '''
     SELECT
@@ -212,7 +228,7 @@ def pull_grouped_hist():
     history_df = bigquery.Client(credentials=credentials).query(query).to_dataframe()
     return history_df
 
-@st.experimental_memo(suppress_st_warning=True, ttl=60)
+@st.experimental_memo(suppress_st_warning=True, ttl=300)
 def outages():
     streamIds = [44648, 118361, 322689, 118362, 147262, 322675, 322682, 44651]
     years = [datetime.now().year, datetime.now().year+1, datetime.now().year+2]
@@ -236,7 +252,7 @@ def make_alert_chart(df, fuelType, theme):
 
 def alert_charts(diff, theme):
     st.subheader('Intertie & Outage Alerts')
-    for fuelType in st.session_state['alert_list']:
+    for fuelType in alert_dict.keys():
         st.write(fuelType)
         gt0 = diff[['timeStamp','fuelType','gt0']][diff['fuelType']==fuelType]
         lt0 = diff[['timeStamp','fuelType','lt0']][diff['fuelType']==fuelType]
@@ -253,7 +269,6 @@ def alert():
     diff['gt0'] = [i if i > 0 else 0 for i in diff['diff_value']]
     diff['lt0'] = [i if i < 0 else 0 for i in diff['diff_value']]
     alert_list = list(set(diff['fuelType'][abs(diff['diff_value'])>cutoff]))
-    st.session_state['alert_list'] = alert_list
     # Load alerts dict from pickle
     with open('./alerts.pickle', 'rb') as handle:
         alert_dict = pickle.load(handle)
@@ -265,7 +280,8 @@ def alert():
     # Save alerts dict to pickle
     with open('./alerts.pickle', 'wb') as handle:
         pickle.dump(alert_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
-    return diff, alert_list
+    alert_dict ={k:v for k,v in alert_dict.items() if v > (datetime.now()-timedelta(7,0,0))}
+    return diff, alert_dict
 
 # App config
 st.set_page_config(layout='wide', initial_sidebar_state='collapsed', menu_items=None)
@@ -281,9 +297,9 @@ hide_menu(True)
 
 old_outage_df = outages().astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})
 cutoff = 100
-if 'alert_list' not in st.session_state:
-    st.session_state['alert_list'] = []
-alert_list = st.session_state['alert_list']
+# if 'alert_list' not in st.session_state:
+#     st.session_state['alert_list'] = []
+# alert_list = st.session_state['alert_list']
 
 placeholder = st.empty()
 for seconds in range(60):
@@ -304,7 +320,7 @@ for seconds in range(60):
             #outage_df = outages().astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})
             outage_df = pd.read_csv('./offsets_changes.csv').astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})     
 
-    diff, alert_list = alert()
+    diff, alert_dict = alert()
     
     with placeholder.container():
     # KPIs
@@ -348,11 +364,11 @@ for seconds in range(60):
             if len(warning_list) > 0:
                 for _ in range(len(warning_list)):
                     warning('warning', f'{warning_list[_]}')
-        # Outage & intertie alerts
+        # Outage & intertie alerts       
         with col2:
-            if len(st.session_state['alert_list']) > 0:
-                for _ in range(len(st.session_state['alert_list'])):
-                    warning('alert', f"{st.session_state['alert_list'][_]}")
+            if len(alert_dict) > 0:
+                for (k,v) in alert_dict.items():
+                    warning('alert', f"{k} {v.strftime('(%b %w, %Y @ %H:%M)')}")
 
     # 14 day hist/real-time/forecast
         st.subheader('Real-time Supply')
@@ -397,7 +413,7 @@ for seconds in range(60):
             )
         st.altair_chart(outage_area, use_container_width=True)
         
-        if (len(st.session_state['alert_list'])>0):
+        if (len(alert_dict)>0):
             alert_charts(diff, theme)
         warning_list = []
         st.write(f'App will reload in {60-seconds} seconds')

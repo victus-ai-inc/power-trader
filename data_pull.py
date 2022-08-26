@@ -31,8 +31,8 @@ if __name__ == '__main__':
     count = 1
     for id in streamIds:
         for yr in year:
-            startDate = date(yr,8,18)
-            endDate = date(yr,8,24)
+            startDate = date(yr,8,24)
+            endDate = date(yr,8,26)
             resursion(1)
         print(f'STREAM #{id} finished, {stream_count-count} streams remaining')
         count += 1
