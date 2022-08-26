@@ -117,6 +117,7 @@ def pull_data(fromDate, toDate, streamId, accessToken, tokenExpiry):
     headers = {'Accept': 'Application/json', 'Authorization': f'Bearer {accessToken}'}
     conn.request('GET', path, None, headers)
     res = conn.getresponse()
+    res
     if res.code != 200:
         res.read()
         conn.close()
