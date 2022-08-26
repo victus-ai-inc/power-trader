@@ -235,6 +235,7 @@ def outages():
     years = [datetime.now().year, datetime.now().year+1, datetime.now().year+2]
     outages_df = pd.DataFrame([])
     for streamId in streamIds:
+        st.write(streamId)
         accessToken, tokenExpiry = getToken()
         for year in years:    
             APIdata = pull_data(date(year,1,1).strftime('%m/%d/%Y'), date(year+1,1,1).strftime('%m/%d/%Y'), streamId, accessToken, tokenExpiry)
