@@ -242,6 +242,7 @@ def outages():
             APIdata['timeStamp'] = pd.to_datetime(APIdata['timeStamp'])
             outages_df = pd.concat([outages_df, APIdata], axis=0)
         release_token(accessToken)
+        time.sleep(1)
     outages_df.drop(['streamId','assetCode','streamName','subfuelType','timeInterval','intervalType'],axis=1,inplace=True)
     return outages_df
 
