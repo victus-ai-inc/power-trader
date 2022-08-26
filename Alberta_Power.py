@@ -297,9 +297,6 @@ hide_menu(True)
 
 old_outage_df = outages().astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})
 cutoff = 100
-# if 'alert_list' not in st.session_state:
-#     st.session_state['alert_list'] = []
-# alert_list = st.session_state['alert_list']
 
 placeholder = st.empty()
 for seconds in range(60):
@@ -312,13 +309,13 @@ for seconds in range(60):
         realtime_df, last_update = current_data()
     # Pull outage data
     try:
-        #outage_df = outages().astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})
-        outage_df = pd.read_csv('./offsets_changes.csv').astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})  
+        outage_df = outages().astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})
+        #outage_df = pd.read_csv('./offsets_changes.csv').astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})  
     except:
       with st.spinner('Gathering Intertie & Outage Data'):
             time.sleep(10)
-            #outage_df = outages().astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})
-            outage_df = pd.read_csv('./offsets_changes.csv').astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})     
+            outage_df = outages().astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})
+            #outage_df = pd.read_csv('./offsets_changes.csv').astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})     
 
     diff, alert_dict = alert()
     
