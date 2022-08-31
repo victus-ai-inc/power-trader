@@ -104,15 +104,11 @@ def get_streamInfo(streamId):
     streamInfo = streamInfo[streamInfo['streamId']==streamId]
     return streamInfo
 
-def http_connect():
+def pull_data(fromDate, toDate, streamId, accessToken, tokenExpiry):
+    # Setup the path for data request
     server = 'api.nrgstream.com'
     context = ssl.create_default_context(cafile=certifi.where())
     conn = http.client.HTTPSConnection(server, context=context)
-    return conn
-
-def pull_data(fromDate, toDate, streamId, accessToken, tokenExpiry):
-    # Setup the path for data request
-    conn = http_connect()
     path = f'/api/StreamData/{streamId}?fromDate={fromDate}&toDate={toDate}'
     headers = {'Accept': 'Application/json', 'Authorization': f'Bearer {accessToken}'}
     conn.request('GET', path, None, headers)
@@ -189,24 +185,22 @@ def kpi(left_df, right_df, title):
 def pull_grouped_hist():
     # Google BigQuery auth
     credentials = service_account.Credentials.from_service_account_info(st.secrets["gcp_service_account"])
-    # Check if yesterday's data has been added to BigQuery
-    query = '''
-    SELECT *
-    FROM nrgdata.hourly_data
-    WHERE timeStamp BETWEEN DATE_SUB(current_date(), INTERVAL 1 DAY) AND current_date()
-    '''
-    updated = bigquery.Client(credentials=credentials).query(query).to_dataframe().empty
-    if updated == True:
+    # Check when data was last added to BigQuery
+    query = 'SELECT MAX(timeStamp) FROM nrgdata.hourly_data'
+    # Check when BigQuery was last updated
+    last_update = bigquery.Client(credentials=credentials).query(query).to_dataframe().iloc[0][0]
+    # Add data to BQ from when it was last updated to yesterday
+    if last_update < (datetime.now()-timedelta(days=1)):
+        pull_grouped_hist.clear()
         streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694]
-        yesterday = datetime.now() - timedelta(days=1)
         for streamId in streamIds:
             accessToken, tokenExpiry = getToken()
-            APIdata = pull_data(yesterday.strftime('%m/%d/%Y'), yesterday.strftime('%m/%d/%Y'), streamId, accessToken, tokenExpiry)
+            APIdata = pull_data(last_update.strftime('%m/%d/%Y'), datetime.now().strftime('%m/%d/%Y'), streamId, accessToken, tokenExpiry)
             APIdata['timeStamp'] = pd.to_datetime(APIdata['timeStamp'])
             bigquery.Client(credentials=credentials).load_table_from_dataframe(APIdata, 'nrgdata.hourly_data')
             release_token(accessToken)
         alerts.sms2()
-    # Pull data
+    # Pull data from BQ
     query = '''
     SELECT
         DATETIME(
@@ -229,20 +223,51 @@ def pull_grouped_hist():
     return history_df
 
 @st.experimental_memo(suppress_st_warning=True, ttl=300)
-def outages():
+def current_outages():
     streamIds = [44648, 118361, 322689, 118362, 147262, 322675, 322682, 44651]
     years = [datetime.now().year, datetime.now().year+1, datetime.now().year+2]
-    outages_df = pd.DataFrame([])
+    current_outage_df = pd.DataFrame([])
     for streamId in streamIds:
         accessToken, tokenExpiry = getToken()
-        for year in years:    
+        for year in years:
             APIdata = pull_data(date(year,1,1).strftime('%m/%d/%Y'), date(year+1,1,1).strftime('%m/%d/%Y'), streamId, accessToken, tokenExpiry)
             APIdata['timeStamp'] = pd.to_datetime(APIdata['timeStamp'])
-            outages_df = pd.concat([outages_df, APIdata], axis=0)
+            current_outage_df = pd.concat([current_outage_df, APIdata], axis=0)
         release_token(accessToken)
         time.sleep(1)
-    outages_df.drop(['streamId','assetCode','streamName','subfuelType','timeInterval','intervalType'],axis=1,inplace=True)
-    return outages_df
+    current_outage_df.drop(['streamId','assetCode','streamName','subfuelType','timeInterval','intervalType'],axis=1,inplace=True)
+    return current_outage_df
+
+@st.experimental_memo(suppress_st_warning=True, ttl=10)
+def alert():
+    # Load alerts dict from pickle
+    with open('./alerts.pickle', 'rb') as handle:
+        alert_pickle = pickle.load(handle)
+    # If the oldest outage dataframe is older than a week then pop the oldest entry and add new entry to end of list
+    if datetime.now().date() > (alert_pickle['dataframes'][0][0] + timedelta(days=6)):
+        alert_pickle['dataframes'].pop(0)
+        new_outage_df = current_outages().astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})
+        alert_pickle['dataframes'].append((datetime.now().date(), new_outage_df))
+        old_outage_df = alert_pickle['dataframes'][0][1]
+    else:
+        #outage_df = alert_pickle['dataframes'][0][1]
+        old_outage_df = pd.read_csv('offsets_changes.csv').astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})
+    diff = pd.merge(old_outage_df, current_outage_df, on=['timeStamp','fuelType'], suffixes=('_new','_old'))
+    diff['diff_value'] = diff['value_old'] - diff['value_new']
+    diff['gt0'] = [i if i > 0 else 0 for i in diff['diff_value']]
+    diff['lt0'] = [i if i < 0 else 0 for i in diff['diff_value']]
+    alert_list = list(set(diff['fuelType'][abs(diff['diff_value'])>cutoff]))
+    # Update alerts dict if warning greater than 7 days ago
+    for i in alert_list:
+        if (datetime.now() - timedelta(days=7)) > alert_pickle['dates'][i]:
+            alert_pickle['dates'][i] = datetime.now()
+            alerts.sms()
+    # Save alerts changes to pickle
+    with open('./alerts.pickle', 'wb') as handle:
+        pickle.dump(alert_pickle, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    # Create dictionary of 
+    alert_dict = {k:v for k,v in alert_pickle['dates'].items() if v > (datetime.now()-timedelta(7,0,0))}
+    return diff, alert_dict
 
 def make_alert_chart(df, fuelType, theme):
     chart = alt.Chart(df).mark_bar(opacity=0.7, color=theme[fuelType]).encode(
@@ -262,28 +287,6 @@ def alert_charts(diff, theme):
         line = alt.Chart(pd.DataFrame({'y':[0]})).mark_rule().encode(y='y')
         st.altair_chart(gt0+lt0+line, use_container_width=True)
 
-@st.experimental_memo(suppress_st_warning=True, ttl=10)
-def alert():
-    outage_df = pd.read_csv('./offsets_changes.csv').astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})     
-    diff = pd.merge(outage_df, old_outage_df, on=['timeStamp','fuelType'], suffixes=('_new','_old'))
-    diff['diff_value'] = diff['value_old'] - diff['value_new']
-    diff['gt0'] = [i if i > 0 else 0 for i in diff['diff_value']]
-    diff['lt0'] = [i if i < 0 else 0 for i in diff['diff_value']]
-    alert_list = list(set(diff['fuelType'][abs(diff['diff_value'])>cutoff]))
-    # Load alerts dict from pickle
-    with open('./alerts.pickle', 'rb') as handle:
-        alert_dict = pickle.load(handle)
-    # Update alerts dict if warning greater than 7 days ago
-    for i in alert_list:
-        if (datetime.now() - timedelta(days=7)) > alert_dict[i]:
-            alert_dict[i] = datetime.now()
-            alerts.sms()
-    # Save alerts dict to pickle
-    with open('./alerts.pickle', 'wb') as handle:
-        pickle.dump(alert_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
-    alert_dict ={k:v for k,v in alert_dict.items() if v > (datetime.now()-timedelta(7,0,0))}
-    return diff, alert_dict
-
 # App config
 st.set_page_config(layout='wide', initial_sidebar_state='collapsed', menu_items=None)
 theme = {'Biomass & Other':'#1f77b4', 
@@ -296,7 +299,6 @@ theme = {'Biomass & Other':'#1f77b4',
             'Wind':'#7f7f7f'}
 hide_menu(True)
 
-old_outage_df = outages().astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})
 cutoff = 100
 
 placeholder = st.empty()
@@ -310,13 +312,11 @@ for seconds in range(60):
         realtime_df, last_update = current_data()
     # Pull outage data
     try:
-        outage_df = outages().astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})
-        #outage_df = pd.read_csv('./offsets_changes.csv').astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})  
+        current_outage_df = current_outages().astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})
     except:
-      with st.spinner('Gathering Intertie & Outage Data'):
+        with st.spinner('Gathering Intertie & Outage Data'):
             time.sleep(10)
-            outage_df = outages().astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})
-            #outage_df = pd.read_csv('./offsets_changes.csv').astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})     
+            current_outage_df = current_outages().astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})
 
     diff, alert_dict = alert()
     
@@ -342,8 +342,8 @@ for seconds in range(60):
             realtime = realtime_df[['fuelType','value','timeStamp']][realtime_df['timeStamp']==max(realtime_df['timeStamp']-timedelta(minutes=50))]
         realtime.drop('timeStamp', axis=1, inplace=True)
         realtime = realtime.astype({'fuelType':'object','value':'float64'})
-        previousHour = current_df[['fuelType','value']][current_df['hour']==datetime.now().hour-7]
-        currentHour = current_df[['fuelType','value']][current_df['hour']==datetime.now().hour-6]
+        previousHour = current_df[['fuelType','value']][current_df['hour']==datetime.now().hour-1]
+        currentHour = current_df[['fuelType','value']][current_df['hour']==datetime.now().hour-0]
         kpi_df = kpi(previousHour, realtime, 'Real Time')
         kpi(previousHour, currentHour, 'Hourly Average')
         try:
@@ -365,7 +365,7 @@ for seconds in range(60):
         with col2:
             if len(alert_dict) > 0:
                 for (k,v) in alert_dict.items():
-                    warning('alert', f"{k} {v.strftime('(%b %w, %Y @ %H:%M)')}")
+                    warning('alert', f"{k} {v.strftime('(%b %-d, %Y)')}")
 
     # 14 day hist/real-time/forecast
         st.subheader('Real-time Supply')
@@ -402,17 +402,15 @@ for seconds in range(60):
     # Outages chart
         st.subheader('Monthly Forecasted Outages')
         # Outages area chart
-        outage_area = alt.Chart(outage_df).mark_bar(opacity=0.7).encode(
+        outage_area = alt.Chart(current_outage_df).mark_bar(opacity=0.7).encode(
             x=alt.X('yearmonth(timeStamp):T', title='', axis=alt.Axis(labelAngle=90)),
             y=alt.Y('value:Q', stack='zero', axis=alt.Axis(format=',f'), title='Outages (MW)'),
             color=alt.Color('fuelType:N', scale=alt.Scale(domain=list(theme.keys()),range=list(theme.values())), legend=alt.Legend(orient="top")),
             tooltip=['fuelType','value','timeStamp']
             )
         st.altair_chart(outage_area, use_container_width=True)
-        
         if (len(alert_dict)>0):
             alert_charts(diff, theme)
-        warning_list = []
         st.write(f'App will reload in {60-seconds} seconds')
         time.sleep(1)
 st.experimental_rerun()
