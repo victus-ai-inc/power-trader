@@ -698,5 +698,5 @@ streamId,assetCode,streamName,fuelType,subfuelType,timeInterval,intervalType
 322675,SOLAR,Solar,Solar,Solar,month,outages
 322682,STORAGE,Energy Storage,Energy Storage,Energy Storage,month,outages
 44651,BIO,Biomass & Other,Biomass & Other,Biomass & Other,month,outages
-124,INTERTIE,Intertie,Intertie,Intertie,month,outages
+124,INTERTIE,Intertie,Intertie,Intertie,5 min,outages
 278763,24M-S&D,24M Supply Demand Forecast,24M Supply Demand Forecast,24M Supply Demand Forecast,month,supply
