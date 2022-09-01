@@ -76,16 +76,23 @@ def get_token():
             accessToken = jsonData['access_token']
             with open('./access_token.pickle', 'wb') as handle:
                 pickle.dump(accessToken, handle, protocol=pickle.HIGHEST_PROTOCOL)
+            if 'last_token' not in st.session_state:
+                st.session_state['last_token'] = accessToken
             # Calculate new expiry date
-            #tokenExpiry = datetime.now() + timedelta(seconds=jsonData['expires_in'])
+            tokenExpiry = datetime.now() + timedelta(seconds=jsonData['expires_in'])
+        elif res_code == 400:
+            res.read()
+            release_token(accessToken)
+            get_token()
+        else:
             res_data = res.read()
-            conn.close()
+        conn.close()
     except:
         with st.spinner('Attempting to access database...'):
-            with open('./access_token.pickle', 'rb') as handle:
-                last_token = pickle.load(handle)
-            release_token(last_token)
-            time.sleep(5)
+            # with open('./access_token.pickle', 'rb') as handle:
+            #     last_token = pickle.load(handle)
+            # release_token(last_token)
+            time.sleep(10)
             st.experimental_rerun()
     return accessToken
 
@@ -153,7 +160,7 @@ def get_data(streamIds, start_date, end_date):
     return df
 
 # Pull current day data (5 min intervals) from NRG
-@st.experimental_memo(suppress_st_warning=True, ttl=20)
+@st.experimental_memo(suppress_st_warning=True, ttl=30)
 def current_data():
     streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694, 120, 124947, 122]
     realtime_df = get_data(streamIds, datetime.today(), datetime.today())
@@ -241,6 +248,7 @@ def daily_outages():
     streamIds = [124]
     intertie_outages = get_data(streamIds, datetime.today(), datetime.today() + relativedelta(months=12, day=1, days=-1))
     intertie_outages = intertie_outages.groupby(pd.Grouper(key='timeStamp',axis=0,freq='D')).min().reset_index()
+    intertie_outages['value'] = max(intertie_outages['value'])- intertie_outages['value']
     streamIds = [118366, 118363, 322685, 118365, 118364, 322667, 322678, 147263]
     stream_outages = get_data(streamIds, datetime.today(), datetime.today() + relativedelta(months=4, day=1, days=-1))
     daily_outages = pd.concat([intertie_outages,stream_outages])
@@ -257,9 +265,9 @@ def outage_alerts():
         alert_pickle['outage_dfs'].append((datetime.now().date(), new_outage_df))
         old_outage_df = alert_pickle['outage_dfs'][0][1]
     else:
-        #outage_df = alert_pickle['outage_dfs'][0][1]
+        #old_outage_df = alert_pickle['outage_dfs'][0][1]
         old_outage_df = pd.read_csv('offsets_changes.csv').astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})
-    outage_diff = pd.merge(old_outage_df, current_outage_df, on=['timeStamp','fuelType'], suffixes=('_new','_old'))
+    outage_diff = pd.merge(old_outage_df, monthly_outage, on=['timeStamp','fuelType'], suffixes=('_new','_old'))
     outage_diff['diff_value'] = outage_diff['value_old'] - outage_diff['value_new']
     outage_diff['gt0'] = [i if i > 0 else 0 for i in outage_diff['diff_value']]
     outage_diff['lt0'] = [i if i < 0 else 0 for i in outage_diff['diff_value']]
@@ -303,7 +311,8 @@ theme = {'Biomass & Other':'#1f77b4',
             'Wind':'#7f7f7f',
             'BC':'#9467bd',
             'Saskatchewan':'#c5b0d5',
-            'Montana':'#e377c2'}
+            'Montana':'#e377c2',
+            'Intertie':'#17becf'}
 hide_menu(True)
 cutoff = 100
 
@@ -311,17 +320,16 @@ placeholder = st.empty()
 for seconds in range(30):
     try:
         realtime_df, last_update = current_data()
-        current_outage_df = monthly_outages().astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})
-        current_outages_df = daily_outages()
+        monthly_outage = monthly_outages().astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})
+        daily_outage = daily_outages()
         outage_diff, alert_dict = outage_alerts()
     except:
         with st.spinner('Gathering Live Data Streams'):
-            time.sleep(5)
+            time.sleep(10)
         realtime_df, last_update = current_data()
-        current_outage_df = monthly_outages().astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})
-        current_outages_df = daily_outages()
+        monthly_outage = monthly_outages().astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})
+        daily_outage = daily_outages()
         outage_diff, alert_dict = outage_alerts()
-    
     with placeholder.container():
     # KPIs
         current_query = '''
@@ -350,7 +358,7 @@ for seconds in range(30):
         warning_list = list(kpi_df['fuelType'][kpi_df['absDelta'].astype('int64') >= cutoff])
         st.write(f"Last update: {last_update.strftime('%a, %b %d @ %X')}")
     
-    # KPI warning & alert boxs
+    # KPI warning & alert boxes
         col1, col2 = st.columns(2)
         with col1:
             if len(warning_list) > 0:
@@ -362,7 +370,7 @@ for seconds in range(30):
                     warning('alert', f"{k} {v.strftime('(%b %-d, %Y)')}")
 
     # 14 day hist/real-time/forecast
-        st.subheader('Last Week\'s Supply')
+        st.subheader('Last 7-day Supply')
         history_df = pull_grouped_hist()
         combo_df = pd.concat([history_df,current_df], axis=0)
         query = "SELECT * FROM combo_df ORDER BY fuelType"
@@ -373,10 +381,21 @@ for seconds in range(30):
             color=alt.Color('fuelType:N', scale=alt.Scale(domain=list(theme.keys()),range=list(theme.values())), legend=alt.Legend(orient="top"))
         ).properties(height=400)
         st.altair_chart(combo_area, use_container_width=True)
-
+    
+    # Daily outages
+        st.subheader('Daily Outages')
+        daily_outage = daily_outage[daily_outage['timeStamp']<(datetime.today()+timedelta(days=90))]
+        chrt = alt.Chart(daily_outage).mark_area(opacity=0.7).encode(
+            x=alt.X('monthdatehours(timeStamp):T', title='', axis=alt.Axis(labelAngle=90)),
+            y=alt.Y('value:Q', stack='zero', axis=alt.Axis(format=',f'), title='Outages (MW)'),
+            color=alt.Color('fuelType:N', scale=alt.Scale(domain=list(theme.keys()),range=list(theme.values())), legend=alt.Legend(orient="top"))
+        ).properties(height=400)
+        st.altair_chart(chrt, use_container_width=True)
+    
     # Outages chart
-        st.subheader('Monthly Forecasted Outages')
-        outage_area = alt.Chart(current_outage_df).mark_bar(opacity=0.7).encode(
+        st.subheader('Monthly Outages')
+        monthly_outage = monthly_outage[monthly_outage['timeStamp'] > datetime.today()]
+        outage_area = alt.Chart(monthly_outage).mark_bar(opacity=0.7).encode(
             x=alt.X('yearmonth(timeStamp):T', title='', axis=alt.Axis(labelAngle=90)),
             y=alt.Y('value:Q', stack='zero', axis=alt.Axis(format=',f'), title='Outages (MW)'),
             color=alt.Color('fuelType:N', scale=alt.Scale(domain=list(theme.keys()),range=list(theme.values())), legend=alt.Legend(orient="top")),
