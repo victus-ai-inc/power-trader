@@ -73,6 +73,10 @@ def getToken():
             # Decode the token into an object
             jsonData = json.loads(res_data.decode('utf-8'))
             accessToken = jsonData['access_token']
+            with open('./access_token.pickle', 'wb') as handle:
+                pickle.dump(accessToken, handle, protocol=pickle.HIGHEST_PROTOCOL)
+            if 'last_token' not in st.session_state:
+                st.session_state['last_token'] = accessToken
             # Calculate new expiry date
             tokenExpiry = datetime.now() + timedelta(seconds=jsonData['expires_in'])
         elif res_code == 400:
@@ -84,6 +88,9 @@ def getToken():
         conn.close()
     except:
         with st.spinner('Attempting to access database...'):
+            with open('./access_token.pickle', 'rb') as handle:
+                last_token = pickle.load(handle)
+            release_token(last_token)
             time.sleep(5)
             st.experimental_rerun()
     return accessToken, tokenExpiry
@@ -141,13 +148,13 @@ def pull_data(fromDate, toDate, streamId, accessToken, tokenExpiry):
     return df
 
 # Pull current day data (5 min intervals) from NRG
-@st.experimental_memo(suppress_st_warning=True, ttl=30)
+@st.experimental_memo(suppress_st_warning=True, ttl=20)
 def current_data():
     streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694, 120, 124947, 122]
     realtime_df = pd.DataFrame([])
     today = datetime.now()
     for streamId in streamIds:
-        accessToken, tokenExpiry = getToken()
+        accessToken, tokenExpiry = getToken()    
         APIdata = pull_data(today.strftime('%m/%d/%Y'), today.strftime('%m/%d/%Y'), streamId, accessToken, tokenExpiry)
         APIdata['timeStamp'] = pd.to_datetime(APIdata['timeStamp'])
         realtime_df = pd.concat([realtime_df, APIdata], axis=0)
@@ -221,7 +228,7 @@ def pull_grouped_hist():
     return history_df
 
 @st.experimental_memo(suppress_st_warning=True, ttl=300)
-def current_outages():
+def forecast_outages():
     # Pull monthly outages from NRG
     streamIds = [44648, 118361, 322689, 118362, 147262, 322675, 322682, 44651]
     years = [datetime.now().year, datetime.now().year+1, datetime.now().year+2]
@@ -238,18 +245,20 @@ def current_outages():
     return current_outage_df
 
 @st.experimental_memo(suppress_st_warning=True, ttl=300)
-def intertie_outages():
+def current_outages():
     streamId = 124
     years = [datetime.now().year, datetime.now().year+1]
-    intertie_outages_df = pd.DataFrame([])
+    current_outages_df = pd.DataFrame([])
     accessToken, tokenExpiry = getToken()
     for year in years:
         APIdata = pull_data(date(year,1,1).strftime('%m/%d/%Y'), date(year+1,1,1).strftime('%m/%d/%Y'), streamId, accessToken, tokenExpiry)
         APIdata['timeStamp'] = pd.to_datetime(APIdata['timeStamp'])
-        intertie_outages_df = pd.concat([intertie_outages_df, APIdata], axis=0)
+        current_outages_df = pd.concat([current_outages_df, APIdata], axis=0)
     release_token(accessToken)
-    intertie_outages_df.drop(['streamId','assetCode','streamName','subfuelType','timeInterval','intervalType'],axis=1,inplace=True)
-    return intertie_outages_df
+    current_outages_df.drop(['streamId','assetCode','streamName','subfuelType','timeInterval','intervalType'],axis=1,inplace=True)
+    with open('./intertie.pickle', 'wb') as handle:
+        pickle.dump(current_outages_df, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    return current_outages_df
 
 @st.experimental_memo(suppress_st_warning=True, ttl=10)
 def outage_alerts():
@@ -262,8 +271,8 @@ def outage_alerts():
     # If the outage_df at the top of the alert_pickle['outage_dfs'] list is older than a week then pop this outage_df and add new outage_df to end of list
     if datetime.now().date() > (alert_pickle['outage_dfs'][0][0] + timedelta(days=6)):
         alert_pickle['outage_dfs'].pop(0)
-        current_outages.clear()
-        new_outage_df = current_outages().astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})
+        forecast_outages.clear()
+        new_outage_df = forecast_outages().astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})
         alert_pickle['outage_dfs'].append((datetime.now().date(), new_outage_df))
         old_outage_df = alert_pickle['outage_dfs'][0][1]
     # If the most current new_outage_df has already been updated in alert_pickle then just pull the oldest df from the top of the list
@@ -326,19 +335,19 @@ hide_menu(True)
 cutoff = 100
 
 placeholder = st.empty()
-for seconds in range(60):
+for seconds in range(30):
     # Pull current day & outage data from NRG
     try:
         realtime_df, last_update = current_data()
-        current_outage_df = current_outages().astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})
-        intertie_outages_df = intertie_outages()
+        current_outage_df = forecast_outages().astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})
+        current_outages_df = current_outages()
         outage_diff, alert_dict = outage_alerts()
     except:
         with st.spinner('Gathering Live Data Streams'):
-            time.sleep(10)
+            time.sleep(5)
         realtime_df, last_update = current_data()
-        current_outage_df = current_outages().astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})
-        intertie_outages_df = intertie_outages()
+        current_outage_df = forecast_outages().astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})
+        current_outages_df = current_outages()
         outage_diff, alert_dict = outage_alerts()
     
     # Create a container that will be refreshed every 60 seconds
@@ -423,13 +432,13 @@ for seconds in range(60):
             color=alt.Color('fuelType:N', scale=alt.Scale(domain=list(theme.keys()),range=list(theme.values())), legend=alt.Legend(orient="top")),
             tooltip=['fuelType','value','timeStamp']
             )
-        intertie_outages_df
-        # itertie_outage_area = alt.Chart(intertie_outages_df).mark_line.encode(
+        # current_outages_df
+        # itertie_outage_area = alt.Chart(current_outages_df).mark_line.encode(
         #     x=
         # )
         st.altair_chart(outage_area, use_container_width=True)
         if (len(alert_dict)>0):
             alert_charts(outage_diff, theme)
-        st.write(f'App will reload in {60-seconds} seconds')
+        st.write(f'App will reload in {30-seconds} seconds')
         time.sleep(1)
 st.experimental_rerun()
