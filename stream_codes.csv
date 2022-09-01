@@ -690,13 +690,21 @@ streamId,assetCode,streamName,fuelType,subfuelType,timeInterval,intervalType
 322665,SOLAR,Solar,Solar,Solar,5 min,supply
 322677,STORAGE,Energy Storage,Energy Storage,Energy Storage,5 min,supply
 23694,WIND,Wind,Wind,Wind,5 min,supply
+44651,BIO,Biomass & Other,Biomass & Other,Biomass & Other,month,outages
 44648,COAL,Coal,Coal,Coal,month,outages
-118361,NATGAS,Natural Gas,Natural Gas,Natural Gas,month,outages
 322689,DUAL,Dual Fuel,Dual Fuel,Dual Fuel,month,outages
 118362,HYDRO,Hydro,Hydro,Hydro,month,outages
-147262,WIND,Wind,Wind,Wind,month,outages
+118361,NATGAS,Natural Gas,Natural Gas,Natural Gas,month,outages
 322675,SOLAR,Solar,Solar,Solar,month,outages
 322682,STORAGE,Energy Storage,Energy Storage,Energy Storage,month,outages
-44651,BIO,Biomass & Other,Biomass & Other,Biomass & Other,month,outages
+147262,WIND,Wind,Wind,Wind,month,outages
+118366,BIO,Biomass & Other,Biomass & Other,Biomass & Other,daily,outages
+118363,COAL,Coal,Coal,Coal,daily,outages
+322685,DUAL,Dual Fuel,Dual Fuel,Dual Fuel,daily,outages
+118365,HYDRO,Hydro,Hydro,Hydro,daily,outages
+118364,NATGAS,Natural Gas,Natural Gas,Natural Gas,daily,outages
+322667,SOLAR,Solar,Solar,Solar,daily,outages
+322678,STORAGE,Energy Storage,Energy Storage,Energy Storage,daily,outages
+147263,WIND,Wind,Wind,Wind,daily,outages
 124,INTERTIE,Intertie,Intertie,Intertie,5 min,outages
 278763,24M-S&D,24M Supply Demand Forecast,24M Supply Demand Forecast,24M Supply Demand Forecast,month,supply
