@@ -1,3 +1,4 @@
+from calendar import month
 from email import header
 import streamlit as st
 import pandas as pd
@@ -30,30 +31,6 @@ def hide_menu(bool):
             """
         return st.markdown(hide_menu_style, unsafe_allow_html=True)
 
-def warning(type, lst):
-    if type == 'warning':
-        background_color = 'rgba(214, 39, 40, .1)'
-        border_color = 'rgba(214, 39, 40, .2)'
-        text_color = 'rgba(214, 39, 40, 0.6)'
-    elif type == 'alert':
-        background_color = 'rgba(31, 119, 180, .1)'
-        border_color = 'rgba(31, 119, 180, .2)'
-        text_color = 'rgba(31, 119, 180, 0.6)'
-    st.markdown(f'''<p style="border-radius: 6px;
-     -webkit-border-radius: 6px;
-     background-color: {background_color};
-     background-position: 9px 0px;
-     background-repeat: no-repeat;
-     border: solid 1px {border_color};
-     border-radius: 6px;
-     line-height: 18px;
-     overflow: hidden;
-     font-size:24px;
-     font-weight: bold;
-     color: {text_color};
-     text-align: center;
-     padding: 15px 10px;">{lst}</p>''', unsafe_allow_html=True)
-
 def get_token():
     try:
         username = st.secrets["nrg_username"]
@@ -74,12 +51,11 @@ def get_token():
             # Decode the token into an object
             jsonData = json.loads(res_data.decode('utf-8'))
             accessToken = jsonData['access_token']
-            with open('./access_token.pickle', 'wb') as handle:
-                pickle.dump(accessToken, handle, protocol=pickle.HIGHEST_PROTOCOL)
-            if 'last_token' not in st.session_state:
-                st.session_state['last_token'] = accessToken
-            # Calculate new expiry date
-            tokenExpiry = datetime.now() + timedelta(seconds=jsonData['expires_in'])
+            with open('./default_pickle.pickle', 'rb') as handle:
+                default_pickle = pickle.load(handle)
+                default_pickle['accessToken'] = accessToken
+            with open('./default_pickle.pickle', 'wb') as handle:
+                pickle.dump(default_pickle, handle, protocol=pickle.HIGHEST_PROTOCOL)
         elif res_code == 400:
             res.read()
             release_token(accessToken)
@@ -89,10 +65,6 @@ def get_token():
         conn.close()
     except:
         with st.spinner('Attempting to access database...'):
-            # with open('./access_token.pickle', 'rb') as handle:
-            #     last_token = pickle.load(handle)
-            # release_token(last_token)
-            time.sleep(10)
             st.experimental_rerun()
     return accessToken
 
@@ -119,14 +91,6 @@ def pull_data(fromDate, toDate, streamId, accessToken):
     headers = {'Accept': 'Application/json', 'Authorization': f'Bearer {accessToken}'}
     conn.request('GET', path, None, headers)
     res = conn.getresponse()
-    # if res.code != 200:
-    #     res.read()
-    #     conn.close()
-    #     release_token(accessToken)
-    #     accessToken, tokenExpiry = get_token()
-    #     pull_data(fromDate, toDate, streamId, accessToken, tokenExpiry)
-    # Load json data & create pandas df
-    #else:
     jsonData = json.loads(res.read().decode('utf-8'))
     df = pd.json_normalize(jsonData, record_path='data')
     # Rename df cols
@@ -159,14 +123,12 @@ def get_data(streamIds, start_date, end_date):
         df.drop(['streamId','assetCode','streamName','subfuelType','timeInterval','intervalType'], axis=1, inplace=True)
     return df
 
-# Pull current day data (5 min intervals) from NRG
-@st.experimental_memo(suppress_st_warning=True, ttl=30)
+@st.experimental_memo(suppress_st_warning=True, ttl=20)
 def current_data():
     streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694, 120, 124947, 122]
     realtime_df = get_data(streamIds, datetime.today(), datetime.today())
-    return realtime_df, datetime.today()
+    return realtime_df
 
-# Create KPIs
 def kpi(left_df, right_df, title):
     # Merging KPIs into one dataframe
     kpi_df = left_df.merge(right_df, how='left', on='fuelType', suffixes=('Previous','Current'))
@@ -190,7 +152,30 @@ def kpi(left_df, right_df, title):
     col11.metric(label=kpi_df.iloc[8,0], value=kpi_df.iloc[8,2], delta=kpi_df.iloc[8,3]) # Sask
     return kpi_df
 
-# Update and pull historical data from Google BigQuery
+def warning(type, lst):
+    if type == 'warning':
+        background_color = 'rgba(214, 39, 40, .1)'
+        border_color = 'rgba(214, 39, 40, .2)'
+        text_color = 'rgba(214, 39, 40, 0.6)'
+    elif type == 'alert':
+        background_color = 'rgba(31, 119, 180, .1)'
+        border_color = 'rgba(31, 119, 180, .2)'
+        text_color = 'rgba(31, 119, 180, 0.6)'
+    st.markdown(f'''<p style="border-radius: 6px;
+     -webkit-border-radius: 6px;
+     background-color: {background_color};
+     background-position: 9px 0px;
+     background-repeat: no-repeat;
+     border: solid 1px {border_color};
+     border-radius: 6px;
+     line-height: 18px;
+     overflow: hidden;
+     font-size:24px;
+     font-weight: bold;
+     color: {text_color};
+     text-align: center;
+     padding: 15px 10px;">{lst}</p>''', unsafe_allow_html=True)
+
 @st.experimental_memo(suppress_st_warning=True)
 def pull_grouped_hist():
     # Google BigQuery auth
@@ -234,16 +219,6 @@ def pull_grouped_hist():
     return history_df
 
 @st.experimental_memo(suppress_st_warning=True, ttl=300)
-def monthly_outages():
-    streamIds = [44648, 118361, 322689, 118362, 147262, 322675, 322682, 44651]
-    years = [datetime.today().year, datetime.today().year+1, datetime.today().year+2]
-    monthly_outages = pd.DataFrame([])
-    for year in years:
-        df = get_data(streamIds, date(year,1,1), date(year+1,1,1))
-        monthly_outages = pd.concat([monthly_outages, df], axis=0)
-    return monthly_outages
-
-@st.experimental_memo(suppress_st_warning=True, ttl=300)
 def daily_outages():
     streamIds = [124]
     intertie_outages = get_data(streamIds, datetime.today(), datetime.today() + relativedelta(months=12, day=1, days=-1))
@@ -254,50 +229,32 @@ def daily_outages():
     daily_outages = pd.concat([intertie_outages,stream_outages])
     return daily_outages
 
-@st.experimental_memo(suppress_st_warning=True, ttl=10)
+@st.experimental_memo(suppress_st_warning=True, ttl=300)
+def monthly_outages():
+    streamIds = [44648, 118361, 322689, 118362, 147262, 322675, 322682, 44651]
+    years = [datetime.today().year, datetime.today().year+1, datetime.today().year+2]
+    monthly_outages = pd.DataFrame([])
+    for year in years:
+        df = get_data(streamIds, date(year,1,1), date(year+1,1,1))
+        monthly_outages = pd.concat([monthly_outages, df], axis=0)
+    monthly_outages = monthly_outages[monthly_outages['timeStamp']>=datetime.today()]
+    return monthly_outages
+
+@st.experimental_memo(suppress_st_warning=True)
 def outage_alerts():
-    with open('./alerts.pickle', 'rb') as handle:
-        alert_pickle = pickle.load(handle)
-    if datetime.now().date() > (alert_pickle['outage_dfs'][0][0] + timedelta(days=6)):
-        alert_pickle['outage_dfs'].pop(0)
-        monthly_outages.clear()
-        new_outage_df = monthly_outages().astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})
-        alert_pickle['outage_dfs'].append((datetime.now().date(), new_outage_df))
-        old_outage_df = alert_pickle['outage_dfs'][0][1]
-    else:
-        #old_outage_df = alert_pickle['outage_dfs'][0][1]
-        old_outage_df = pd.read_csv('offsets_changes.csv').astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})
-    outage_diff = pd.merge(old_outage_df, monthly_outage, on=['timeStamp','fuelType'], suffixes=('_new','_old'))
-    outage_diff['diff_value'] = outage_diff['value_old'] - outage_diff['value_new']
-    outage_diff['gt0'] = [i if i > 0 else 0 for i in outage_diff['diff_value']]
-    outage_diff['lt0'] = [i if i < 0 else 0 for i in outage_diff['diff_value']]
-    alert_list = list(set(outage_diff['fuelType'][abs(outage_diff['diff_value'])>cutoff]))
+    #old_monthly_outage = default_pickle['monthly_outage_dfs'][0][1]
+    old_monthly_outage = pd.read_csv('offsets_changes.csv').astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})
+    monthly_outage = default_pickle['monthly_outage_dfs'][6][1]
+    monthly_diff = pd.merge(old_monthly_outage, monthly_outage, on=['timeStamp','fuelType'], suffixes=('_new','_old'))
+    monthly_diff['diff_value'] = monthly_diff['value_old'] - monthly_diff['value_new']
+    alert_list = list(set(monthly_diff['fuelType'][abs(monthly_diff['diff_value'])>=cutoff]))
     for i in alert_list:
-        if (datetime.now() - timedelta(days=7)) > alert_pickle['dates'][i]:
-            alert_pickle['dates'][i] = datetime.now()
+        if (datetime.today().date() - timedelta(days=7)) > default_pickle['alert_dates'][i]:
+            default_pickle['alert_dates'][i] = datetime.today().date()
             alerts.sms()
-    with open('./alerts.pickle', 'wb') as handle:
-        pickle.dump(alert_pickle, handle, protocol=pickle.HIGHEST_PROTOCOL)
-    alert_dict = {k:v for k,v in alert_pickle['dates'].items() if v > (datetime.now()-timedelta(7,0,0))}
-    return outage_diff, alert_dict
-
-def make_alert_chart(df, fuelType, theme):
-    chart = alt.Chart(df).mark_bar(opacity=0.7, color=theme[fuelType]).encode(
-            x=alt.X('yearmonth(timeStamp):T', axis=alt.Axis(labelAngle=90), title=''),
-            y=alt.Y('value:Q', title='MW'),
-        ).properties(height=150)
-    return chart
-
-def alert_charts(outage_diff, theme):
-    st.subheader('Intertie & Outage Alerts')
-    for fuelType in alert_dict.keys():
-        st.write(fuelType)
-        gt0 = outage_diff[['timeStamp','fuelType','gt0']][outage_diff['fuelType']==fuelType]
-        lt0 = outage_diff[['timeStamp','fuelType','lt0']][outage_diff['fuelType']==fuelType]
-        gt0 = make_alert_chart(gt0.rename(columns={'gt0':'value'}), fuelType, theme)
-        lt0 = make_alert_chart(lt0.rename(columns={'lt0':'value'}), fuelType, theme)
-        line = alt.Chart(pd.DataFrame({'y':[0]})).mark_rule().encode(y='y')
-        st.altair_chart(gt0+lt0+line, use_container_width=True)
+    alert_dict = {k:v for k,v in default_pickle['alert_dates'].items() if v > (datetime.today().date()-timedelta(days=7))}
+    monthly_diff = monthly_diff[monthly_diff['fuelType'].isin(alert_dict.keys())]
+    return monthly_diff, alert_dict
 
 # App config
 st.set_page_config(layout='wide', initial_sidebar_state='collapsed', menu_items=None)
@@ -318,18 +275,37 @@ cutoff = 100
 
 placeholder = st.empty()
 for seconds in range(30):
+    with open('./default_pickle.pickle', 'rb') as handle:
+        default_pickle = pickle.load(handle)
     try:
-        realtime_df, last_update = current_data()
-        monthly_outage = monthly_outages().astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})
+        st.write('hello')
+        realtime_df = current_data()
         daily_outage = daily_outages()
-        outage_diff, alert_dict = outage_alerts()
+        monthly_outage = monthly_outages()
+        last_update = datetime.now()
+        
+        if datetime.now().date() > (default_pickle['daily_outage_dfs'][0][0] + timedelta(days=6)):
+            default_pickle['daily_outage_dfs'].pop(0)
+            default_pickle['daily_outage_dfs'].insert(len(default_pickle['daily_outage_dfs']), (datetime.today().date(), daily_outage))
+            default_pickle['monthly_outage_dfs'].pop(0)
+            default_pickle['monthly_outage_dfs'].insert(len(default_pickle['monthly_outage_dfs']), (datetime.today().date(), monthly_outage))
+        else:
+            default_pickle['current_data'] = (last_update, realtime_df)
+            default_pickle['daily_outage_dfs'][6] = (datetime.today().date(), daily_outage)
+            default_pickle['monthly_outage_dfs'][6] = (datetime.today().date(), monthly_outage)
+        with open('./default_pickle.pickle', 'wb') as handle:
+            pickle.dump(default_pickle, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
     except:
-        with st.spinner('Gathering Live Data Streams'):
-            time.sleep(10)
-        realtime_df, last_update = current_data()
-        monthly_outage = monthly_outages().astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})
-        daily_outage = daily_outages()
-        outage_diff, alert_dict = outage_alerts()
+        # If above fails then read last update from pickle
+        # with st.spinner('Gathering Live Data Streams...'):
+        #     time.sleep(10)
+        last_update, realtime_df = default_pickle['current_data']
+        daily_outage = default_pickle['daily_outage_dfs'][6][1]
+        monthly_outage = default_pickle['monthly_outage_dfs'][6][1]
+
+    outage_diff, alert_dict = outage_alerts()
+    
     with placeholder.container():
     # KPIs
         current_query = '''
@@ -391,19 +367,32 @@ for seconds in range(30):
             color=alt.Color('fuelType:N', scale=alt.Scale(domain=list(theme.keys()),range=list(theme.values())), legend=alt.Legend(orient="top"))
         ).properties(height=400)
         st.altair_chart(chrt, use_container_width=True)
-    
+
     # Outages chart
         st.subheader('Monthly Outages')
         monthly_outage = monthly_outage[monthly_outage['timeStamp'] > datetime.today()]
-        outage_area = alt.Chart(monthly_outage).mark_bar(opacity=0.7).encode(
+        outage_area = alt.Chart(monthly_outage).mark_area(opacity=0.7).encode(
             x=alt.X('yearmonth(timeStamp):T', title='', axis=alt.Axis(labelAngle=90)),
             y=alt.Y('value:Q', stack='zero', axis=alt.Axis(format=',f'), title='Outages (MW)'),
             color=alt.Color('fuelType:N', scale=alt.Scale(domain=list(theme.keys()),range=list(theme.values())), legend=alt.Legend(orient="top")),
             tooltip=['fuelType','value','timeStamp']
             )
         st.altair_chart(outage_area, use_container_width=True)
-        if (len(alert_dict)>0):
-            alert_charts(outage_diff, theme)
+    # Outage Differentials
+        st.subheader('Monthly Intertie & Outage Differentials (MW)')
+        outage_heatmap = alt.Chart(outage_diff[['timeStamp','fuelType','diff_value']]).mark_rect(opacity=0.7, stroke='black', strokeWidth=1).encode(
+            x=alt.X('yearmonth(timeStamp):O', title=None, axis=alt.Axis(ticks=False)),
+            y=alt.Y('fuelType:N', title=None, axis=alt.Axis(labelFontSize=15)),
+            color=alt.condition(alt.datum.diff_value == 0,
+                                alt.value('white'),
+                                alt.Color('diff_value:Q',scale=alt.Scale(domainMid=0, scheme='redyellowgreen'), legend=None))
+        ).properties(height=60 * len(alert_dict))
+        text = outage_heatmap.mark_text(baseline='middle', size=20).encode(
+            text='diff_value:Q',
+            color=alt.condition(alt.datum.diff_value != 0, alt.value('black'), alt.value(None))
+        )
+        st.altair_chart(outage_heatmap + text, use_container_width=True)
+
         st.write(f'App will reload in {30-seconds} seconds')
         time.sleep(1)
 st.experimental_rerun()
