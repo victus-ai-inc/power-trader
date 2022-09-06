@@ -185,15 +185,10 @@ def pull_grouped_hist():
     # Check when BigQuery was last updated
     last_update = bigquery.Client(credentials=credentials).query(query).to_dataframe().iloc[0][0]
     # Add data to BQ from when it was last updated to yesterday
-    if last_update < (datetime.now()-timedelta(days=1)):
+    if last_update < (datetime.today().date()-timedelta(days=1)):
         #pull_grouped_hist.clear()
         streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694, 120, 124947, 122]
         history_df = get_data(streamIds, last_update, datetime.today())
-        # for streamId in streamIds:
-        #     accessToken, tokenExpiry = get_token()
-        #     APIdata = pull_data(last_update.strftime('%m/%d/%Y'), datetime.now().strftime('%m/%d/%Y'), streamId, accessToken, tokenExpiry)
-        #     APIdata['timeStamp'] = pd.to_datetime(APIdata['timeStamp'])
-        #     release_token(accessToken)
         bigquery.Client(credentials=credentials).load_table_from_dataframe(history_df, 'nrgdata.hourly_data')
         alerts.sms2()
     # Pull data from BQ
@@ -278,7 +273,7 @@ for seconds in range(30):
     with open('./default_pickle.pickle', 'rb') as handle:
         default_pickle = pickle.load(handle)
     try:
-        st.write('hello')
+        #st.write('hello')
         realtime_df = current_data()
         daily_outage = daily_outages()
         monthly_outage = monthly_outages()
@@ -394,5 +389,5 @@ for seconds in range(30):
         st.altair_chart(outage_heatmap + text, use_container_width=True)
 
         st.write(f'App will reload in {30-seconds} seconds')
-        time.sleep(1)
+    time.sleep(1)
 st.experimental_rerun()
