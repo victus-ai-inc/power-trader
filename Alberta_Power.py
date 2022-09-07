@@ -273,7 +273,7 @@ cutoff = 100
 placeholder = st.empty()
 for seconds in range(15):
     with open('./default_pickle.pickle', 'rb') as handle:
-            default_pickle = pickle.load(handle)
+        default_pickle = pickle.load(handle)
     try:
         release_token(default_pickle['accessToken'])
         realtime_df = current_data()
