@@ -246,6 +246,8 @@ def outage_alerts():
     for i in alert_list:
         if (datetime.today().date() - timedelta(days=7)) > default_pickle['alert_dates'][i]:
             default_pickle['alert_dates'][i] = datetime.today().date()
+            with open('./default_pickle.pickle', 'wb') as handle:
+                pickle.dump(default_pickle, handle, protocol=pickle.HIGHEST_PROTOCOL)
             alerts.sms()
     alert_dict = {k:v for k,v in default_pickle['alert_dates'].items() if v > (datetime.today().date()-timedelta(days=7))}
     monthly_diff = monthly_diff[monthly_diff['fuelType'].isin(alert_dict.keys())]
@@ -269,16 +271,13 @@ hide_menu(True)
 cutoff = 100
 
 placeholder = st.empty()
-for seconds in range(30):
+for seconds in range(15):
     with open('./default_pickle.pickle', 'rb') as handle:
-        default_pickle = pickle.load(handle)
+            default_pickle = pickle.load(handle)
     try:
         release_token(default_pickle['accessToken'])
         realtime_df = current_data()
-        daily_outage = daily_outages()
-        monthly_outage = monthly_outages()
         last_update = datetime.now()
-        
         if datetime.now().date() > (default_pickle['daily_outage_dfs'][0][0] + timedelta(days=6)):
             default_pickle['daily_outage_dfs'].pop(0)
             default_pickle['daily_outage_dfs'].insert(len(default_pickle['daily_outage_dfs']), (datetime.today().date(), daily_outage))
@@ -290,12 +289,18 @@ for seconds in range(30):
             default_pickle['monthly_outage_dfs'][6] = (datetime.today().date(), monthly_outage)
         with open('./default_pickle.pickle', 'wb') as handle:
             pickle.dump(default_pickle, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
     except:
-        time.sleep(10)
         # If above fails then read last update from pickle
-        #with st.spinner('Gathering Live Data Streams...'):
+        with st.spinner('Gathering Live Data Streams...'):
+            time.sleep(2)
         last_update, realtime_df = default_pickle['current_data']
+
+    try:
+        daily_outage = daily_outages()
+        monthly_outage = monthly_outages()
+    except:
+        with st.spinner('Gathering Live Data Streams2...'):
+            time.sleep(15)
         daily_outage = default_pickle['daily_outage_dfs'][6][1]
         monthly_outage = default_pickle['monthly_outage_dfs'][6][1]
 
@@ -388,6 +393,6 @@ for seconds in range(30):
         )
         st.altair_chart(outage_heatmap + text, use_container_width=True)
 
-        st.write(f'App will reload in {30-seconds} seconds')
+        st.write(f'App will reload in {15-seconds} seconds')
     time.sleep(1)
 st.experimental_rerun()
