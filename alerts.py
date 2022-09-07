@@ -18,7 +18,7 @@ def whatsapp():
         body="testing")
     print(message.sid)
 
-def sms():
+def sms(i):
     email = st.secrets['email_address']
     pas = st.secrets['email_password']
     sms_gateways = st.secrets['phone_numbers'].values()
@@ -30,7 +30,7 @@ def sms():
     msg = MIMEMultipart()
     for gw in sms_gateways:
         msg['To'] = gw
-        body = f'NEW ALERT:\n{datetime.now().strftime("%a %b %d, %Y @ %-I:%M%p")}\nhttps://bit.ly/3bRcJE3'
+        body = f'\nALERT: {i}\n{datetime.now().strftime("%a %b %d, %Y @ %-I:%M%p")}\nhttps://bit.ly/3bRcJE3'
         msg.attach(MIMEText(body, 'plain'))
         sms = msg.as_string()
         server.sendmail(email, gw, sms)

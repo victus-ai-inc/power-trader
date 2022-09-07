@@ -1,3 +1,4 @@
+from typing import final
 import streamlit as st
 import pandas as pd
 import altair as alt
@@ -63,9 +64,6 @@ def get_token():
         conn.close()
     except:
         pass
-        # with st.spinner('Attempting to access database...'):
-        #     time.sleep(10)
-        #     st.experimental_rerun()
     return default_pickle['accessToken']
 
 def release_token(accessToken):
@@ -225,7 +223,7 @@ def daily_outages():
     daily_outages = pd.concat([intertie_outages,stream_outages])
     return daily_outages
 
-@st.experimental_memo(suppress_st_warning=True, ttl=10)
+@st.experimental_memo(suppress_st_warning=True, ttl=300)
 def monthly_outages():
     streamIds = [44648, 118361, 322689, 118362, 147262, 322675, 322682, 44651]
     years = [datetime.today().year, datetime.today().year+1, datetime.today().year+2]
@@ -248,7 +246,7 @@ def outage_alerts():
             default_pickle['alert_dates'][i] = datetime.today().date()
             with open('./default_pickle.pickle', 'wb') as handle:
                 pickle.dump(default_pickle, handle, protocol=pickle.HIGHEST_PROTOCOL)
-            alerts.sms()
+            alerts.sms(i)
     alert_dict = {k:v for k,v in default_pickle['alert_dates'].items() if v > (datetime.today().date()-timedelta(days=7))}
     monthly_diff = monthly_diff[monthly_diff['fuelType'].isin(alert_dict.keys())]
     return monthly_diff, alert_dict
@@ -341,7 +339,7 @@ for seconds in range(60):
                     warning('alert', f"{k} {v.strftime('(%b %-d, %Y)')}")
 
     # 14 day hist/real-time/forecast
-        st.subheader('Last 7-day Supply')
+        st.subheader('Current Supply (Over last 7-days)')
         history_df = pull_grouped_hist()
         combo_df = pd.concat([history_df,current_df], axis=0)
         query = "SELECT * FROM combo_df ORDER BY fuelType"
@@ -354,7 +352,7 @@ for seconds in range(60):
         st.altair_chart(combo_area, use_container_width=True)
     
     # Daily outages
-        st.subheader('Daily Outages')
+        st.subheader('Daily Outages (90-day forecast)')
         daily_outage = daily_outage[daily_outage['timeStamp']<(datetime.today()+timedelta(days=90))]
         chrt = alt.Chart(daily_outage).mark_area(opacity=0.7).encode(
             x=alt.X('monthdatehours(timeStamp):T', title='', axis=alt.Axis(labelAngle=90)),
@@ -364,7 +362,7 @@ for seconds in range(60):
         st.altair_chart(chrt, use_container_width=True)
 
     # Outages chart
-        st.subheader('Monthly Outages')
+        st.subheader('Monthly Outages (2-year forecast)')
         monthly_outage = monthly_outage[monthly_outage['timeStamp'] > datetime.today()]
         outage_area = alt.Chart(monthly_outage).mark_bar(opacity=0.7).encode(
             x=alt.X('yearmonth(timeStamp):T', title='', axis=alt.Axis(labelAngle=90)),
