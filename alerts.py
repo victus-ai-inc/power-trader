@@ -1,7 +1,7 @@
 import streamlit as st
 import smtplib
 import json
-from twilio.rest import Client
+#from twilio.rest import Client
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime

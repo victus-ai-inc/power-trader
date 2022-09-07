@@ -1,5 +1,3 @@
-from calendar import month
-from email import header
 import streamlit as st
 import pandas as pd
 import altair as alt
