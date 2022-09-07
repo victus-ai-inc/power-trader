@@ -287,8 +287,7 @@ for seconds in range(15):
             default_pickle['current_data'] = (last_update, realtime_df)
             default_pickle['daily_outage_dfs'][6] = (datetime.today().date(), daily_outage)
             default_pickle['monthly_outage_dfs'][6] = (datetime.today().date(), monthly_outage)
-        with open('./default_pickle.pickle', 'wb') as handle:
-            pickle.dump(default_pickle, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        
     except:
         # If above fails then read last update from pickle
         with st.spinner('Gathering Live Data Streams...'):
@@ -304,7 +303,8 @@ for seconds in range(15):
         monthly_outage = default_pickle['monthly_outage_dfs'][6][1]
 
     outage_diff, alert_dict = outage_alerts()
-    
+    with open('./default_pickle.pickle', 'wb') as handle:
+            pickle.dump(default_pickle, handle, protocol=pickle.HIGHEST_PROTOCOL)
     with placeholder.container():
     # KPIs
         current_query = '''
