@@ -225,7 +225,7 @@ def daily_outages():
     daily_outages = pd.concat([intertie_outages,stream_outages])
     return daily_outages
 
-@st.experimental_memo(suppress_st_warning=True, ttl=300)
+@st.experimental_memo(suppress_st_warning=True, ttl=10)
 def monthly_outages():
     streamIds = [44648, 118361, 322689, 118362, 147262, 322675, 322682, 44651]
     years = [datetime.today().year, datetime.today().year+1, datetime.today().year+2]
@@ -236,7 +236,6 @@ def monthly_outages():
     monthly_outages = monthly_outages[monthly_outages['timeStamp']>=datetime.today()]
     return monthly_outages
 
-@st.experimental_memo(suppress_st_warning=True)
 def outage_alerts():
     #old_monthly_outage = default_pickle['monthly_outage_dfs'][0][1]
     old_monthly_outage = pd.read_csv('offsets_changes.csv').astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})
@@ -278,20 +277,7 @@ for seconds in range(60):
     try:
         release_token(default_pickle['accessToken'])
         realtime_df, last_update = current_data()
-        if datetime.now().date() > (default_pickle['daily_outage_dfs'][0][0] + timedelta(days=6)):
-            default_pickle['daily_outage_dfs'].pop(0)
-            default_pickle['daily_outage_dfs'].insert(len(default_pickle['daily_outage_dfs']), (datetime.today().date(), daily_outage))
-            default_pickle['monthly_outage_dfs'].pop(0)
-            default_pickle['monthly_outage_dfs'].insert(len(default_pickle['monthly_outage_dfs']), (datetime.today().date(), monthly_outage))
-        else:
-            default_pickle['current_data'] = (last_update, realtime_df)
-            default_pickle['daily_outage_dfs'][6] = (datetime.today().date(), daily_outage)
-            default_pickle['monthly_outage_dfs'][6] = (datetime.today().date(), monthly_outage)
-        
     except:
-        # If above fails then read last update from pickle
-        # with st.spinner('Gathering Live Data Streams...'):
-        #     time.sleep(2)
         last_update, realtime_df = default_pickle['current_data']
     try:
         daily_outage = daily_outages()
@@ -302,6 +288,16 @@ for seconds in range(60):
         daily_outage = default_pickle['daily_outage_dfs'][6][1]
         monthly_outage = default_pickle['monthly_outage_dfs'][6][1]
 
+    if datetime.now().date() > (default_pickle['daily_outage_dfs'][0][0] + timedelta(days=6)):
+        default_pickle['daily_outage_dfs'].pop(0)
+        default_pickle['daily_outage_dfs'].insert(len(default_pickle['daily_outage_dfs']), (datetime.today().date(), daily_outage))
+        default_pickle['monthly_outage_dfs'].pop(0)
+        default_pickle['monthly_outage_dfs'].insert(len(default_pickle['monthly_outage_dfs']), (datetime.today().date(), monthly_outage))
+    else:
+        default_pickle['current_data'] = (last_update, realtime_df)
+        default_pickle['daily_outage_dfs'][6] = (datetime.today().date(), daily_outage)
+        default_pickle['monthly_outage_dfs'][6] = (datetime.today().date(), monthly_outage)
+    
     outage_diff, alert_dict = outage_alerts()
     with open('./default_pickle.pickle', 'wb') as handle:
             pickle.dump(default_pickle, handle, protocol=pickle.HIGHEST_PROTOCOL)
@@ -379,13 +375,17 @@ for seconds in range(60):
         st.altair_chart(outage_area, use_container_width=True)
     # Outage Differentials
         st.subheader('Monthly Intertie & Outage Differentials (MW)')
+        if len(alert_dict) == 1:
+            height = 70
+        else:
+            height = 50 * len(alert_dict)
         outage_heatmap = alt.Chart(outage_diff[['timeStamp','fuelType','diff_value']]).mark_rect(opacity=0.7, stroke='black', strokeWidth=1).encode(
             x=alt.X('yearmonth(timeStamp):O', title=None, axis=alt.Axis(ticks=False)),
             y=alt.Y('fuelType:N', title=None, axis=alt.Axis(labelFontSize=15)),
             color=alt.condition(alt.datum.diff_value == 0,
                                 alt.value('white'),
                                 alt.Color('diff_value:Q',scale=alt.Scale(domainMid=0, scheme='redyellowgreen'), legend=None))
-        ).properties(height=60 * len(alert_dict))
+        ).properties(height=height)
         text = outage_heatmap.mark_text(baseline='middle', size=20).encode(
             text='diff_value:Q',
             color=alt.condition(alt.datum.diff_value != 0, alt.value('black'), alt.value(None))
