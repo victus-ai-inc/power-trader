@@ -317,7 +317,6 @@ for seconds in range(30):
         ORDER BY fuelType, year, month, day, hour, timeStamp
         '''
         current_df = sqldf(current_query, locals()).astype({'fuelType':'object', 'year':'int64','month':'int64', 'day':'int64', 'hour':'int64', 'value':'float64', 'timeStamp':'datetime64[ns]'})
-        current_df
         realtime = realtime_df[['fuelType','value','timeStamp']][realtime_df['timeStamp']==max(realtime_df['timeStamp'])]
         if len(realtime) < 11:
             realtime = realtime_df[['fuelType','value','timeStamp']][realtime_df['timeStamp']==max(realtime_df['timeStamp']-timedelta(minutes=5))]   
@@ -325,7 +324,6 @@ for seconds in range(30):
         realtime = realtime.astype({'fuelType':'object','value':'float64'})
         previousHour = current_df[['fuelType','value']][current_df['hour']==datetime.now().hour-1]
         currentHour = current_df[['fuelType','value']][current_df['hour']==datetime.now().hour-0]
-        previousHour, currentHour
         kpi_df = kpi(previousHour, realtime, 'Real Time')
         kpi(previousHour, currentHour, 'Hourly Average')
         warning_list = list(kpi_df['fuelType'][kpi_df['absDelta'].astype('int64') >= cutoff])
