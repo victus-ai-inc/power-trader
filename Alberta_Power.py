@@ -294,7 +294,6 @@ for seconds in range(15):
         with st.spinner('Gathering Live Data Streams...'):
             time.sleep(2)
         last_update, realtime_df = default_pickle['current_data']
-
     try:
         daily_outage = daily_outages()
         monthly_outage = monthly_outages()
