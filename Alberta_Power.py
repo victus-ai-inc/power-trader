@@ -1,7 +1,8 @@
-from typing import final
 import streamlit as st
 import pandas as pd
+import numpy as np
 import altair as alt
+import matplotlib
 import ssl
 import json
 import http.client
@@ -16,19 +17,6 @@ from google.cloud import bigquery
 from google.oauth2 import service_account
 from google.cloud.exceptions import NotFound
 from pandasql import sqldf
-
-# Function to hide top and bottom menus on Streamlit app
-def hide_menu(bool):
-    if bool == True:
-        hide_menu_style = """
-            <style>
-            #MainMenu {visibility: hidden;}
-            footer {visibility: hidden;}
-            .css-1j15ncu {visibility: hidden;}
-            .css-14x9thb {visibility: hidden;}
-            </style>
-            """
-        return st.markdown(hide_menu_style, unsafe_allow_html=True)
 
 def get_token():
     try:
@@ -121,7 +109,7 @@ def get_data(streamIds, start_date, end_date):
         df.drop(['streamId','assetCode','streamName','subfuelType','timeInterval','intervalType'], axis=1, inplace=True)
     return df
 
-@st.experimental_memo(suppress_st_warning=True, ttl=20)
+@st.experimental_memo(suppress_st_warning=True, ttl=200000)
 def current_data():
     streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694, 120, 124947, 122]
     realtime_df = get_data(streamIds, datetime.today(), datetime.today())
@@ -212,7 +200,7 @@ def pull_grouped_hist():
     history_df = bigquery.Client(credentials=credentials).query(query).to_dataframe()
     return history_df
 
-@st.experimental_memo(suppress_st_warning=True, ttl=180)
+@st.experimental_memo(suppress_st_warning=True, ttl=18000)
 def daily_outages():
     streamIds = [124]
     intertie_outages = get_data(streamIds, datetime.today(), datetime.today() + relativedelta(months=12, day=1, days=-1))
@@ -223,7 +211,7 @@ def daily_outages():
     daily_outages = pd.concat([intertie_outages,stream_outages])
     return daily_outages
 
-@st.experimental_memo(suppress_st_warning=True, ttl=300)
+@st.experimental_memo(suppress_st_warning=True, ttl=30000)
 def monthly_outages():
     streamIds = [44648, 118361, 322689, 118362, 147262, 322675, 322682, 44651]
     years = [datetime.today().year, datetime.today().year+1, datetime.today().year+2]
@@ -253,6 +241,17 @@ def outage_alerts():
 
 # App config
 st.set_page_config(layout='wide', initial_sidebar_state='collapsed', menu_items=None)
+# Hide Streamlit menus
+hide_menu_style = """
+            <style>
+            #MainMenu {visibility: hidden;}
+            footer {visibility: hidden;}
+            .css-1j15ncu {visibility: hidden;}
+            .css-14x9thb {visibility: hidden;}
+            </style>
+            """
+st.markdown(hide_menu_style, unsafe_allow_html=True)
+# Default app theme colors
 theme = {'Biomass & Other':'#1f77b4', 
             'Coal':'#aec7e8',
             'Dual Fuel':'#ff7f0e',
@@ -265,11 +264,10 @@ theme = {'Biomass & Other':'#1f77b4',
             'Saskatchewan':'#c5b0d5',
             'Montana':'#e377c2',
             'Intertie':'#17becf'}
-hide_menu(True)
 cutoff = 100
 
 placeholder = st.empty()
-for seconds in range(60):
+for seconds in range(60000):
     with open('./default_pickle.pickle', 'rb') as handle:
         default_pickle = pickle.load(handle)
     try:
@@ -322,21 +320,23 @@ for seconds in range(60):
         realtime = realtime.astype({'fuelType':'object','value':'float64'})
         previousHour = current_df[['fuelType','value']][current_df['hour']==datetime.now().hour-1]
         currentHour = current_df[['fuelType','value']][current_df['hour']==datetime.now().hour-0]
-        kpi_df = kpi(previousHour, realtime, 'Real Time')
-        kpi(previousHour, currentHour, 'Hourly Average')
-        warning_list = list(kpi_df['fuelType'][kpi_df['absDelta'].astype('int64') >= cutoff])
-        st.write(f"Last update: {last_update.strftime('%a, %b %d @ %X')}")
-    
-    # KPI warning & alert boxes
-        col1, col2 = st.columns(2)
-        with col1:
-            if len(warning_list) > 0:
-                for _ in range(len(warning_list)):
-                    warning('warning', f'{warning_list[_]}')     
-        with col2:
-            if len(alert_dict) > 0:
-                for (k,v) in alert_dict.items():
-                    warning('alert', f"{k} {v.strftime('(%b %-d, %Y)')}")
+        
+        with st.expander('*Click here to expand/collapse KPIs',expanded=True):
+            kpi_df = kpi(previousHour, realtime, 'Real Time')
+            kpi(previousHour, currentHour, 'Hourly Average')
+            st.write(f"Last update: {last_update.strftime('%a, %b %d @ %X')}")
+
+        # KPI warning & alert boxes
+            warning_list = list(kpi_df['fuelType'][kpi_df['absDelta'].astype('int64') >= cutoff])
+            col1, col2 = st.columns(2)
+            with col1:
+                if len(warning_list) > 0:
+                    for _ in range(len(warning_list)):
+                        warning('warning', f'{warning_list[_]}')     
+            with col2:
+                if len(alert_dict) > 0:
+                    for (k,v) in alert_dict.items():
+                        warning('alert', f"{k} {v.strftime('(%b %-d, %Y)')}")
 
     # 14 day hist/real-time/forecast
         st.subheader('Current Supply (Over last 7-days)')
@@ -376,7 +376,7 @@ for seconds in range(60):
         if len(alert_dict) == 1:
             height = 70
         else:
-            height = 50 * len(alert_dict)
+            height = 70 * len(alert_dict)
         outage_heatmap = alt.Chart(outage_diff[['timeStamp','fuelType','diff_value']]).mark_rect(opacity=0.7, stroke='black', strokeWidth=1).encode(
             x=alt.X('yearmonth(timeStamp):O', title=None, axis=alt.Axis(ticks=False)),
             y=alt.Y('fuelType:N', title=None, axis=alt.Axis(labelFontSize=15)),
@@ -384,12 +384,11 @@ for seconds in range(60):
                                 alt.value('white'),
                                 alt.Color('diff_value:Q',scale=alt.Scale(domainMid=0, scheme='redyellowgreen'), legend=None))
         ).properties(height=height)
-        text = outage_heatmap.mark_text(baseline='middle', size=20).encode(
+        text = outage_heatmap.mark_text(baseline='middle', size=10, angle=270).encode(
             text='diff_value:Q',
             color=alt.condition(alt.datum.diff_value != 0, alt.value('black'), alt.value(None))
         )
         st.altair_chart(outage_heatmap + text, use_container_width=True)
-
         st.write(f'App will reload in {60-seconds} seconds')
     time.sleep(1)
 st.experimental_rerun()
