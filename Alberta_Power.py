@@ -56,15 +56,17 @@ def get_token():
                 pickle.dump(default_pickle, handle, protocol=pickle.HIGHEST_PROTOCOL)
         elif res_code == 400:
             res.read()
-            release_token(accessToken)
+            release_token(default_pickle['accessToken'])
             get_token()
         else:
             res_data = res.read()
         conn.close()
     except:
-        with st.spinner('Attempting to access database...'):
-            st.experimental_rerun()
-    return accessToken
+        pass
+        # with st.spinner('Attempting to access database...'):
+        #     time.sleep(10)
+        #     st.experimental_rerun()
+    return default_pickle['accessToken']
 
 def release_token(accessToken):
     path = '/api/ReleaseToken'
@@ -211,7 +213,7 @@ def pull_grouped_hist():
     history_df = bigquery.Client(credentials=credentials).query(query).to_dataframe()
     return history_df
 
-@st.experimental_memo(suppress_st_warning=True, ttl=300)
+@st.experimental_memo(suppress_st_warning=True, ttl=180)
 def daily_outages():
     streamIds = [124]
     intertie_outages = get_data(streamIds, datetime.today(), datetime.today() + relativedelta(months=12, day=1, days=-1))
@@ -271,7 +273,7 @@ for seconds in range(30):
     with open('./default_pickle.pickle', 'rb') as handle:
         default_pickle = pickle.load(handle)
     try:
-        #st.write('hello')
+        release_token(default_pickle['accessToken'])
         realtime_df = current_data()
         daily_outage = daily_outages()
         monthly_outage = monthly_outages()
@@ -290,9 +292,9 @@ for seconds in range(30):
             pickle.dump(default_pickle, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
     except:
+        time.sleep(10)
         # If above fails then read last update from pickle
-        # with st.spinner('Gathering Live Data Streams...'):
-        #     time.sleep(10)
+        #with st.spinner('Gathering Live Data Streams...'):
         last_update, realtime_df = default_pickle['current_data']
         daily_outage = default_pickle['daily_outage_dfs'][6][1]
         monthly_outage = default_pickle['monthly_outage_dfs'][6][1]
