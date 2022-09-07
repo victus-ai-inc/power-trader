@@ -271,19 +271,19 @@ hide_menu(True)
 cutoff = 100
 
 placeholder = st.empty()
-for seconds in range(15):
+for seconds in range(60):
     with open('./default_pickle.pickle', 'rb') as handle:
         default_pickle = pickle.load(handle)
     try:
         release_token(default_pickle['accessToken'])
         realtime_df = current_data()
-        last_update = datetime.now()
         if datetime.now().date() > (default_pickle['daily_outage_dfs'][0][0] + timedelta(days=6)):
             default_pickle['daily_outage_dfs'].pop(0)
             default_pickle['daily_outage_dfs'].insert(len(default_pickle['daily_outage_dfs']), (datetime.today().date(), daily_outage))
             default_pickle['monthly_outage_dfs'].pop(0)
             default_pickle['monthly_outage_dfs'].insert(len(default_pickle['monthly_outage_dfs']), (datetime.today().date(), monthly_outage))
         else:
+            last_update = datetime.now()
             default_pickle['current_data'] = (last_update, realtime_df)
             default_pickle['daily_outage_dfs'][6] = (datetime.today().date(), daily_outage)
             default_pickle['monthly_outage_dfs'][6] = (datetime.today().date(), monthly_outage)
@@ -292,12 +292,13 @@ for seconds in range(15):
         # If above fails then read last update from pickle
         with st.spinner('Gathering Live Data Streams...'):
             time.sleep(2)
+        last_update = datetime.now()
         last_update, realtime_df = default_pickle['current_data']
     try:
         daily_outage = daily_outages()
         monthly_outage = monthly_outages()
     except:
-        with st.spinner('Gathering Live Data Streams2...'):
+        with st.spinner('Gathering Outage Data...'):
             time.sleep(15)
         daily_outage = default_pickle['daily_outage_dfs'][6][1]
         monthly_outage = default_pickle['monthly_outage_dfs'][6][1]
@@ -326,8 +327,8 @@ for seconds in range(15):
             realtime = realtime_df[['fuelType','value','timeStamp']][realtime_df['timeStamp']==max(realtime_df['timeStamp']-timedelta(minutes=5))]   
         realtime.drop('timeStamp', axis=1, inplace=True)
         realtime = realtime.astype({'fuelType':'object','value':'float64'})
-        previousHour = current_df[['fuelType','value']][current_df['hour']==datetime.now().hour-7]
-        currentHour = current_df[['fuelType','value']][current_df['hour']==datetime.now().hour-6]
+        previousHour = current_df[['fuelType','value']][current_df['hour']==datetime.now().hour-1]
+        currentHour = current_df[['fuelType','value']][current_df['hour']==datetime.now().hour-0]
         kpi_df = kpi(previousHour, realtime, 'Real Time')
         kpi(previousHour, currentHour, 'Hourly Average')
         warning_list = list(kpi_df['fuelType'][kpi_df['absDelta'].astype('int64') >= cutoff])
@@ -392,6 +393,6 @@ for seconds in range(15):
         )
         st.altair_chart(outage_heatmap + text, use_container_width=True)
 
-        st.write(f'App will reload in {15-seconds} seconds')
+        st.write(f'App will reload in {60-seconds} seconds')
     time.sleep(1)
 st.experimental_rerun()
