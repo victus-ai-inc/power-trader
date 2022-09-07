@@ -127,7 +127,8 @@ def get_data(streamIds, start_date, end_date):
 def current_data():
     streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694, 120, 124947, 122]
     realtime_df = get_data(streamIds, datetime.today(), datetime.today())
-    return realtime_df
+    last_update = datetime.now()
+    return realtime_df, last_update
 
 def kpi(left_df, right_df, title):
     # Merging KPIs into one dataframe
@@ -276,23 +277,21 @@ for seconds in range(60):
         default_pickle = pickle.load(handle)
     try:
         release_token(default_pickle['accessToken'])
-        realtime_df = current_data()
+        realtime_df, last_update = current_data()
         if datetime.now().date() > (default_pickle['daily_outage_dfs'][0][0] + timedelta(days=6)):
             default_pickle['daily_outage_dfs'].pop(0)
             default_pickle['daily_outage_dfs'].insert(len(default_pickle['daily_outage_dfs']), (datetime.today().date(), daily_outage))
             default_pickle['monthly_outage_dfs'].pop(0)
             default_pickle['monthly_outage_dfs'].insert(len(default_pickle['monthly_outage_dfs']), (datetime.today().date(), monthly_outage))
         else:
-            last_update = datetime.now()
             default_pickle['current_data'] = (last_update, realtime_df)
             default_pickle['daily_outage_dfs'][6] = (datetime.today().date(), daily_outage)
             default_pickle['monthly_outage_dfs'][6] = (datetime.today().date(), monthly_outage)
         
     except:
         # If above fails then read last update from pickle
-        with st.spinner('Gathering Live Data Streams...'):
-            time.sleep(2)
-        last_update = datetime.now()
+        # with st.spinner('Gathering Live Data Streams...'):
+        #     time.sleep(2)
         last_update, realtime_df = default_pickle['current_data']
     try:
         daily_outage = daily_outages()
@@ -371,7 +370,7 @@ for seconds in range(60):
     # Outages chart
         st.subheader('Monthly Outages')
         monthly_outage = monthly_outage[monthly_outage['timeStamp'] > datetime.today()]
-        outage_area = alt.Chart(monthly_outage).mark_area(opacity=0.7).encode(
+        outage_area = alt.Chart(monthly_outage).mark_bar(opacity=0.7).encode(
             x=alt.X('yearmonth(timeStamp):T', title='', axis=alt.Axis(labelAngle=90)),
             y=alt.Y('value:Q', stack='zero', axis=alt.Axis(format=',f'), title='Outages (MW)'),
             color=alt.Color('fuelType:N', scale=alt.Scale(domain=list(theme.keys()),range=list(theme.values())), legend=alt.Legend(orient="top")),
