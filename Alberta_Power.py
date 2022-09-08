@@ -123,7 +123,6 @@ def kpi(left_df, right_df, title):
     kpi_df['absDelta'] = abs(kpi_df['delta'])
     # Formatting numbers 
     kpi_df.iloc[:,1:] = kpi_df.iloc[:,1:].applymap('{:.0f}'.format)
-    kpi_df
     col1, col2, col3, col4, col5, col6, col7, col8, col9, col10, col11 = st.columns(11)
     with col1:
         st.subheader(title)
@@ -313,14 +312,16 @@ for seconds in range(60000):
         ORDER BY fuelType, year, month, day, hour, timeStamp
         '''
         current_df = sqldf(current_query, locals()).astype({'fuelType':'object', 'year':'int64','month':'int64', 'day':'int64', 'hour':'int64', 'value':'float64', 'timeStamp':'datetime64[ns]'})
+        current_df
         realtime = realtime_df[['fuelType','value','timeStamp']][realtime_df['timeStamp']==max(realtime_df['timeStamp'])]
         if len(realtime) < 11:
             realtime = realtime_df[['fuelType','value','timeStamp']][realtime_df['timeStamp']==max(realtime_df['timeStamp']-timedelta(minutes=5))]   
         realtime.drop('timeStamp', axis=1, inplace=True)
         realtime = realtime.astype({'fuelType':'object','value':'float64'})
+        realtime
         previousHour = current_df[['fuelType','value']][current_df['hour']==datetime.now().hour-7]
         currentHour = current_df[['fuelType','value']][current_df['hour']==datetime.now().hour-6]
-        
+        previousHour, currentHour
         with st.expander('*Click here to expand/collapse KPIs',expanded=True):
             kpi_df = kpi(previousHour, realtime, 'Real Time')
             kpi(previousHour, currentHour, 'Hourly Average')
