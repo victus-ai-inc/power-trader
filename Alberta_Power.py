@@ -113,7 +113,7 @@ def get_data(streamIds, start_date, end_date):
 def current_data():
     streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694, 120, 124947, 122]
     realtime_df = get_data(streamIds, now, now)
-    last_update = now
+    last_update = datetime.now(pytz.timezone('America/Edmonton'))
     return realtime_df, last_update
 
 def kpi(left_df, right_df, title):
@@ -211,7 +211,7 @@ def daily_outages():
     daily_outages = pd.concat([intertie_outages,stream_outages])
     return daily_outages
 
-@st.experimental_memo(suppress_st_warning=True, ttl=30000)
+@st.experimental_memo(suppress_st_warning=True, ttl=3000)
 def monthly_outages():
     streamIds = [44648, 118361, 322689, 118362, 147262, 322675, 322682, 44651]
     years = [now.year, now.year+1, now.year+2]
@@ -219,7 +219,7 @@ def monthly_outages():
     for year in years:
         df = get_data(streamIds, date(year,1,1), date(year+1,1,1))
         monthly_outages = pd.concat([monthly_outages, df], axis=0)
-    monthly_outages = monthly_outages[monthly_outages['timeStamp']>=now]
+    monthly_outages = monthly_outages[monthly_outages['timeStamp']>=datetime.today()]
     return monthly_outages
 
 def outage_alerts():
@@ -266,7 +266,6 @@ theme = {'Biomass & Other':'#1f77b4',
             'Intertie':'#17becf'}
 cutoff = 100
 now = datetime.now(pytz.timezone('America/Edmonton'))
-st.write(now, now.date())
 
 placeholder = st.empty()
 for seconds in range(60000):
@@ -354,8 +353,7 @@ for seconds in range(60000):
     
     # Daily outages
         st.subheader('Daily Outages (90-day forecast)')
-        st.write(daily_outage['timeStamp'].tz_localize('America/Edmonton').dtypes)
-        daily_outage = daily_outage[daily_outage['timeStamp']<(now+timedelta(days=90))]
+        daily_outage = daily_outage[daily_outage['timeStamp'].dt.date<((now+timedelta(days=90)).date())]
         chrt = alt.Chart(daily_outage).mark_area(opacity=0.7).encode(
             x=alt.X('monthdatehours(timeStamp):T', title='', axis=alt.Axis(labelAngle=90)),
             y=alt.Y('value:Q', stack='zero', axis=alt.Axis(format=',f'), title='Outages (MW)'),
@@ -365,7 +363,7 @@ for seconds in range(60000):
 
     # Outages chart
         st.subheader('Monthly Outages (2-year forecast)')
-        monthly_outage = monthly_outage[monthly_outage['timeStamp'] > now]
+        monthly_outage = monthly_outage[monthly_outage['timeStamp'].dt.date>(now.date())]
         outage_area = alt.Chart(monthly_outage).mark_bar(opacity=0.7).encode(
             x=alt.X('yearmonth(timeStamp):T', title='', axis=alt.Axis(labelAngle=90)),
             y=alt.Y('value:Q', stack='zero', axis=alt.Axis(format=',f'), title='Outages (MW)'),
