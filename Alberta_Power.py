@@ -277,21 +277,24 @@ for seconds in range(450):
     with open('./default_pickle.pickle', 'rb') as handle:
         default_pickle = pickle.load(handle)
     if seconds%10==0:
-        with st.spinner('Gathering realtime data..'):
-            release_token(default_pickle['accessToken'])
-            realtime_df, last_update = current_data()
-            continue
-    elif seconds%90==0:
-        with st.spinner('Gathering daily outages...'):
-            daily_outage = daily_outages()
-            daily_outage
-    elif seconds%150==0:
-        with st.spinner('Gathering monthly outages...'):
-            monthly_outage = monthly_outages()
-    else:
-        last_update, realtime_df = default_pickle['current_data']
-        daily_outage = default_pickle['daily_outage_dfs'][6][1]
-        monthly_outage = default_pickle['monthly_outage_dfs'][6][1]
+        with st.spinner('Gathering Realtime Data..'):
+            try:
+                #release_token(default_pickle['accessToken'])
+                realtime_df, last_update = current_data()
+            except:
+                last_update, realtime_df = default_pickle['current_data']
+    if seconds%90==0:
+        with st.spinner('Gathering Daily Outages...'):
+            try:
+                daily_outage = daily_outages()
+            except:
+                daily_outage = default_pickle['daily_outage_dfs'][6][1]
+    if seconds%150==0:
+        with st.spinner('Gathering Monthly Outages...'):
+            try:
+                monthly_outage = monthly_outages()
+            except:
+                monthly_outage = default_pickle['monthly_outage_dfs'][6][1]
 
     if datetime.now(tz).date() > (default_pickle['daily_outage_dfs'][0][0] + timedelta(days=6)):
         default_pickle['daily_outage_dfs'].pop(0)
@@ -310,7 +313,6 @@ for seconds in range(450):
     
     with placeholder.container():
     # KPIs
-        realtime_df
         current_query = '''
         SELECT
             strftime('%Y-%m-%d %H:00:00', timeStamp) AS timeStamp,
@@ -325,7 +327,6 @@ for seconds in range(450):
         ORDER BY fuelType, year, month, day, hour, timeStamp
         '''
         current_df = sqldf(current_query, locals()).astype({'fuelType':'object', 'year':'int64','month':'int64', 'day':'int64', 'hour':'int64', 'value':'float64', 'timeStamp':'datetime64[ns]'})
-        current_df
         realtime = realtime_df[['fuelType','value','timeStamp']][realtime_df['timeStamp']==max(realtime_df['timeStamp'])]
         if len(realtime) < 11:
             realtime = realtime_df[['fuelType','value','timeStamp']][realtime_df['timeStamp']==max(realtime_df['timeStamp']-timedelta(minutes=5))]   
