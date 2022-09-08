@@ -7,6 +7,7 @@ import json
 import http.client
 import certifi
 import time
+import pytz
 import pickle
 import alerts
 from st_aggrid import AgGrid
@@ -313,13 +314,12 @@ for seconds in range(60000):
         ORDER BY fuelType, year, month, day, hour, timeStamp
         '''
         current_df = sqldf(current_query, locals()).astype({'fuelType':'object', 'year':'int64','month':'int64', 'day':'int64', 'hour':'int64', 'value':'float64', 'timeStamp':'datetime64[ns]'})
-        current_df
         realtime = realtime_df[['fuelType','value','timeStamp']][realtime_df['timeStamp']==max(realtime_df['timeStamp'])]
         if len(realtime) < 11:
             realtime = realtime_df[['fuelType','value','timeStamp']][realtime_df['timeStamp']==max(realtime_df['timeStamp']-timedelta(minutes=5))]   
         realtime.drop('timeStamp', axis=1, inplace=True)
         realtime = realtime.astype({'fuelType':'object','value':'float64'})
-        st.write(datetime.now()-timedelta(hours=6))
+        st.write(datetime.now(pytz.timezone('America/Edmonton')))
         previousHour = current_df[['fuelType','value']][current_df['hour']==datetime.now().hour-3]
         currentHour = current_df[['fuelType','value']][current_df['hour']==datetime.now().hour-2]
         previousHour, currentHour
