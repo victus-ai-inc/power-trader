@@ -320,8 +320,8 @@ for seconds in range(60000):
             realtime = realtime_df[['fuelType','value','timeStamp']][realtime_df['timeStamp']==max(realtime_df['timeStamp']-timedelta(minutes=5))]   
         realtime.drop('timeStamp', axis=1, inplace=True)
         realtime = realtime.astype({'fuelType':'object','value':'float64'})
-        previousHour = current_df[['fuelType','value']][current_df['hour']==datetime.now().hour-3]
-        currentHour = current_df[['fuelType','value']][current_df['hour']==datetime.now().hour-2]
+        previousHour = current_df[['fuelType','value']][current_df['hour']==datetime.now().hour-1]
+        currentHour = current_df[['fuelType','value']][current_df['hour']==datetime.now().hour-0]
         with st.expander('*Click here to expand/collapse KPIs',expanded=True):
             kpi_df = kpi(previousHour, realtime, 'Real Time')
             kpi(previousHour, currentHour, 'Hourly Average')
