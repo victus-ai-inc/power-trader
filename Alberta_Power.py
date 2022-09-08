@@ -266,8 +266,7 @@ theme = {'Biomass & Other':'#1f77b4',
             'Intertie':'#17becf'}
 cutoff = 100
 now = datetime.now(pytz.timezone('America/Edmonton'))
-now
-now.date()
+st.write(now, now.date())
 placeholder = st.empty()
 for seconds in range(60000):
     with open('./default_pickle.pickle', 'rb') as handle:
