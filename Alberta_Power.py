@@ -354,7 +354,7 @@ for seconds in range(60000):
     
     # Daily outages
         st.subheader('Daily Outages (90-day forecast)')
-        st.write(daily_outage['timeStamp'].tz_localize(pytz.timezone('America/Edmonton')).dtypes)
+        st.write(daily_outage['timeStamp'].tz_localize('America/Edmonton').dtypes)
         daily_outage = daily_outage[daily_outage['timeStamp']<(now+timedelta(days=90))]
         chrt = alt.Chart(daily_outage).mark_area(opacity=0.7).encode(
             x=alt.X('monthdatehours(timeStamp):T', title='', axis=alt.Axis(labelAngle=90)),
