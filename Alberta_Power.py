@@ -319,6 +319,7 @@ for seconds in range(60000):
         realtime.drop('timeStamp', axis=1, inplace=True)
         realtime = realtime.astype({'fuelType':'object','value':'float64'})
         realtime
+        datetime.now()
         previousHour = current_df[['fuelType','value']][current_df['hour']==datetime.now().hour-3]
         currentHour = current_df[['fuelType','value']][current_df['hour']==datetime.now().hour-2]
         previousHour, currentHour
