@@ -296,6 +296,7 @@ for seconds in range(60000):
     outage_diff, alert_dict = outage_alerts()
     with open('./default_pickle.pickle', 'wb') as handle:
             pickle.dump(default_pickle, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    realtime_df
     with placeholder.container():
     # KPIs
         current_query = '''
@@ -318,7 +319,6 @@ for seconds in range(60000):
             realtime = realtime_df[['fuelType','value','timeStamp']][realtime_df['timeStamp']==max(realtime_df['timeStamp']-timedelta(minutes=5))]   
         realtime.drop('timeStamp', axis=1, inplace=True)
         realtime = realtime.astype({'fuelType':'object','value':'float64'})
-        realtime
         st.write(datetime.now()-timedelta(hours=6))
         previousHour = current_df[['fuelType','value']][current_df['hour']==datetime.now().hour-3]
         currentHour = current_df[['fuelType','value']][current_df['hour']==datetime.now().hour-2]
