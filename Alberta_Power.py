@@ -277,7 +277,7 @@ for seconds in range(450):
         with open('./default_pickle.pickle', 'rb') as handle:
             default_pickle = pickle.load(handle)
     except:
-        time.sleep(1)
+        time.sleep(2)
         with open('./default_pickle.pickle', 'rb') as handle:
             default_pickle = pickle.load(handle)
     if seconds%10==0:
