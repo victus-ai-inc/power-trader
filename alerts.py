@@ -35,7 +35,7 @@ def sms2():
     msg = MIMEMultipart()
     for gw in sms_gateways:
         msg['To'] = gw
-        body = f'History Updated:\n{datetime.now().strftime("%a %b %d, %Y @ %-I:%M%p")}'
+        body = f'History Updated:\n{datetime.now(pytz.timezone("America/Edmonton")).strftime("%a %b %d, %Y @ %-I:%M%p")}'
         msg.attach(MIMEText(body, 'plain'))
         sms = msg.as_string()
         server.sendmail(email, gw, sms)
