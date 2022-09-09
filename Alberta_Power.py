@@ -288,14 +288,12 @@ for seconds in range(450):
     if seconds%90==0:
         with st.spinner('Gathering Daily Outages...'):
             try:
-                release_token(default_pickle['accessToken'])
                 daily_outage = daily_outages()
             except:
                 daily_outage = default_pickle['daily_outage_dfs'][6][1]
     if seconds%150==0:
         with st.spinner('Gathering Monthly Outages...'):
             try:
-                release_token(default_pickle['accessToken'])
                 monthly_outage = monthly_outages()
             except:
                 monthly_outage = default_pickle['monthly_outage_dfs'][6][1]
