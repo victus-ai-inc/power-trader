@@ -390,7 +390,7 @@ for seconds in range(450):
         if len(alert_dict)==1:
             height = 70
         else:
-            height = 60 * len(alert_dict)
+            height = 70 * len(alert_dict)
         outage_heatmap = alt.Chart(outage_diff[['timeStamp','fuelType','diff_value']]).mark_rect(opacity=0.7, stroke='black', strokeWidth=1).encode(
             x=alt.X('yearmonth(timeStamp):O', title=None, axis=alt.Axis(ticks=False, labelAngle=270)),
             y=alt.Y('fuelType:N', title=None, axis=alt.Axis(labelFontSize=15)),
