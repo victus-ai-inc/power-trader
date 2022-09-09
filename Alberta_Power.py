@@ -269,17 +269,19 @@ theme = {'Biomass & Other':'#1f77b4',
             'Intertie':'#17becf'}
 cutoff = 100
 tz = pytz.timezone('America/Edmonton')
-tic = datetime.now()
 tot = 0
-
+tic = datetime.now()
 placeholder = st.empty()
 for seconds in range(450):
-    with open('./default_pickle.pickle', 'rb') as handle:
-        default_pickle = pickle.load(handle)
+    try:
+        with open('./default_pickle.pickle', 'rb') as handle:
+            default_pickle = pickle.load(handle)
+    except:
+        st.experimental_rerun()
     if seconds%10==0:
-        with st.spinner('Gathering Realtime Data..'):
+        with st.spinner('Gathering Realtime Data...'):
             try:
-                #release_token(default_pickle['accessToken'])
+                release_token(default_pickle['accessToken'])
                 realtime_df, last_update = current_data()
             except:
                 last_update, realtime_df = default_pickle['current_data']
@@ -298,9 +300,9 @@ for seconds in range(450):
 
     if datetime.now(tz).date() > (default_pickle['daily_outage_dfs'][0][0] + timedelta(days=6)):
         default_pickle['daily_outage_dfs'].pop(0)
-        default_pickle['daily_outage_dfs'].insert(len(default_pickle['daily_outage_dfs']), (datetime.now(tz).date(), daily_outage))
+        default_pickle['daily_outage_dfs'].insert(len(default_pickle['daily_outage_dfs']), (datetime.now(tz), daily_outage))
         default_pickle['monthly_outage_dfs'].pop(0)
-        default_pickle['monthly_outage_dfs'].insert(len(default_pickle['monthly_outage_dfs']), (datetime.now(tz).date(), monthly_outage))
+        default_pickle['monthly_outage_dfs'].insert(len(default_pickle['monthly_outage_dfs']), (datetime.now(tz), monthly_outage))
     else:
         default_pickle['current_data'] = (last_update, realtime_df)
         default_pickle['daily_outage_dfs'][6] = (datetime.now(tz).date(), daily_outage)
@@ -389,7 +391,7 @@ for seconds in range(450):
         if len(alert_dict)==1:
             height = 70
         else:
-            height = 70 * len(alert_dict)
+            height = 50 * len(alert_dict)
         outage_heatmap = alt.Chart(outage_diff[['timeStamp','fuelType','diff_value']]).mark_rect(opacity=0.7, stroke='black', strokeWidth=1).encode(
             x=alt.X('yearmonth(timeStamp):O', title=None, axis=alt.Axis(ticks=False)),
             y=alt.Y('fuelType:N', title=None, axis=alt.Axis(labelFontSize=15)),
@@ -403,7 +405,7 @@ for seconds in range(450):
         )
         st.altair_chart(outage_heatmap + text, use_container_width=True)
         toc = datetime.now()
-        tot = toc - tic
+        tot = toc-tic
         (seconds,tot)
 
     time.sleep(1)
