@@ -291,12 +291,14 @@ for seconds in range(450):
         with st.spinner('Gathering Daily Outages...'):
             try:
                 daily_outage = daily_outages()
+                st.experimental_rerun()
             except:
                 daily_outage = default_pickle['daily_outage_dfs'][6][1]
     if seconds%150==0:
         with st.spinner('Gathering Monthly Outages...'):
             try:
                 monthly_outage = monthly_outages()
+                st.experimental_rerun()
             except:
                 monthly_outage = default_pickle['monthly_outage_dfs'][6][1]
 
