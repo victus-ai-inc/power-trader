@@ -365,7 +365,7 @@ for seconds in range(450):
         query = "SELECT * FROM combo_df ORDER BY fuelType"
         combo_df = sqldf(query, globals())
         combo_area = alt.Chart(combo_df).mark_area(opacity=0.7).encode(
-            x=alt.X('monthdatehours(timeStamp):T', title='', axis=alt.Axis(labelAngle=90)),
+            x=alt.X('timeStamp:T', title='', axis=alt.Axis(labelAngle=270)),
             y=alt.Y('value:Q', title='Current Supply (MW)'),
             color=alt.Color('fuelType:N', scale=alt.Scale(domain=list(theme.keys()),range=list(theme.values())), legend=alt.Legend(orient="top"))
         ).properties(height=400)
