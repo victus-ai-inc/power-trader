@@ -378,7 +378,6 @@ for seconds in range(450):
 
     # Outages chart
         st.subheader('Monthly Outages (2-year forecast)')
-        #monthly_outage = monthly_outage[monthly_outage['timeStamp'].dt.date>(datetime.now(tz).date())]
         outage_area = alt.Chart(monthly_outage).mark_bar(opacity=0.7).encode(
             x=alt.X('yearmonth(timeStamp):T', title='', axis=alt.Axis(labelAngle=90)),
             y=alt.Y('value:Q', stack='zero', axis=alt.Axis(format=',f'), title='Outages (MW)'),
