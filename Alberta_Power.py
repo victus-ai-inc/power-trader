@@ -226,8 +226,8 @@ def monthly_outages():
     return monthly_outages
 
 def outage_alerts():
-    #old_monthly_outage = default_pickle['monthly_outage_dfs'][0][1]
-    old_monthly_outage = pd.read_csv('offsets_changes.csv').astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})
+    old_monthly_outage = default_pickle['monthly_outage_dfs'][0][1]
+    #old_monthly_outage = pd.read_csv('offsets_changes.csv').astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})
     monthly_outage = default_pickle['monthly_outage_dfs'][6][1]
     monthly_diff = pd.merge(old_monthly_outage, monthly_outage, on=['timeStamp','fuelType'], suffixes=('_new','_old'))
     monthly_diff['diff_value'] = monthly_diff['value_old'] - monthly_diff['value_new']
