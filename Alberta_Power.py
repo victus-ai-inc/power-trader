@@ -266,8 +266,7 @@ theme = {'Biomass & Other':'#1f77b4',
             'Intertie':'#17becf'}
 cutoff = 100
 tz = pytz.timezone('America/Edmonton')
-tot = 0
-tic = datetime.now()
+
 placeholder = st.empty()
 for seconds in range(450):
     try:
@@ -405,10 +404,5 @@ for seconds in range(450):
             color=alt.condition(alt.datum.diff_value!=0, alt.value('black'), alt.value(None))
         )
         st.altair_chart(outage_heatmap + text, use_container_width=True)
-        toc = datetime.now()
-        tot = toc-tic
-        (seconds,tot)
-
     time.sleep(1)
-
 st.experimental_rerun()
