@@ -173,11 +173,12 @@ def pull_grouped_hist():
     query = 'SELECT MAX(timeStamp) FROM nrgdata.hourly_data'
     # Check when BigQuery was last updated
     last_update = bigquery.Client(credentials=credentials).query(query).to_dataframe().iloc[0][0]
+    st.write(last_update.date())
     # Add data to BQ from when it was last updated to yesterday
     if last_update < (datetime.now(tz).date()-timedelta(days=1)):
-        #pull_grouped_hist.clear()
+        pull_grouped_hist.clear()
         streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694, 120, 124947, 122]
-        history_df = get_data(streamIds, last_update, datetime.now(tz).date())
+        history_df = get_data(streamIds, last_update.date(), datetime.now(tz).date())
         bigquery.Client(credentials=credentials).load_table_from_dataframe(history_df, 'nrgdata.hourly_data')
         alerts.sms2()
     # Pull data from BQ
@@ -223,6 +224,7 @@ def monthly_outages():
         df = get_data(streamIds, date(year,1,1), date(year+1,1,1))
         monthly_outages = pd.concat([monthly_outages, df], axis=0)
     monthly_outages = monthly_outages[monthly_outages['timeStamp'].dt.date>(datetime.now(tz).date())]
+    monthly_outages['timeStamp'] = monthly_outages['timeStamp'].dt.tz_localize(tz='America/Edmonton')
     return monthly_outages
 
 def outage_alerts():
@@ -231,7 +233,6 @@ def outage_alerts():
     monthly_outage = default_pickle['monthly_outage_dfs'][6][1]
     monthly_diff = pd.merge(old_monthly_outage, monthly_outage, on=['timeStamp','fuelType'], suffixes=('_new','_old'))
     monthly_diff['diff_value'] = monthly_diff['value_old'] - monthly_diff['value_new']
-    monthly_diff['timeStamp'] = monthly_diff['timeStamp'].dt.tz_localize(tz='America/Edmonton')
     alert_list = list(set(monthly_diff['fuelType'][abs(monthly_diff['diff_value'])>=cutoff]))
     for i in alert_list:
         if (datetime.now(tz).date() - timedelta(days=7)) > default_pickle['alert_dates'][i]:
@@ -241,6 +242,12 @@ def outage_alerts():
             alerts.sms(i)
     alert_dict = {k:v for k,v in default_pickle['alert_dates'].items() if v > (datetime.now(tz).date()-timedelta(days=7))}
     monthly_diff = monthly_diff[monthly_diff['fuelType'].isin(alert_dict.keys())]
+
+    old_daily_outage = default_pickle['daily_outage_dfs'][0][1]
+    daily_outage = default_pickle['daily_outage_dfs'][6][1]
+    daily_diff = pd.merge(old_daily_outage, daily_outage, on=['timeStamp','fuelType'], suffixes=('_new','_old'))
+    daily_diff['diff_value'] = daily_diff['value_old'] - daily_diff['value_new']
+    daily_diff
     return monthly_diff, alert_dict
 
 # App config
@@ -293,8 +300,9 @@ for seconds in range(450):
             try:
                 daily_outage = daily_outages()
                 if datetime.now(tz).date() > (default_pickle['daily_outage_dfs'][0][0].date() + timedelta(days=6)):
-                    default_pickle['daily_outage_dfs'].pop(0)
-                    default_pickle['daily_outage_dfs'].insert(len(default_pickle['daily_outage_dfs']), (datetime.now(tz), daily_outage))
+                    if datetime.now(tz).date() != default_pickle['daily_outage_dfs'][6][0].date():
+                        default_pickle['daily_outage_dfs'].pop(0)
+                        default_pickle['daily_outage_dfs'].insert(len(default_pickle['daily_outage_dfs']), (datetime.now(tz), daily_outage))
                 else:
                     default_pickle['daily_outage_dfs'][6] = (datetime.now(tz), daily_outage)
                 st.experimental_rerun()
@@ -305,18 +313,19 @@ for seconds in range(450):
             try:
                 monthly_outage = monthly_outages()
                 if datetime.now(tz).date() > (default_pickle['monthly_outage_dfs'][0][0].date() + timedelta(days=6)):
-                    default_pickle['monthly_outage_dfs'].pop(0)
-                    default_pickle['monthly_outage_dfs'].insert(len(default_pickle['monthly_outage_dfs']), (datetime.now(tz), monthly_outage))
+                    if datetime.now(tz).date() != default_pickle['monthly_outage_dfs'][6][0].date():
+                        default_pickle['monthly_outage_dfs'].pop(0)
+                        default_pickle['monthly_outage_dfs'].insert(len(default_pickle['monthly_outage_dfs']), (datetime.now(tz), monthly_outage))
                 else:
                     default_pickle['monthly_outage_dfs'][6] = (datetime.now(tz), monthly_outage)
                 st.experimental_rerun()
             except:
                 monthly_outage = default_pickle['monthly_outage_dfs'][6][1]
     
-    outage_diff, alert_dict = outage_alerts()
-
     with open('./default_pickle.pickle', 'wb') as handle:
             pickle.dump(default_pickle, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+    outage_diff, alert_dict = outage_alerts()
     
     with placeholder.container():
     # KPIs
@@ -390,6 +399,7 @@ for seconds in range(450):
             tooltip=['fuelType','value','timeStamp']
             )
         st.altair_chart(outage_area, use_container_width=True)
+
     # Outage Differentials
         st.subheader('Monthly Intertie & Outage Differentials (MW)')
         if len(alert_dict)==1:
