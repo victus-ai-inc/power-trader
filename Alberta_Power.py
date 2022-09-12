@@ -361,7 +361,7 @@ for seconds in range(450):
             with col1:
                 if len(warning_list) > 0:
                     for _ in range(len(warning_list)):
-                        warning('warning', f'{warning_list[_]}')     
+                        warning('warning', f'{warning_list[_]}')
             with col2:
                 if len(alert_dict) > 0:
                     for (k,v) in alert_dict.items():
