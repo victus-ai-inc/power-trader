@@ -394,21 +394,22 @@ for seconds in range(450):
         combo_df = sqldf("SELECT * FROM combo_df ORDER BY fuelType", globals())
         
         max_query = '''
-            SELECT MAX(value) FROM (
+            SELECT MAX(value) AS value FROM (
                 SELECT timeStamp, SUM(value) AS value 
                 FROM combo_df
                 GROUP BY timeStamp)
         '''
         combo_max = sqldf(max_query, globals())
-        st.write(combo_max.item())
+        st.write(combo_max.iloc[0]['value'])
         min_query = '''
-            SELECT MIN(value) FROM (
+            SELECT MIN(value) AS value FROM (
                 SELECT timeStamp, SUM(value) AS value 
                 FROM combo_df
                 GROUP BY timeStamp)
         '''
         combo_min = sqldf(min_query, globals())/10
-
+        st.write(combo_min.iloc[0]['value'])
+        
         base = alt.Chart(combo_df).encode(
             x=alt.X('timeStamp:T', title='', axis=alt.Axis(labelAngle=270)),
             y=alt.Y('value:Q', title='Current Supply (MW)'),
@@ -419,7 +420,7 @@ for seconds in range(450):
         ).transform_filter(alt.datum.fuelType != 'Pool Price')
 
         line = base.mark_line().encode(
-            color=alt.Color('fuelType:N', scale=alt.Scale(domainMin=combo_min, domainMax=combo_max)),
+            color=alt.Color('fuelType:N', scale=alt.Scale(domainMin=combo_min.iloc[0]['value'], domainMax=combo_max.iloc[0]['value'])),
         ).transform_filter(alt.datum.fuelType=='Pool Price')
 
         chrt = alt.layer(area, line).resolve_axis(y='independent')
