@@ -400,16 +400,16 @@ for seconds in range(450):
                 GROUP BY timeStamp)
         '''
         combo_max = sqldf(max_query, globals())
-        st.write(combo_max.iloc[0]['value'])
+        st.write(combo_max.iloc[0]['value']/10)
         min_query = '''
             SELECT MIN(value) AS value FROM (
                 SELECT timeStamp, SUM(value) AS value 
                 FROM combo_df
                 GROUP BY timeStamp)
         '''
-        combo_min = sqldf(min_query, globals())/10
-        st.write(combo_min.iloc[0]['value'])
-        
+        combo_min = sqldf(min_query, globals())
+        st.write(combo_min.iloc[0]['value']/10)
+
         base = alt.Chart(combo_df).encode(
             x=alt.X('timeStamp:T', title='', axis=alt.Axis(labelAngle=270)),
             y=alt.Y('value:Q', title='Current Supply (MW)'),
