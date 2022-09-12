@@ -37,14 +37,14 @@ def get_token():
         res = conn.getresponse()
         res_code = res.status
         # Check if the response is good
+        with open('./default_pickle.pickle', 'rb') as handle:
+                default_pickle = pickle.load(handle)
         if res_code == 200:
             res_data = res.read()
             # Decode the token into an object
             jsonData = json.loads(res_data.decode('utf-8'))
             accessToken = jsonData['access_token']
-            with open('./default_pickle.pickle', 'rb') as handle:
-                default_pickle = pickle.load(handle)
-                default_pickle['accessToken'] = accessToken
+            default_pickle['accessToken'] = accessToken
             with open('./default_pickle.pickle', 'wb') as handle:
                 pickle.dump(default_pickle, handle, protocol=pickle.HIGHEST_PROTOCOL)
         elif res_code == 400:
@@ -114,7 +114,7 @@ def get_data(streamIds, start_date, end_date):
     return df
 
 def current_data():
-    streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694, 120, 124947, 122]
+    streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694, 120, 124947, 122, 1]
     if datetime.now(tz).hour==0:
         realtime_df = get_data(streamIds, datetime.now(tz).date()-timedelta(days=1), datetime.now(tz).date()+timedelta(days=1))
     else:
@@ -130,19 +130,20 @@ def kpi(left_df, right_df, title):
     kpi_df['absDelta'] = abs(kpi_df['delta'])
     # Formatting numbers 
     kpi_df.iloc[:,1:] = kpi_df.iloc[:,1:].applymap('{:.0f}'.format)
-    col1, col2, col3, col4, col5, col6, col7, col8, col9, col10, col11 = st.columns(11)
+    col1, col2, col3, col4, col5, col6, col7, col8, col9, col10, col11, col12 = st.columns(12)
     with col1:
         st.subheader(title)
     col2.metric(label=kpi_df.iloc[7,0], value=kpi_df.iloc[7,2], delta=kpi_df.iloc[7,3]) # Natural Gas
     col3.metric(label=kpi_df.iloc[5,0], value=kpi_df.iloc[5,2], delta=kpi_df.iloc[5,3]) # Hydro
     col4.metric(label=kpi_df.iloc[4,0], value=kpi_df.iloc[4,2], delta=kpi_df.iloc[4,3]) # Energy Storage
-    col5.metric(label=kpi_df.iloc[9,0], value=kpi_df.iloc[9,2], delta=kpi_df.iloc[9,3]) # Solar
-    col6.metric(label=kpi_df.iloc[10,0], value=kpi_df.iloc[10,2], delta=kpi_df.iloc[10,3]) # Wind
+    col5.metric(label=kpi_df.iloc[10,0], value=kpi_df.iloc[10,2], delta=kpi_df.iloc[9,3]) # Solar
+    col6.metric(label=kpi_df.iloc[11,0], value=kpi_df.iloc[11,2], delta=kpi_df.iloc[10,3]) # Wind
     col7.metric(label=kpi_df.iloc[3,0], value=kpi_df.iloc[3,2], delta=kpi_df.iloc[3,3]) # Dual Fuel
     col8.metric(label=kpi_df.iloc[2,0], value=kpi_df.iloc[2,2], delta=kpi_df.iloc[2,3]) # Coal
     col9.metric(label=kpi_df.iloc[0,0], value=kpi_df.iloc[0,2], delta=kpi_df.iloc[0,3]) # BC
     col10.metric(label=kpi_df.iloc[6,0], value=kpi_df.iloc[6,2], delta=kpi_df.iloc[6,3]) # Montanta
-    col11.metric(label=kpi_df.iloc[8,0], value=kpi_df.iloc[8,2], delta=kpi_df.iloc[8,3]) # Sask
+    col11.metric(label=kpi_df.iloc[9,0], value=kpi_df.iloc[9,2], delta=kpi_df.iloc[8,3]) # Sask
+    col12.metric(label=kpi_df.iloc[8,0], value=kpi_df.iloc[8,2], delta=kpi_df.iloc[8,3]) # Pool Price
     return kpi_df
 
 def warning(type, lst):
@@ -181,7 +182,7 @@ def pull_grouped_hist():
     # Add data to BQ from when it was last updated to yesterday
     if last_update < (datetime.now(tz).date()-timedelta(days=1)):
         pull_grouped_hist.clear()
-        streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694, 120, 124947, 122]
+        streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694, 120, 124947, 122, 1]
         history_df = get_data(streamIds, last_update.date(), datetime.now(tz).date())
         bigquery.Client(credentials=credentials).load_table_from_dataframe(history_df, 'nrgdata.hourly_data')
         alerts.sms2()
@@ -331,7 +332,6 @@ for seconds in range(450):
             monthly_outage = gather_outages('monthly_outage_dfs', monthly_outages())
             # with open('./monthly_df.pickle', 'wb') as handle:
             #     pickle.dump(monthly_outage, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
     with open('./default_pickle.pickle', 'wb') as handle:
             pickle.dump(default_pickle, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
@@ -364,17 +364,17 @@ for seconds in range(450):
         '''
         current_df = sqldf(current_query, locals()).astype({'fuelType':'object', 'year':'int64','month':'int64', 'day':'int64', 'hour':'int64', 'value':'float64', 'timeStamp':'datetime64[ns]'})
         realtime = realtime_df[['fuelType','value','timeStamp']][realtime_df['timeStamp']==max(realtime_df['timeStamp'])]
-        if len(realtime) < 11:
+        if len(realtime) < 12:
             realtime = realtime_df[['fuelType','value','timeStamp']][realtime_df['timeStamp']==max(realtime_df['timeStamp']-timedelta(minutes=5))]   
         realtime.drop('timeStamp', axis=1, inplace=True)
         realtime = realtime.astype({'fuelType':'object','value':'float64'})
         previousHour = current_df[['fuelType','value']][current_df['hour']==datetime.now(tz).hour-1]
         currentHour = current_df[['fuelType','value']][current_df['hour']==datetime.now(tz).hour]
+
         with st.expander('*Click here to expand/collapse KPIs',expanded=True):
             kpi_df = kpi(previousHour, realtime, 'Real Time')
             kpi(previousHour, currentHour, 'Hourly Average')
             st.write(f"Last update: {last_update.strftime('%a, %b %d @ %X')}")
-
         # KPI warning & alert boxes
             warning_list = list(kpi_df['fuelType'][kpi_df['absDelta'].astype('int64') >= cutoff])
             col1, col2 = st.columns(2)
@@ -391,14 +391,51 @@ for seconds in range(450):
         st.subheader('Current Supply (Previous 7-days)')
         history_df = pull_grouped_hist()
         combo_df = pd.concat([history_df,current_df], axis=0)
-        query = "SELECT * FROM combo_df ORDER BY fuelType"
-        combo_df = sqldf(query, globals())
-        combo_area = alt.Chart(combo_df).mark_area(opacity=0.7).encode(
+        combo_df = sqldf("SELECT * FROM combo_df ORDER BY fuelType", globals())
+        
+        max_query = '''
+            SELECT MAX(value) FROM (
+                SELECT timeStamp, SUM(value) AS value 
+                FROM combo_df
+                GROUP BY timeStamp)
+        '''
+        combo_max = sqldf(max_query, globals())
+        st.write(combo_max.item())
+        min_query = '''
+            SELECT MIN(value) FROM (
+                SELECT timeStamp, SUM(value) AS value 
+                FROM combo_df
+                GROUP BY timeStamp)
+        '''
+        combo_min = sqldf(min_query, globals())/10
+
+        base = alt.Chart(combo_df).encode(
             x=alt.X('timeStamp:T', title='', axis=alt.Axis(labelAngle=270)),
             y=alt.Y('value:Q', title='Current Supply (MW)'),
-            color=alt.Color('fuelType:N', scale=alt.Scale(domain=list(theme.keys()),range=list(theme.values())), legend=alt.Legend(orient="top"))
+            color='fuelType:N',
         ).properties(height=400)
-        st.altair_chart(combo_area, use_container_width=True)
+        
+        area = base.mark_area().encode(
+        ).transform_filter(alt.datum.fuelType != 'Pool Price')
+
+        line = base.mark_line().encode(
+            color=alt.Color('fuelType:N', scale=alt.Scale(domainMin=combo_min, domainMax=combo_max)),
+        ).transform_filter(alt.datum.fuelType=='Pool Price')
+
+        chrt = alt.layer(area, line).resolve_axis(y='independent')
+
+        st.altair_chart(area, use_container_width=True)
+        st.altair_chart(line, use_container_width=True)
+        st.altair_chart(chrt, use_container_width=True)
+
+        # combo_area = alt.Chart(combo_df).mark_area(opacity=0.7).encode(
+        #     x=alt.X('timeStamp:T', title='', axis=alt.Axis(labelAngle=270)),
+        #     y=alt.Y('value:Q', title='Current Supply (MW)'),
+        #     color=alt.Color('fuelType:N', scale=alt.Scale(domain=list(theme.keys()),range=list(theme.values())), legend=alt.Legend(orient="top"))
+        # ).transform_filter(alt.datum.fuelType != 'Pool Price').properties(height=400)
+        
+        
+        # st.altair_chart(combo_area, use_container_width=True)
     
     # Daily outages 7-day chart
         st.subheader('Daily Outages (Next 7-days)')
@@ -412,7 +449,7 @@ for seconds in range(450):
         st.altair_chart(daily_outage_area_seven, use_container_width=True)
 
     # Daily outages 90-day chart
-        st.subheader('Daily Outages (90-day forecast)')
+        st.subheader('Daily Outages (Next 90-days)')
         daily_outage_area = alt.Chart(daily_outage).mark_area(opacity=0.7).encode(
             x=alt.X('timeStamp:T', title='', axis=alt.Axis(labelAngle=270)),
             y=alt.Y('value:Q', stack='zero', axis=alt.Axis(format=',f'), title='Outages (MW)'),
@@ -437,7 +474,7 @@ for seconds in range(450):
             st.altair_chart(daily_outage_heatmap, use_container_width=True)
 
     # Monthly outages chart
-        st.subheader('Monthly Outages (2-year forecast)')
+        st.subheader('Monthly Outages (Next 2-years)')
         monthly_outage_area = alt.Chart(monthly_outage).mark_bar(opacity=0.7).encode(
             x=alt.X('yearmonth(timeStamp):T', title='', axis=alt.Axis(labelAngle=270)),
             y=alt.Y('value:Q', stack='zero', axis=alt.Axis(format=',f'), title='Outages (MW)'),
