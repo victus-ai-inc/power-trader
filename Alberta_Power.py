@@ -1,3 +1,4 @@
+from socket import TIPC_MEDIUM_IMPORTANCE
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -9,6 +10,7 @@ import certifi
 import time
 import pytz
 import pickle
+import smtplib
 import alerts
 from st_aggrid import AgGrid
 from datetime import datetime, date, timedelta
@@ -17,6 +19,8 @@ from google.cloud import bigquery
 from google.oauth2 import service_account
 from google.cloud.exceptions import NotFound
 from pandasql import sqldf
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 def get_token():
     try:
@@ -227,28 +231,49 @@ def monthly_outages():
     monthly_outages['timeStamp'] = monthly_outages['timeStamp'].dt.tz_localize(tz='America/Edmonton')
     return monthly_outages
 
-def outage_alerts():
-    old_monthly_outage = default_pickle['monthly_outage_dfs'][0][1]
-    #old_monthly_outage = pd.read_csv('offsets_changes.csv').astype({'timeStamp':'datetime64[ns]','value':'int64','fuelType':'object'})
-    monthly_outage = default_pickle['monthly_outage_dfs'][6][1]
-    monthly_diff = pd.merge(old_monthly_outage, monthly_outage, on=['timeStamp','fuelType'], suffixes=('_new','_old'))
-    monthly_diff['diff_value'] = monthly_diff['value_old'] - monthly_diff['value_new']
-    alert_list = list(set(monthly_diff['fuelType'][abs(monthly_diff['diff_value'])>=cutoff]))
-    for i in alert_list:
-        if (datetime.now(tz).date() - timedelta(days=7)) > default_pickle['alert_dates'][i]:
-            default_pickle['alert_dates'][i] = datetime.now(tz).date()
-            with open('./default_pickle.pickle', 'wb') as handle:
-                pickle.dump(default_pickle, handle, protocol=pickle.HIGHEST_PROTOCOL)
-            alerts.sms(i)
-    alert_dict = {k:v for k,v in default_pickle['alert_dates'].items() if v > (datetime.now(tz).date()-timedelta(days=7))}
-    monthly_diff = monthly_diff[monthly_diff['fuelType'].isin(alert_dict.keys())]
+def gather_outages(pickle_key, outage_func):
+    try:
+        outage_df = outage_func
+        if datetime.now(tz).date() > (default_pickle[pickle_key][0][0].date() + timedelta(days=6)):
+            if datetime.now(tz).date() != default_pickle[pickle_key][6][0].date():
+                default_pickle[pickle_key].pop(0)
+                default_pickle[pickle_key].insert(len(default_pickle[pickle_key]), (datetime.now(tz), outage_df))
+        else:
+            default_pickle[pickle_key][6] = (datetime.now(tz), outage_df)
+        st.experimental_rerun()
+    except:
+        outage_df = default_pickle[pickle_key][6][1]
+    return outage_df
 
-    old_daily_outage = default_pickle['daily_outage_dfs'][0][1]
-    daily_outage = default_pickle['daily_outage_dfs'][6][1]
-    daily_diff = pd.merge(old_daily_outage, daily_outage, on=['timeStamp','fuelType'], suffixes=('_new','_old'))
-    daily_diff['diff_value'] = daily_diff['value_old'] - daily_diff['value_new']
-    daily_diff
-    return monthly_diff, alert_dict
+def text_alert(fuel_type):
+    email = st.secrets['email_address']
+    pas = st.secrets['email_password']
+    sms_gateways = st.secrets['phone_numbers'].values()
+    smtp = 'smtp.gmail.com'
+    port = 587
+    server = smtplib.SMTP(smtp, port)
+    server.starttls()
+    server.login(email, pas)
+    msg = MIMEMultipart()
+    for gateway in sms_gateways:
+        msg['To'] = gateway
+        body = f'\nALERT: {fuel_type}\n{datetime.now(tz).strftime("%a %b %d, %Y @ %-I:%M%p")}\nhttps://bit.ly/3bRcJE3'
+        msg.attach(MIMEText(body, 'plain'))
+        sms = msg.as_string()
+        server.sendmail(email, gateway, sms)
+
+def outage_alerts(pickle_key):
+    old_outage = default_pickle[pickle_key][0][1]
+    outage = default_pickle[pickle_key][6][1]
+    diff = pd.merge(old_outage, outage, on=['timeStamp','fuelType'], suffixes=('_new','_old'))
+    diff['diff_value'] = diff['value_old'] - diff['value_new']
+    if pickle_key == 'daily_outage_dfs':
+        diff = diff[diff['timeStamp'].dt.date < datetime.now(pytz.timezone('America/Edmonton')).date() + timedelta(days=90)]
+    elif pickle_key == 'monthly_outage_dfs':
+        diff = diff[diff['timeStamp'].dt.date > datetime.now(pytz.timezone('America/Edmonton')).date() + relativedelta(months=3, day=1, days=-1)]
+    alert_list = list(set(diff['fuelType'][abs(diff['diff_value'])>=cutoff]))
+    diff = diff[diff['fuelType'].isin(alert_list)]
+    return diff, alert_list
 
 # App config
 st.set_page_config(layout='wide', initial_sidebar_state='collapsed', menu_items=None)
@@ -297,36 +322,31 @@ for seconds in range(450):
                 last_update, realtime_df = default_pickle['current_data']
     if seconds%90==0:
         with st.spinner('Gathering Daily Outages...'):
-            try:
-                daily_outage = daily_outages()
-                if datetime.now(tz).date() > (default_pickle['daily_outage_dfs'][0][0].date() + timedelta(days=6)):
-                    if datetime.now(tz).date() != default_pickle['daily_outage_dfs'][6][0].date():
-                        default_pickle['daily_outage_dfs'].pop(0)
-                        default_pickle['daily_outage_dfs'].insert(len(default_pickle['daily_outage_dfs']), (datetime.now(tz), daily_outage))
-                else:
-                    default_pickle['daily_outage_dfs'][6] = (datetime.now(tz), daily_outage)
-                st.experimental_rerun()
-            except:
-                daily_outage = default_pickle['daily_outage_dfs'][6][1]
+            daily_outage = gather_outages('daily_outage_dfs', daily_outages())
+        daily_outage = daily_outage[daily_outage['timeStamp']<((datetime.now(tz)+timedelta(days=90)))]
+            # with open('./daily_df.pickle', 'wb') as handle:
+            #     pickle.dump(daily_outage, handle, protocol=pickle.HIGHEST_PROTOCOL)
     if seconds%150==0:
         with st.spinner('Gathering Monthly Outages...'):
-            try:
-                monthly_outage = monthly_outages()
-                if datetime.now(tz).date() > (default_pickle['monthly_outage_dfs'][0][0].date() + timedelta(days=6)):
-                    if datetime.now(tz).date() != default_pickle['monthly_outage_dfs'][6][0].date():
-                        default_pickle['monthly_outage_dfs'].pop(0)
-                        default_pickle['monthly_outage_dfs'].insert(len(default_pickle['monthly_outage_dfs']), (datetime.now(tz), monthly_outage))
-                else:
-                    default_pickle['monthly_outage_dfs'][6] = (datetime.now(tz), monthly_outage)
-                st.experimental_rerun()
-            except:
-                monthly_outage = default_pickle['monthly_outage_dfs'][6][1]
-    
+            monthly_outage = gather_outages('monthly_outage_dfs', monthly_outages())
+            # with open('./monthly_df.pickle', 'wb') as handle:
+            #     pickle.dump(monthly_outage, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
     with open('./default_pickle.pickle', 'wb') as handle:
             pickle.dump(default_pickle, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-    outage_diff, alert_dict = outage_alerts()
-    
+    daily_diff, daily_alert_list = outage_alerts('daily_outage_dfs')
+    monthly_diff, monthly_alert_list = outage_alerts('monthly_outage_dfs')
+    alert_list = set(daily_alert_list + monthly_alert_list)
+
+    for fuel_type in alert_list:
+        if (datetime.now(tz).date() - timedelta(days=7)) > default_pickle['alert_dates'][fuel_type]:
+            default_pickle['alert_dates'][fuel_type] = datetime.now(tz).date()
+            with open('./default_pickle.pickle', 'wb') as handle:
+                pickle.dump(default_pickle, handle, protocol=pickle.HIGHEST_PROTOCOL)
+            text_alert(fuel_type)
+    alert_dict = {k:v for k,v in default_pickle['alert_dates'].items() if v > (datetime.now(tz).date()-timedelta(days=7))}
+
     with placeholder.container():
     # KPIs
         current_query = '''
@@ -368,7 +388,7 @@ for seconds in range(450):
                         warning('alert', f"{k} {v.strftime('(%b %-d, %Y)')}")
 
     # 14 day hist/real-time/forecast
-        st.subheader('Current Supply (Over last 7-days)')
+        st.subheader('Current Supply (Previous 7-days)')
         history_df = pull_grouped_hist()
         combo_df = pd.concat([history_df,current_df], axis=0)
         query = "SELECT * FROM combo_df ORDER BY fuelType"
@@ -380,43 +400,64 @@ for seconds in range(450):
         ).properties(height=400)
         st.altair_chart(combo_area, use_container_width=True)
     
-    # Daily outages
-        st.subheader('Daily Outages (90-day forecast)')
-        daily_outage = daily_outage[daily_outage['timeStamp']<((datetime.now(tz)+timedelta(days=90)))]
-        chrt = alt.Chart(daily_outage).mark_area(opacity=0.7).encode(
+    # Daily outages 7-day chart
+        st.subheader('Daily Outages (Next 7-days)')
+        daily_outage_seven = daily_outage[daily_outage['timeStamp'].dt.date <= datetime.now(tz).date() + timedelta(days=7)]
+        daily_outage_area_seven = alt.Chart(daily_outage_seven).mark_area(opacity=0.7).encode(
             x=alt.X('timeStamp:T', title='', axis=alt.Axis(labelAngle=270)),
             y=alt.Y('value:Q', stack='zero', axis=alt.Axis(format=',f'), title='Outages (MW)'),
-            color=alt.Color('fuelType:N', scale=alt.Scale(domain=list(theme.keys()),range=list(theme.values())), legend=alt.Legend(orient="top"))
+            color=alt.Color('fuelType:N', scale=alt.Scale(domain=list(theme.keys()), range=list(theme.values())), legend=alt.Legend(orient="top")),
+            tooltip=['fuelType','value','timeStamp']
         ).properties(height=400)
-        st.altair_chart(chrt, use_container_width=True)
+        st.altair_chart(daily_outage_area_seven, use_container_width=True)
 
-    # Outages chart
+    # Daily outages 90-day chart
+        st.subheader('Daily Outages (90-day forecast)')
+        daily_outage_area = alt.Chart(daily_outage).mark_area(opacity=0.7).encode(
+            x=alt.X('timeStamp:T', title='', axis=alt.Axis(labelAngle=270)),
+            y=alt.Y('value:Q', stack='zero', axis=alt.Axis(format=',f'), title='Outages (MW)'),
+            color=alt.Color('fuelType:N', scale=alt.Scale(domain=list(theme.keys()), range=list(theme.values())), legend=alt.Legend(orient="top")),
+            tooltip=['fuelType','value','timeStamp']
+        ).properties(height=400)
+        st.altair_chart(daily_outage_area, use_container_width=True)
+
+    # Daily outage differentials
+        if len(daily_alert_list)>0:
+            st.subheader('Daily Intertie & Outage Differentials (MW)')
+            daily_outage_heatmap = alt.Chart(daily_diff[['timeStamp','fuelType','diff_value']]).mark_rect(opacity=0.7, stroke='grey', strokeWidth=0.5).encode(
+                x=alt.X('monthdate(timeStamp):O', title=None, axis=alt.Axis(ticks=False, labelAngle=270)),
+                y=alt.Y('fuelType:N', title=None, axis=alt.Axis(labelFontSize=15)),
+                color=alt.condition(alt.datum.diff_value==0,
+                                    alt.value('white'),
+                                    alt.Color('diff_value:Q', scale=alt.Scale(domainMin=-max(abs(daily_diff['diff_value'])),
+                                                                            domainMax=max(abs(daily_diff['diff_value'])),
+                                                                            scheme='redyellowgreen'))),
+                tooltip=['fuelType','diff_value','timeStamp']
+            ).properties(height=110 if len(daily_alert_list)==1 else 60 * len(daily_alert_list))
+            st.altair_chart(daily_outage_heatmap, use_container_width=True)
+
+    # Monthly outages chart
         st.subheader('Monthly Outages (2-year forecast)')
-        outage_area = alt.Chart(monthly_outage).mark_bar(opacity=0.7).encode(
+        monthly_outage_area = alt.Chart(monthly_outage).mark_bar(opacity=0.7).encode(
             x=alt.X('yearmonth(timeStamp):T', title='', axis=alt.Axis(labelAngle=270)),
             y=alt.Y('value:Q', stack='zero', axis=alt.Axis(format=',f'), title='Outages (MW)'),
             color=alt.Color('fuelType:N', scale=alt.Scale(domain=list(theme.keys()),range=list(theme.values())), legend=alt.Legend(orient="top")),
             tooltip=['fuelType','value','timeStamp']
             )
-        st.altair_chart(outage_area, use_container_width=True)
+        st.altair_chart(monthly_outage_area, use_container_width=True)
 
-    # Outage Differentials
-        st.subheader('Monthly Intertie & Outage Differentials (MW)')
-        if len(alert_dict)==1:
-            height = 110
-        else:
-            height = 70 * len(alert_dict)
-        outage_heatmap = alt.Chart(outage_diff[['timeStamp','fuelType','diff_value']]).mark_rect(opacity=0.7, stroke='black', strokeWidth=1).encode(
-            x=alt.X('yearmonth(timeStamp):O', title=None, axis=alt.Axis(ticks=False, labelAngle=270)),
-            y=alt.Y('fuelType:N', title=None, axis=alt.Axis(labelFontSize=15)),
-            color=alt.condition(alt.datum.diff_value==0,
-                                alt.value('white'),
-                                alt.Color('diff_value:Q',scale=alt.Scale(domainMid=0, scheme='redyellowgreen'), legend=None))
-        ).properties(height=height)
-        text = outage_heatmap.mark_text(baseline='middle', size=10, angle=270).encode(
-            text='diff_value:Q',
-            color=alt.condition(alt.datum.diff_value!=0, alt.value('black'), alt.value(None))
-        )
-        st.altair_chart(outage_heatmap + text, use_container_width=True)
+    # Monthly outage differentials
+        if len(monthly_alert_list)>0:
+            st.subheader('Monthly Intertie & Outage Differentials (MW)')
+            monthly_outage_heatmap = alt.Chart(monthly_diff[['timeStamp','fuelType','diff_value']]).mark_rect(opacity=0.7, stroke='black', strokeWidth=1).encode(
+                x=alt.X('yearmonth(timeStamp):O', title=None, axis=alt.Axis(ticks=False, labelAngle=270)),
+                y=alt.Y('fuelType:N', title=None, axis=alt.Axis(labelFontSize=15)),
+                color=alt.condition(alt.datum.diff_value==0,
+                                    alt.value('white'),
+                                    alt.Color('diff_value:Q', scale=alt.Scale(domainMin=-max(abs(monthly_diff['diff_value'])), 
+                                                                            domainMax=-max(abs(monthly_diff['diff_value'])),
+                                                                            scheme='redyellowgreen')))
+            ).properties(height=110 if len(monthly_alert_list)==1 else 60 * len(monthly_alert_list))
+            st.altair_chart(monthly_outage_heatmap, use_container_width=True)
     time.sleep(1)
 st.experimental_rerun()
