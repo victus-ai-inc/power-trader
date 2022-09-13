@@ -1,4 +1,3 @@
-from ast import NotIn
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -113,7 +112,7 @@ def get_data(streamIds, start_date, end_date):
         df.drop(['streamId','assetCode','streamName','subfuelType','timeInterval','intervalType'], axis=1, inplace=True)
     return df
 
-@st.experimental_memo(suppress_st_warning=True, ttl=20)
+@st.experimental_memo(suppress_st_warning=True, ttl=10)
 def current_data():
     streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694, 120, 124947, 122, 1]
     if datetime.now(tz).hour==0:
@@ -236,13 +235,11 @@ def monthly_outages():
 def gather_outages(pickle_key, outage_func):
     try:
         outage_df = outage_func
+        default_pickle[pickle_key][6] = (datetime.now(tz), outage_df)
         if datetime.now(tz).date() > (default_pickle[pickle_key][0][0].date() + timedelta(days=6)):
             if datetime.now(tz).date() != default_pickle[pickle_key][6][0].date():
                 default_pickle[pickle_key].pop(0)
                 default_pickle[pickle_key].insert(len(default_pickle[pickle_key]), (datetime.now(tz), outage_df))
-        else:
-            default_pickle[pickle_key][6] = (datetime.now(tz), outage_df)
-        st.experimental_rerun()
     except:
         outage_df = default_pickle[pickle_key][6][1]
     return outage_df
@@ -457,8 +454,13 @@ for seconds in range(450):
         current_df = sqldf(current_query, locals()).astype({'fuelType':'object', 'year':'int64','month':'int64', 'day':'int64', 'hour':'int64', 'value':'float64', 'timeStamp':'datetime64[ns]'})
         current_df['timeStamp'] = current_df['timeStamp'].dt.tz_localize(tz='America/Edmonton')
         realtime = realtime_df[['fuelType','value','timeStamp']][realtime_df['timeStamp']==max(realtime_df['timeStamp'])]
+        st.write(len(realtime))
+        new = realtime_df[['fuelType','value','timeStamp']][realtime_df['timeStamp']==max(realtime_df['timeStamp'])]
+        old = realtime_df[['fuelType','value','timeStamp']][realtime_df['timeStamp']==max(realtime_df['timeStamp']-timedelta(minutes=5))]
+        st.write(old, new)
         if len(realtime) < 12:
-            realtime = realtime_df[['fuelType','value','timeStamp']][realtime_df['timeStamp']==max(realtime_df['timeStamp']-timedelta(minutes=5))]   
+            st.snow()
+            realtime = realtime_df[['fuelType','value','timeStamp']][realtime_df['timeStamp']==max(realtime_df['timeStamp']-timedelta(minutes=5))]
         realtime.drop('timeStamp', axis=1, inplace=True)
         realtime = realtime.astype({'fuelType':'object','value':'float64'})
         previousHour = current_df[['fuelType','value']][current_df['hour']==datetime.now(tz).hour-1]
