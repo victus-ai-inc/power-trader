@@ -1,4 +1,4 @@
-from socket import TIPC_MEDIUM_IMPORTANCE
+from ast import NotIn
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -113,6 +113,7 @@ def get_data(streamIds, start_date, end_date):
         df.drop(['streamId','assetCode','streamName','subfuelType','timeInterval','intervalType'], axis=1, inplace=True)
     return df
 
+@st.experimental_memo(suppress_st_warning=True, ttl=18000)
 def current_data():
     streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694, 120, 124947, 122, 1]
     if datetime.now(tz).hour==0:
@@ -120,6 +121,7 @@ def current_data():
     else:
         realtime_df = get_data(streamIds, datetime.now(tz).date(), datetime.now(tz).date()+timedelta(days=1))
     last_update = datetime.now(tz)
+    realtime_df['timeStamp'] = realtime_df['timeStamp'].dt.tz_localize(tz='America/Edmonton')
     return realtime_df, last_update
 
 def kpi(left_df, right_df, title):
@@ -178,7 +180,6 @@ def pull_grouped_hist():
     query = 'SELECT MAX(timeStamp) FROM nrgdata.hourly_data'
     # Check when BigQuery was last updated
     last_update = bigquery.Client(credentials=credentials).query(query).to_dataframe().iloc[0][0]
-    st.write(last_update.date())
     # Add data to BQ from when it was last updated to yesterday
     if last_update < (datetime.now(tz).date()-timedelta(days=1)):
         pull_grouped_hist.clear()
@@ -208,7 +209,7 @@ def pull_grouped_hist():
     history_df = bigquery.Client(credentials=credentials).query(query).to_dataframe()
     return history_df
 
-@st.experimental_memo(suppress_st_warning=True, ttl=180)
+@st.experimental_memo(suppress_st_warning=True, ttl=18000)
 def daily_outages():
     streamIds = [124]
     intertie_outages = get_data(streamIds, datetime.now(tz).date(), datetime.now(tz).date() + relativedelta(months=12, day=1, days=-1))
@@ -220,7 +221,7 @@ def daily_outages():
     daily_outages['timeStamp'] = daily_outages['timeStamp'].dt.tz_localize(tz='America/Edmonton')
     return daily_outages
 
-@st.experimental_memo(suppress_st_warning=True, ttl=300)
+@st.experimental_memo(suppress_st_warning=True, ttl=30000)
 def monthly_outages():
     streamIds = [44648, 118361, 322689, 118362, 147262, 322675, 322682, 44651]
     years = [datetime.now(tz).year, datetime.now(tz).year+1, datetime.now(tz).year+2]
@@ -258,7 +259,7 @@ def text_alert(fuel_type):
     msg = MIMEMultipart()
     for gateway in sms_gateways:
         msg['To'] = gateway
-        body = f'\nALERT: {fuel_type}\n{datetime.now(tz).strftime("%a %b %d, %Y @ %-I:%M%p")}\nhttps://bit.ly/3bRcJE3'
+        body = f'\nALERT: {fuel_type}\n{datetime.now(tz).strftime("%a %b %d, %Y @ %-I:%M%p")}'
         msg.attach(MIMEText(body, 'plain'))
         sms = msg.as_string()
         server.sendmail(email, gateway, sms)
@@ -300,7 +301,8 @@ theme = {'Biomass & Other':'#1f77b4',
             'BC':'#9467bd',
             'Saskatchewan':'#c5b0d5',
             'Montana':'#e377c2',
-            'Intertie':'#17becf'}
+            'Intertie':'#17becf',
+            'Pool Price':'#000000'}
 cutoff = 100
 tz = pytz.timezone('America/Edmonton')
 
@@ -363,14 +365,14 @@ for seconds in range(450):
         ORDER BY fuelType, year, month, day, hour, timeStamp
         '''
         current_df = sqldf(current_query, locals()).astype({'fuelType':'object', 'year':'int64','month':'int64', 'day':'int64', 'hour':'int64', 'value':'float64', 'timeStamp':'datetime64[ns]'})
+        current_df['timeStamp'] = current_df['timeStamp'].dt.tz_localize(tz='America/Edmonton')
         realtime = realtime_df[['fuelType','value','timeStamp']][realtime_df['timeStamp']==max(realtime_df['timeStamp'])]
         if len(realtime) < 12:
             realtime = realtime_df[['fuelType','value','timeStamp']][realtime_df['timeStamp']==max(realtime_df['timeStamp']-timedelta(minutes=5))]   
         realtime.drop('timeStamp', axis=1, inplace=True)
         realtime = realtime.astype({'fuelType':'object','value':'float64'})
-        previousHour = current_df[['fuelType','value']][current_df['hour']==datetime.now(tz).hour-1]
-        currentHour = current_df[['fuelType','value']][current_df['hour']==datetime.now(tz).hour]
-
+        previousHour = current_df[['fuelType','value']][current_df['timeStamp']==(datetime.now(pytz.timezone('America/Edmonton')).replace(minute=0, second=0, microsecond=0)-timedelta(hours=1))]
+        currentHour = current_df[['fuelType','value']][current_df['timeStamp']==datetime.now(pytz.timezone('America/Edmonton')).replace(minute=0, second=0, microsecond=0)]
         with st.expander('*Click here to expand/collapse KPIs',expanded=True):
             kpi_df = kpi(previousHour, realtime, 'Real Time')
             kpi(previousHour, currentHour, 'Hourly Average')
@@ -386,83 +388,79 @@ for seconds in range(450):
                 if len(alert_dict) > 0:
                     for (k,v) in alert_dict.items():
                         warning('alert', f"{k} {v.strftime('(%b %-d, %Y)')}")
-
+        
     # 14 day hist/real-time/forecast
         st.subheader('Current Supply (Previous 7-days)')
         history_df = pull_grouped_hist()
         combo_df = pd.concat([history_df,current_df], axis=0)
         combo_df = sqldf("SELECT * FROM combo_df ORDER BY fuelType", globals())
-        
-        max_query = '''
+        combo_max = sqldf(
+            '''
             SELECT MAX(value) AS value FROM (
                 SELECT timeStamp, SUM(value) AS value 
                 FROM combo_df
+                WHERE value > 0
                 GROUP BY timeStamp)
-        '''
-        combo_max = sqldf(max_query, globals())
-        st.write(combo_max.iloc[0]['value']/10)
-        min_query = '''
+            ''',
+            globals())
+        combo_max = combo_max.iloc[0]['value']
+        combo_max = combo_max if combo_max % 1000 == 0 else combo_max + 1000 - combo_max % 1000
+        combo_min = sqldf(
+            '''
             SELECT MIN(value) AS value FROM (
                 SELECT timeStamp, SUM(value) AS value 
                 FROM combo_df
+                WHERE value < 0
                 GROUP BY timeStamp)
-        '''
-        combo_min = sqldf(min_query, globals())
-        st.write(combo_min.iloc[0]['value']/10)
-
-        base = alt.Chart(combo_df).encode(
-            x=alt.X('timeStamp:T', title='', axis=alt.Axis(labelAngle=270)),
-            y=alt.Y('value:Q', title='Current Supply (MW)'),
-            color='fuelType:N',
+            ''',
+            globals())
+        combo_min = combo_min.iloc[0]['value']
+        combo_min = combo_min if combo_min % 1000 == 0 else combo_min - combo_min % 1000
+        combo_base = alt.Chart(combo_df).encode(
+            x=alt.X('timeStamp:T', title='', axis=alt.Axis(labelAngle=270, gridWidth=0)),
+            y=alt.Y('value:Q', stack='zero', title='Current Supply (MW)', scale=alt.Scale(domain=[combo_min,combo_max])),
+            color=alt.Color('fuelType:N', scale=alt.Scale(domain=list(theme.keys()), range=list(theme.values())), legend=alt.Legend(orient='top')),
+            tooltip=['fuelType','value','timeStamp']
         ).properties(height=400)
-        
-        area = base.mark_area().encode(
-        ).transform_filter(alt.datum.fuelType != 'Pool Price')
-
-        line = base.mark_line().encode(
-            color=alt.Color('fuelType:N', scale=alt.Scale(domainMin=combo_min.iloc[0]['value'], domainMax=combo_max.iloc[0]['value'])),
+        combo_area = combo_base.mark_area(opacity=0.7).encode(
+        ).transform_filter(alt.datum.fuelType!='Pool Price')
+        combo_line = combo_base.mark_line(interpolate='step-after').encode(
+            y=alt.Y('value:Q', title='Current Supply (MW)', scale=alt.Scale(domain=[combo_min/10,combo_max/10])),
+            color=alt.Color('fuelType:N'),
         ).transform_filter(alt.datum.fuelType=='Pool Price')
-
-        chrt = alt.layer(area, line).resolve_axis(y='independent')
-
-        st.altair_chart(area, use_container_width=True)
-        st.altair_chart(line, use_container_width=True)
-        st.altair_chart(chrt, use_container_width=True)
-
-        # combo_area = alt.Chart(combo_df).mark_area(opacity=0.7).encode(
-        #     x=alt.X('timeStamp:T', title='', axis=alt.Axis(labelAngle=270)),
-        #     y=alt.Y('value:Q', title='Current Supply (MW)'),
-        #     color=alt.Color('fuelType:N', scale=alt.Scale(domain=list(theme.keys()),range=list(theme.values())), legend=alt.Legend(orient="top"))
-        # ).transform_filter(alt.datum.fuelType != 'Pool Price').properties(height=400)
-        
-        
-        # st.altair_chart(combo_area, use_container_width=True)
+        st.altair_chart(alt.layer(combo_area, combo_line).resolve_scale(y='independent'), use_container_width=True)
     
     # Daily outages 7-day chart
-        st.subheader('Daily Outages (Next 7-days)')
-        daily_outage_seven = daily_outage[daily_outage['timeStamp'].dt.date <= datetime.now(tz).date() + timedelta(days=7)]
-        daily_outage_area_seven = alt.Chart(daily_outage_seven).mark_area(opacity=0.7).encode(
-            x=alt.X('timeStamp:T', title='', axis=alt.Axis(labelAngle=270)),
+        theme2 = {k:v for k,v in theme.items() if k not in ['BC','Saskatchewan','Montana','Pool Price']}
+        daily_outage_seven = daily_outage[daily_outage['timeStamp'].dt.date <= datetime.now(tz).date() + timedelta(days=6)]
+        daily_outage_area_seven = alt.Chart(daily_outage_seven).mark_bar(opacity=0.7).encode(
+            x=alt.X('monthdate(timeStamp):O', title='', axis=alt.Axis(labelAngle=270, tickCount=3)),
             y=alt.Y('value:Q', stack='zero', axis=alt.Axis(format=',f'), title='Outages (MW)'),
-            color=alt.Color('fuelType:N', scale=alt.Scale(domain=list(theme.keys()), range=list(theme.values())), legend=alt.Legend(orient="top")),
+            color=alt.Color('fuelType:N', scale=alt.Scale(domain=list(theme2.keys()), range=list(theme2.values())), legend=alt.Legend(orient='top')),
             tooltip=['fuelType','value','timeStamp']
-        ).properties(height=400)
-        st.altair_chart(daily_outage_area_seven, use_container_width=True)
-
+        ).properties(height=400).configure_view(strokeWidth=0).configure_axis(grid=False)
+        
     # Daily outages 90-day chart
-        st.subheader('Daily Outages (Next 90-days)')
-        daily_outage_area = alt.Chart(daily_outage).mark_area(opacity=0.7).encode(
-            x=alt.X('timeStamp:T', title='', axis=alt.Axis(labelAngle=270)),
+        daily_outage_area = alt.Chart(daily_outage).mark_bar(opacity=0.7).encode(
+            x=alt.X('monthdate(timeStamp):O', title='', axis=alt.Axis(labelAngle=270)),
             y=alt.Y('value:Q', stack='zero', axis=alt.Axis(format=',f'), title='Outages (MW)'),
-            color=alt.Color('fuelType:N', scale=alt.Scale(domain=list(theme.keys()), range=list(theme.values())), legend=alt.Legend(orient="top")),
+            color=alt.Color('fuelType:N', scale=alt.Scale(domain=list(theme2.keys()), range=list(theme2.values())), legend=alt.Legend(orient='top')),
             tooltip=['fuelType','value','timeStamp']
-        ).properties(height=400)
-        st.altair_chart(daily_outage_area, use_container_width=True)
+        ).properties(height=400).configure_view(strokeWidth=0).configure_axis(grid=False)
+    
+        col1, col2 = st.columns(2)
+        with col1:
+            st.subheader('Daily Outages (Next 7-days)')
+            st.altair_chart(daily_outage_area_seven, use_container_width=True)
+        with col2:
+            st.subheader('Daily Outages (Next 90-days)')
+            st.altair_chart(daily_outage_area, use_container_width=True)
+
 
     # Daily outage differentials
         if len(daily_alert_list)>0:
             st.subheader('Daily Intertie & Outage Differentials (MW)')
-            daily_outage_heatmap = alt.Chart(daily_diff[['timeStamp','fuelType','diff_value']]).mark_rect(opacity=0.7, stroke='grey', strokeWidth=0.5).encode(
+            daily_outage_heatmap = alt.Chart(daily_diff[['timeStamp','fuelType','diff_value']]).mark_rect(opacity=0.7, stroke='grey', strokeWidth=0).encode(
                 x=alt.X('monthdate(timeStamp):O', title=None, axis=alt.Axis(ticks=False, labelAngle=270)),
                 y=alt.Y('fuelType:N', title=None, axis=alt.Axis(labelFontSize=15)),
                 color=alt.condition(alt.datum.diff_value==0,
@@ -471,17 +469,18 @@ for seconds in range(450):
                                                                             domainMax=max(abs(daily_diff['diff_value'])),
                                                                             scheme='redyellowgreen'))),
                 tooltip=['fuelType','diff_value','timeStamp']
-            ).properties(height=110 if len(daily_alert_list)==1 else 60 * len(daily_alert_list))
+            ).properties(height=110 if len(daily_alert_list)==1 else 60 * len(daily_alert_list)).configure_view(strokeWidth=0).configure_axis(grid=False)
             st.altair_chart(daily_outage_heatmap, use_container_width=True)
 
     # Monthly outages chart
         st.subheader('Monthly Outages (Next 2-years)')
+        theme3 = {k:v for k,v in theme2.items() if k not in ['Intertie']}
         monthly_outage_area = alt.Chart(monthly_outage).mark_bar(opacity=0.7).encode(
-            x=alt.X('yearmonth(timeStamp):T', title='', axis=alt.Axis(labelAngle=270)),
+            x=alt.X('yearmonth(timeStamp):O', title='', axis=alt.Axis(labelAngle=270)),
             y=alt.Y('value:Q', stack='zero', axis=alt.Axis(format=',f'), title='Outages (MW)'),
-            color=alt.Color('fuelType:N', scale=alt.Scale(domain=list(theme.keys()),range=list(theme.values())), legend=alt.Legend(orient="top")),
+            color=alt.Color('fuelType:N', scale=alt.Scale(domain=list(theme3.keys()),range=list(theme3.values())), legend=alt.Legend(orient='top')),
             tooltip=['fuelType','value','timeStamp']
-            )
+            ).configure_view(strokeWidth=0).configure_axis(grid=False)
         st.altair_chart(monthly_outage_area, use_container_width=True)
 
     # Monthly outage differentials
@@ -495,7 +494,7 @@ for seconds in range(450):
                                     alt.Color('diff_value:Q', scale=alt.Scale(domainMin=-max(abs(monthly_diff['diff_value'])), 
                                                                             domainMax=-max(abs(monthly_diff['diff_value'])),
                                                                             scheme='redyellowgreen')))
-            ).properties(height=110 if len(monthly_alert_list)==1 else 60 * len(monthly_alert_list))
+            ).properties(height=110 if len(monthly_alert_list)==1 else 60 * len(monthly_alert_list)).configure_view(strokeWidth=0).configure_axis(grid=False)
             st.altair_chart(monthly_outage_heatmap, use_container_width=True)
     time.sleep(1)
 st.experimental_rerun()
