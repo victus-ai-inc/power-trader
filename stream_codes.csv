@@ -708,4 +708,6 @@ streamId,assetCode,streamName,fuelType,subfuelType,timeInterval,intervalType
 147263,WIND,Wind,Wind,Wind,daily,outages
 124,INTERTIE,Intertie,Intertie,Intertie,5 min,outages
 1,PRICE,Pool Price,Pool Price,Pool Price,5 min,price
-278763,24M-S&D,24M Supply Demand Forecast,24M Supply Demand Forecast,24M Supply Demand Forecast,month,supply
+278763,24M-S&D,24M Supply Demand Forecast,24M Supply Demand Forecast,24M Supply Demand Forecast,month,forecast
+102225,WIND7,7-Day Wind Forecast,7-Day Wind Forecast,7-Day Wind Forecast,1 hr,forecast
+293354,SOLAR3,3-Day Solar Forecast,3-Day Solar Forecast,3-Day Solar Forecast,1 hr,forecast

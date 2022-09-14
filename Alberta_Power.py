@@ -1,3 +1,4 @@
+from turtle import onclick
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -212,8 +213,11 @@ def pull_grouped_hist():
 def daily_outages():
     streamIds = [124]
     intertie_outages = get_data(streamIds, datetime.now(tz).date(), datetime.now(tz).date() + relativedelta(months=12, day=1, days=-1))
-    intertie_outages = intertie_outages.groupby(pd.Grouper(key='timeStamp',axis=0,freq='D')).min().reset_index()
+    #intertie_outages = intertie_outages.groupby(pd.Grouper(key='timeStamp',axis=0,freq='D')).min().reset_index()
     intertie_outages['value'] = max(intertie_outages['value']) - intertie_outages['value']
+    streamIds = [102225]
+    wind = get_data(streamIds, datetime.now(tz).date(), datetime.now(tz).date() + relativedelta(days=7))
+    wind
     streamIds = [118366, 118363, 322685, 118365, 118364, 322667, 322678, 147263]
     stream_outages = get_data(streamIds, datetime.now(tz).date(), datetime.now(tz).date() + relativedelta(months=4, day=1, days=-1))
     daily_outages = pd.concat([intertie_outages,stream_outages])
@@ -368,7 +372,8 @@ def monthly_outage_diff_chart():
                                     alt.value('white'),
                                     alt.Color('diff_value:Q', scale=alt.Scale(domainMin=-max(abs(monthly_diff['diff_value'])), 
                                                                             domainMax=-max(abs(monthly_diff['diff_value'])),
-                                                                            scheme='redyellowgreen')))
+                                                                            scheme='redyellowgreen'))),
+                tooltip=['fuelType','diff_value','timeStamp']
             ).properties(height=110 if len(monthly_alert_list)==1 else 60 * len(monthly_alert_list)).configure_view(strokeWidth=0).configure_axis(grid=False)
             return st.altair_chart(monthly_outage_heatmap, use_container_width=True)
 
@@ -454,14 +459,11 @@ for seconds in range(450):
         current_df = sqldf(current_query, locals()).astype({'fuelType':'object', 'year':'int64','month':'int64', 'day':'int64', 'hour':'int64', 'value':'float64', 'timeStamp':'datetime64[ns]'})
         current_df['timeStamp'] = current_df['timeStamp'].dt.tz_localize(tz='America/Edmonton')
         realtime = realtime_df[['fuelType','value','timeStamp']][realtime_df['timeStamp']==max(realtime_df['timeStamp'])]
-        st.write(len(realtime))
-        new = realtime_df[['fuelType','value','timeStamp']][realtime_df['timeStamp']==max(realtime_df['timeStamp'])]
-        old = realtime_df[['fuelType','value','timeStamp']][realtime_df['timeStamp']==max(realtime_df['timeStamp']-timedelta(minutes=5))]
-        st.write(old, new)
-        if len(realtime) < 12:
-            st.snow()
-            realtime = realtime_df[['fuelType','value','timeStamp']][realtime_df['timeStamp']==max(realtime_df['timeStamp']-timedelta(minutes=5))]
-        realtime.drop('timeStamp', axis=1, inplace=True)
+        new_realtime = realtime_df[['fuelType','value','timeStamp']][realtime_df['timeStamp']==max(realtime_df['timeStamp'])]
+        old_realtime = realtime_df[['fuelType','value','timeStamp']][realtime_df['timeStamp']==max(realtime_df['timeStamp']-timedelta(minutes=5))]
+        realtime = pd.merge(old_realtime, new_realtime, on='fuelType', how='outer')
+        realtime['value'] = np.where(realtime['timeStamp_y']>realtime['timeStamp_x'], realtime['value_y'], realtime['value_x'])
+        realtime.drop(['value_x','timeStamp_x','value_y','timeStamp_y'], axis=1, inplace=True)
         realtime = realtime.astype({'fuelType':'object','value':'float64'})
         previousHour = current_df[['fuelType','value']][current_df['hour']==datetime.now(tz).hour-1]
         currentHour = current_df[['fuelType','value']][current_df['hour']==datetime.now(tz).hour]
