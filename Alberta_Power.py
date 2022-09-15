@@ -413,7 +413,7 @@ for seconds in range(450):
     if seconds%10==0:
         with st.spinner('Gathering Realtime Data...'):
             try:
-                release_token(default_pickle['accessToken'])
+                #release_token(default_pickle['accessToken'])
                 realtime_df, last_update = current_data()
                 default_pickle['current_data'] = (last_update, realtime_df)
             except:
