@@ -35,6 +35,7 @@ def get_token():
         conn.request('POST', tokenPath, tokenPayload, headers)
         res = conn.getresponse()
         res_code = res.status
+        res_code
         # Check if the response is good
         with open('./default_pickle.pickle', 'rb') as handle:
                 default_pickle = pickle.load(handle)
