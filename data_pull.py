@@ -12,7 +12,7 @@ if __name__ == '__main__':
 # Pull stream data
     streams = pd.read_csv('stream_codes.csv')
     #streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694, 120, 124947, 122]
-    streamIds = [102225]
+    streamIds = [102225, 293354]
     year = [2022]
     stream_count = len(streamIds)
     count = 1

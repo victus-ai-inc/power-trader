@@ -1,4 +1,5 @@
-from turtle import onclick
+from textwrap import fill
+from turtle import color
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -82,6 +83,7 @@ def pull_data(fromDate, toDate, streamId, accessToken):
     conn.request('GET', path, None, headers)
     res = conn.getresponse()
     jsonData = json.loads(res.read().decode('utf-8'))
+    conn.close()
     df = pd.json_normalize(jsonData, record_path='data')
     # Rename df cols
     df.rename(columns={0:'timeStamp', 1:'value'}, inplace=True)
@@ -99,7 +101,8 @@ def pull_data(fromDate, toDate, streamId, accessToken):
     df.replace(to_replace={'value':''}, value=0, inplace=True)
     df['value'] = pd.to_numeric(df['value'])
     df.fillna(method='ffill', inplace=True)
-    conn.close()
+    df['timeStamp'] = pd.to_datetime(df['timeStamp'])
+    df['timeStamp'] = df['timeStamp'].dt.tz_localize('America/Edmonton', ambiguous=True, nonexistent='shift_backward')
     return df
 
 def get_data(streamIds, start_date, end_date):
@@ -108,7 +111,6 @@ def get_data(streamIds, start_date, end_date):
         accessToken = get_token()
         APIdata = pull_data(start_date.strftime('%m/%d/%Y'), end_date.strftime('%m/%d/%Y'), streamId, accessToken)
         release_token(accessToken)
-        APIdata['timeStamp'] = pd.to_datetime(APIdata['timeStamp'])
         df = pd.concat([df, APIdata], axis=0)
         df.drop(['streamId','assetCode','streamName','subfuelType','timeInterval','intervalType'], axis=1, inplace=True)
     return df
@@ -121,7 +123,6 @@ def current_data():
     else:
         realtime_df = get_data(streamIds, datetime.now(tz).date(), datetime.now(tz).date()+timedelta(days=1))
     last_update = datetime.now(tz)
-    realtime_df['timeStamp'] = realtime_df['timeStamp'].dt.tz_localize(tz='America/Edmonton')
     return realtime_df, last_update
 
 def kpi(left_df, right_df, title):
@@ -213,15 +214,14 @@ def pull_grouped_hist():
 def daily_outages():
     streamIds = [124]
     intertie_outages = get_data(streamIds, datetime.now(tz).date(), datetime.now(tz).date() + relativedelta(months=12, day=1, days=-1))
-    #intertie_outages = intertie_outages.groupby(pd.Grouper(key='timeStamp',axis=0,freq='D')).min().reset_index()
     intertie_outages['value'] = max(intertie_outages['value']) - intertie_outages['value']
-    streamIds = [102225]
-    wind = get_data(streamIds, datetime.now(tz).date(), datetime.now(tz).date() + relativedelta(days=7))
-    wind
+    streamIds = [102225, 293354]
+    wind_solar = get_data(streamIds, datetime.now(tz).date(), datetime.now(tz).date() + relativedelta(days=7))
     streamIds = [118366, 118363, 322685, 118365, 118364, 322667, 322678, 147263]
-    stream_outages = get_data(streamIds, datetime.now(tz).date(), datetime.now(tz).date() + relativedelta(months=4, day=1, days=-1))
-    daily_outages = pd.concat([intertie_outages,stream_outages])
-    daily_outages['timeStamp'] = daily_outages['timeStamp'].dt.tz_localize(tz='America/Edmonton')
+    stream_outages = get_data(streamIds, datetime.now(tz).date(), datetime.now(tz).date() + relativedelta(months=4, day=1))
+    stream_outages = stream_outages.pivot(index='timeStamp',columns='fuelType',values='value').asfreq(freq='H', method='ffill').reset_index()
+    stream_outages = stream_outages.melt(id_vars='timeStamp',value_vars=['Biomass & Other','Coal','Dual Fuel','Energy Storage','Hydro','Natural Gas','Solar','Wind'])
+    daily_outages = pd.concat([intertie_outages,stream_outages,wind_solar])
     return daily_outages
 
 @st.experimental_memo(suppress_st_warning=True, ttl=300)
@@ -233,7 +233,6 @@ def monthly_outages():
         df = get_data(streamIds, date(year,1,1), date(year+1,1,1))
         monthly_outages = pd.concat([monthly_outages, df], axis=0)
     monthly_outages = monthly_outages[monthly_outages['timeStamp'].dt.date>(datetime.now(tz).date())]
-    monthly_outages['timeStamp'] = monthly_outages['timeStamp'].dt.tz_localize(tz='America/Edmonton')
     return monthly_outages
 
 def gather_outages(pickle_key, outage_func):
@@ -280,6 +279,7 @@ def outage_alerts(pickle_key):
 
 def current_supply_chart():
     st.subheader('Current Supply (Previous 7-days)')
+    thm = {k:v for k,v in theme.items() if k not in ['Intertie','3-Day Solar Forecast','7-Day Wind Forecast']}
     history_df = pull_grouped_hist()
     combo_df = pd.concat([history_df,current_df], axis=0)
     combo_df = sqldf("SELECT * FROM combo_df ORDER BY fuelType", locals())
@@ -302,80 +302,84 @@ def current_supply_chart():
     combo_base = alt.Chart(combo_df).encode(
         x=alt.X('timeStamp:T', title='', axis=alt.Axis(labelAngle=270, gridWidth=0)),
         y=alt.Y('value:Q', stack='zero', title='Current Supply (MW)', scale=alt.Scale(domain=[combo_min,combo_max])),
-        color=alt.Color('fuelType:N', scale=alt.Scale(domain=list(theme.keys()), range=list(theme.values())), legend=alt.Legend(orient='top')),
+        color=alt.Color('fuelType:N', scale=alt.Scale(domain=list(thm.keys()), range=list(thm.values())), legend=alt.Legend(orient='top')),
         tooltip=['fuelType','value','timeStamp']
     ).properties(height=400)
-    combo_area = combo_base.mark_area(opacity=0.7).encode(
-    ).transform_filter(alt.datum.fuelType!='Pool Price')
+    combo_area = combo_base.mark_area(opacity=0.7).transform_filter(alt.datum.fuelType!='Pool Price')
     combo_line = combo_base.mark_line(interpolate='step-after').encode(
         y=alt.Y('value:Q', title='Current Supply (MW)', scale=alt.Scale(domain=[combo_min/10,combo_max/10])),
-        color=alt.Color('fuelType:N'),
-    ).transform_filter(alt.datum.fuelType=='Pool Price')
+        color=alt.Color('fuelType:N')).transform_filter(alt.datum.fuelType=='Pool Price')
     return st.altair_chart(alt.layer(combo_area, combo_line).resolve_scale(y='independent'), use_container_width=True)
 
 def next7_outage_chart():
-    st.subheader('Daily Outages (Next 7-days)') 
-    thm = {k:v for k,v in theme.items() if k not in ['BC','Saskatchewan','Montana','Pool Price']}
+    st.subheader('Daily Outages (Next 7-days)')
     daily_outage_seven = daily_outage[daily_outage['timeStamp'].dt.date <= datetime.now(tz).date() + timedelta(days=6)]
-    daily_outage_area_seven = alt.Chart(daily_outage_seven).mark_bar(opacity=0.7).encode(
-        x=alt.X('monthdate(timeStamp):O', title='', axis=alt.Axis(labelAngle=270, tickCount=3)),
+    daily_outage_seven_base = alt.Chart(daily_outage_seven).encode(
+        x=alt.X('timeStamp:T', title='', axis=alt.Axis(labelAngle=270)),
+        tooltip=['fuelType','value','timeStamp']
+        ).properties(height=400)
+    thm = {k:v for k,v in theme.items() if k not in ['BC','Saskatchewan','Montana','Pool Price']}
+    daily_outage_seven_area = daily_outage_seven_base.mark_area(opacity=0.7).encode(
         y=alt.Y('value:Q', stack='zero', axis=alt.Axis(format=',f'), title='Outages (MW)'),
         color=alt.Color('fuelType:N', scale=alt.Scale(domain=list(thm.keys()), range=list(thm.values())), legend=alt.Legend(orient='top')),
-        tooltip=['fuelType','value','timeStamp']
-    ).properties(height=400).configure_view(strokeWidth=0).configure_axis(grid=False)
-    return st.altair_chart(daily_outage_area_seven, use_container_width=True)
+    ).transform_filter({'not':alt.FieldOneOfPredicate(field='fuelType', oneOf=['7-Day Wind Forecast','3-Day Solar Forecast'])})
+    daily_outage_seven_line = daily_outage_seven_base.mark_line(opacity=0.7).encode(
+        y='value:Q',
+        color='fuelType:N',
+    ).transform_filter(alt.FieldOneOfPredicate(field='fuelType', oneOf=['7-Day Wind Forecast','3-Day Solar Forecast']))
+    st.altair_chart(alt.layer(daily_outage_seven_area,daily_outage_seven_line), use_container_width=True)
 
 def next90_outage_chart():
     st.subheader('Daily Outages (Next 90-days)')
-    thm = {k:v for k,v in theme.items() if k not in ['BC','Saskatchewan','Montana','Pool Price']}
-    daily_outage_area = alt.Chart(daily_outage).mark_bar(opacity=0.7).encode(
+    thm = {k:v for k,v in theme.items() if k not in ['BC','Saskatchewan','Montana','Pool Price','7-Day Wind Forecast','3-Day Solar Forecast']}
+    daily_outage_area = alt.Chart(daily_outage).mark_bar(opacity=0.8).encode(
         x=alt.X('monthdate(timeStamp):O', title='', axis=alt.Axis(labelAngle=270)),
         y=alt.Y('value:Q', stack='zero', axis=alt.Axis(format=',f'), title='Outages (MW)'),
         color=alt.Color('fuelType:N', scale=alt.Scale(domain=list(thm.keys()), range=list(thm.values())), legend=alt.Legend(orient='top')),
         tooltip=['fuelType','value','timeStamp']
     ).properties(height=400).configure_view(strokeWidth=0).configure_axis(grid=False)
-    return st.altair_chart(daily_outage_area, use_container_width=True)
+    st.altair_chart(daily_outage_area, use_container_width=True)
 
 def monthly_outages_chart():
     st.subheader('Monthly Outages (Next 2-years)')
-    thm = {k:v for k,v in theme.items() if k not in ['BC','Saskatchewan','Montana','Pool Price','Intertie']}
+    thm = {k:v for k,v in theme.items() if k not in ['BC','Saskatchewan','Montana','Pool Price','Intertie','7-Day Wind Forecast','3-Day Solar Forecast']}
     monthly_outage_area = alt.Chart(monthly_outage).mark_bar(opacity=0.7).encode(
         x=alt.X('yearmonth(timeStamp):O', title='', axis=alt.Axis(labelAngle=270)),
         y=alt.Y('value:Q', stack='zero', axis=alt.Axis(format=',f'), title='Outages (MW)'),
         color=alt.Color('fuelType:N', scale=alt.Scale(domain=list(thm.keys()),range=list(thm.values())), legend=alt.Legend(orient='top')),
         tooltip=['fuelType','value','timeStamp']
         ).properties(height=400).configure_view(strokeWidth=0).configure_axis(grid=False)
-    return st.altair_chart(monthly_outage_area, use_container_width=True)
+    st.altair_chart(monthly_outage_area, use_container_width=True)
 
 def daily_outage_diff_chart():
     if len(daily_alert_list)>0:
-            st.subheader('Daily Intertie & Outage Differentials (MW)')
-            daily_outage_heatmap = alt.Chart(daily_diff[['timeStamp','fuelType','diff_value']]).mark_rect(opacity=0.7, stroke='grey', strokeWidth=0).encode(
-                x=alt.X('monthdate(timeStamp):O', title=None, axis=alt.Axis(ticks=False, labelAngle=270)),
-                y=alt.Y('fuelType:N', title=None, axis=alt.Axis(labelFontSize=15)),
-                color=alt.condition(alt.datum.diff_value==0,
-                                    alt.value('white'),
-                                    alt.Color('diff_value:Q', scale=alt.Scale(domainMin=-max(abs(daily_diff['diff_value'])),
-                                                                            domainMax=max(abs(daily_diff['diff_value'])),
-                                                                            scheme='redyellowgreen'))),
-                tooltip=['fuelType','diff_value','timeStamp']
-            ).properties(height=110 if len(daily_alert_list)==1 else 60 * len(daily_alert_list)).configure_view(strokeWidth=0).configure_axis(grid=False)
-            return st.altair_chart(daily_outage_heatmap, use_container_width=True)
+        st.subheader('Daily Intertie & Outage Differentials (MW)')
+        daily_outage_heatmap = alt.Chart(daily_diff[['timeStamp','fuelType','diff_value']]).mark_rect(opacity=0.9, stroke='grey', strokeWidth=0).encode(
+            x=alt.X('monthdate(timeStamp):O', title=None, axis=alt.Axis(ticks=False, labelAngle=270)),
+            y=alt.Y('fuelType:N', title=None, axis=alt.Axis(labelFontSize=15)),
+            color=alt.condition(alt.datum.diff_value==0,
+                                alt.value('white'),
+                                alt.Color('diff_value:Q', scale=alt.Scale(domainMin=-max(abs(daily_diff['diff_value'])),
+                                                                        domainMax=max(abs(daily_diff['diff_value'])),
+                                                                        scheme='redyellowgreen'))),
+            tooltip=['fuelType','diff_value','timeStamp']
+        ).properties(height=100 if len(daily_alert_list)==1 else 60 * len(daily_alert_list)).configure_view(strokeWidth=0).configure_axis(grid=False)
+        st.altair_chart(daily_outage_heatmap, use_container_width=True)
 
 def monthly_outage_diff_chart():
     if len(monthly_alert_list)>0:
-            st.subheader('Monthly Intertie & Outage Differentials (MW)')
-            monthly_outage_heatmap = alt.Chart(monthly_diff[['timeStamp','fuelType','diff_value']]).mark_rect(opacity=0.7, stroke='black', strokeWidth=1).encode(
-                x=alt.X('yearmonth(timeStamp):O', title=None, axis=alt.Axis(ticks=False, labelAngle=270)),
-                y=alt.Y('fuelType:N', title=None, axis=alt.Axis(labelFontSize=15)),
-                color=alt.condition(alt.datum.diff_value==0,
-                                    alt.value('white'),
-                                    alt.Color('diff_value:Q', scale=alt.Scale(domainMin=-max(abs(monthly_diff['diff_value'])), 
-                                                                            domainMax=-max(abs(monthly_diff['diff_value'])),
-                                                                            scheme='redyellowgreen'))),
-                tooltip=['fuelType','diff_value','timeStamp']
-            ).properties(height=110 if len(monthly_alert_list)==1 else 60 * len(monthly_alert_list)).configure_view(strokeWidth=0).configure_axis(grid=False)
-            return st.altair_chart(monthly_outage_heatmap, use_container_width=True)
+        st.subheader('Monthly Intertie & Outage Differentials (MW)')
+        monthly_outage_heatmap = alt.Chart(monthly_diff[['timeStamp','fuelType','diff_value']]).mark_rect(opacity=0.9, strokeWidth=0).encode(
+            x=alt.X('yearmonth(timeStamp):O', title=None, axis=alt.Axis(ticks=False, labelAngle=270)),
+            y=alt.Y('fuelType:N', title=None, axis=alt.Axis(labelFontSize=15)),
+            color=alt.condition(alt.datum.diff_value==0,
+                                alt.value('white'),
+                                alt.Color('diff_value:Q', scale=alt.Scale(domainMin=-max(abs(monthly_diff['diff_value'])), 
+                                                                        domainMax=-max(abs(monthly_diff['diff_value'])),
+                                                                        scheme='redyellowgreen'))),
+            tooltip=['fuelType','diff_value','timeStamp']
+        ).properties(height=100 if len(monthly_alert_list)==1 else 60 * len(monthly_alert_list)).configure_view(strokeWidth=0).configure_axis(grid=False)
+        st.altair_chart(monthly_outage_heatmap, use_container_width=True)
 
 # App config
 st.set_page_config(layout='wide', initial_sidebar_state='collapsed', menu_items=None)
@@ -391,8 +395,9 @@ hide_menu_style = """
 st.markdown(hide_menu_style, unsafe_allow_html=True)
 
 # Default app theme colors
-theme = {'Biomass & Other':'#1f77b4','Coal':'#aec7e8','Dual Fuel':'#ff7f0e','Energy Storage':'#ffbb78','Hydro':'#2ca02c','Natural Gas':'#98df8a',
-            'Solar':'#d62728','Wind':'#7f7f7f','BC':'#9467bd','Saskatchewan':'#c5b0d5','Montana':'#e377c2','Intertie':'#17becf','Pool Price':'#000000'}
+theme = {'Biomass & Other':'#1f77b4', 'Coal':'#aec7e8', 'Dual Fuel':'#ff7f0e', 'Energy Storage':'#ffbb78', 'Hydro':'#2ca02c', 'Natural Gas':'#98df8a',
+            'Solar':'#d62728', 'Wind':'#7f7f7f', 'BC':'#9467bd', 'Saskatchewan':'#c5b0d5', 'Montana':'#e377c2', 'Intertie':'#17becf', 'Pool Price':'#000000',
+            '3-Day Solar Forecast':'#d62728','7-Day Wind Forecast':'#3f3f3f'}
 
 # Initialize variables
 cutoff = 100
@@ -482,8 +487,7 @@ for seconds in range(450):
                 if len(alert_dict) > 0:
                     for (k,v) in alert_dict.items():
                         warning('alert', f"{k} {v.strftime('(%b %-d, %Y)')}")       
-
-    # Monthly outage differentials
+        # Charts
         col1, col2 = st.columns(2)
         with col1:
             current_supply_chart()
@@ -493,5 +497,6 @@ for seconds in range(450):
             next7_outage_chart()
             monthly_outages_chart()
             monthly_outage_diff_chart()
+
     time.sleep(1)
 st.experimental_rerun()
