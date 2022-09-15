@@ -12,14 +12,14 @@ if __name__ == '__main__':
 # Pull stream data
     streams = pd.read_csv('stream_codes.csv')
     #streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694, 120, 124947, 122]
-    streamIds = [102225, 293354]
+    streamIds = [23695]
     year = [2022]
     stream_count = len(streamIds)
     count = 1
     for id in streamIds:
         for yr in year:
             startDate = date(yr,9,14)
-            endDate = date(yr,9,21)
+            endDate = date(yr,9,15)
             accessToken, tokenExpiry = pull_nrg_data.getToken()
             APIdata = pull_nrg_data.pull_data(startDate.strftime('%m/%d/%Y'), endDate.strftime('%m/%d/%Y'), id, accessToken, tokenExpiry)
             pull_nrg_data.release_token(accessToken)

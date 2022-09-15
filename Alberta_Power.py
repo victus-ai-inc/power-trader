@@ -180,7 +180,7 @@ def pull_grouped_hist():
     # Check when BigQuery was last updated
     last_update = bigquery.Client(credentials=credentials).query(query).to_dataframe().iloc[0][0]
     # Add data to BQ from when it was last updated to yesterday
-    if last_update < (datetime.now(tz).date()-timedelta(days=1)):
+    if last_update.date() < (datetime.now(tz).date()-timedelta(days=1)):
         pull_grouped_hist.clear()
         streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694, 120, 124947, 122, 1]
         history_df = get_data(streamIds, last_update.date(), datetime.now(tz).date())
@@ -279,6 +279,7 @@ def current_supply_chart():
     st.subheader('Current Supply (Previous 7-days)')
     thm = {k:v for k,v in theme.items() if k not in ['Intertie','3-Day Solar Forecast','7-Day Wind Forecast']}
     history_df = pull_grouped_hist()
+    history_df
     combo_df = pd.concat([history_df,current_df], axis=0)
     combo_df = sqldf("SELECT * FROM combo_df ORDER BY fuelType", locals())
     combo_max = sqldf(
@@ -301,7 +302,7 @@ def current_supply_chart():
         x=alt.X('timeStamp:T', title='', axis=alt.Axis(labelAngle=270, gridWidth=0)),
         y=alt.Y('value:Q', stack='zero', title='Current Supply (MW)', scale=alt.Scale(domain=[combo_min,combo_max])),
         color=alt.Color('fuelType:N', scale=alt.Scale(domain=list(thm.keys()), range=list(thm.values())), legend=alt.Legend(orient='top')),
-        tooltip=['fuelType','value','timeStamp']
+        tooltip=['fuelType','value','yearmonthdatehours(timeStamp)']
     ).properties(height=400)
     combo_area = combo_base.mark_area(opacity=0.7).transform_filter(alt.datum.fuelType!='Pool Price')
     combo_line = combo_base.mark_line(interpolate='step-after').encode(
@@ -484,7 +485,8 @@ for seconds in range(450):
             with col2:
                 if len(alert_dict) > 0:
                     for (k,v) in alert_dict.items():
-                        warning('alert', f"{k} {v.strftime('(%b %-d, %Y)')}")       
+                        warning('alert', f"{k} {v.strftime('(%b %-d, %Y)')}")
+        current_supply_chart()  
         # Charts
         col1, col2 = st.columns(2)
         with col1:
