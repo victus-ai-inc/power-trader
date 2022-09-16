@@ -179,7 +179,6 @@ def pull_grouped_hist():
     query = 'SELECT MAX(timeStamp) FROM nrgdata.hourly_data'
     # Check when BigQuery was last updated
     last_update = bigquery.Client(credentials=credentials).query(query).to_dataframe().iloc[0][0]
-    last_update
     # Add data to BQ from when it was last updated to yesterday
     if last_update.date() < (datetime.now(tz).date()-timedelta(days=1)):
         pull_grouped_hist.clear()
