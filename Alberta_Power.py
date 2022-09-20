@@ -181,7 +181,6 @@ def pull_grouped_hist():
     last_update = bigquery.Client(credentials=credentials).query(query).to_dataframe().iloc[0][0]
     last_update = last_update.tz_localize('utc',ambiguous=True, nonexistent='shift_forward')
     last_update = last_update.tz_convert('America/Edmonton')
-    last_update
     # Add data to BQ from when it was last updated to yesterday
     if last_update.date() < (datetime.now(tz).date()-timedelta(days=1)):
         pull_grouped_hist.clear()
