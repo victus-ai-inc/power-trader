@@ -1,4 +1,3 @@
-from socketserver import ThreadingUnixDatagramServer
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -183,7 +182,6 @@ def pull_grouped_hist():
     last_update = bigquery.Client(credentials=credentials).query(query).to_dataframe().iloc[0][0]
     last_update = last_update.tz_localize('utc',ambiguous=True, nonexistent='shift_forward')
     last_update = last_update.tz_convert('America/Edmonton')
-    last_update
     # Add data to BQ from when it was last updated to yesterday
     if last_update.date() < (datetime.now(tz).date()-timedelta(days=1)):
         pull_grouped_hist.clear()
@@ -215,7 +213,7 @@ def pull_grouped_hist():
     history_df['timeStamp'] = history_df['timeStamp'].dt.tz_convert('America/Edmonton')   
     return history_df
 
-@st.experimental_memo(suppress_st_warning=True, ttl=180000)
+@st.experimental_memo(suppress_st_warning=True, ttl=180)
 def daily_outages():
     streamIds = [124]
     intertie_outages = get_data(streamIds, datetime.now(tz).date(), datetime.now(tz).date() + relativedelta(months=12, day=1, days=-1))
@@ -229,7 +227,7 @@ def daily_outages():
     daily_outages = pd.concat([intertie_outages,stream_outages,wind_solar])
     return daily_outages
 
-@st.experimental_memo(suppress_st_warning=True, ttl=300000)
+@st.experimental_memo(suppress_st_warning=True, ttl=300)
 def monthly_outages():
     streamIds = [44648, 118361, 322689, 118362, 147262, 322675, 322682, 44651]
     years = [datetime.now(tz).year, datetime.now(tz).year+1, datetime.now(tz).year+2]
