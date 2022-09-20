@@ -287,8 +287,8 @@ def gather_outages(pickle_key, outage_func):
     old_outage_df = old_outage_df[~old_outage_df['fuelType'].isin(['3-Day Solar Forecast','7-Day Wind Forecast'])]
     alert_df = diff_calc(pickle_key, old_outage_df, new_outage_df)
     alert_df = alert_df[['timeStamp','fuelType','diff_value']][abs(alert_df['diff_value'])>=cutoff]
-    # if len(alert_df) > 0:
-    #     text_alert(alert_df, pickle_key)
+    if len(alert_df) > 0:
+        text_alert(alert_df, pickle_key)
     # Remove oldest and add newest outage_df from default_pickle file each day
     if datetime.now(tz).date() > (default_pickle[pickle_key][0][0].date() + timedelta(days=6)):
         if datetime.now(tz).date() != default_pickle[pickle_key][6][0].date():
@@ -298,7 +298,7 @@ def gather_outages(pickle_key, outage_func):
     default_pickle[pickle_key][6] = (datetime.now(tz), outage_df)
     return outage_df
 
-def outage_diffs(pickle_key):  
+def outage_diffs(pickle_key):
     # Create df and alert list comparing outages a week ago to current outages
     diff_df = diff_calc(pickle_key, default_pickle[pickle_key][0][1], default_pickle[pickle_key][6][1])
     alert_list = list(set(diff_df['fuelType'][abs(diff_df['diff_value'])>=cutoff]))
@@ -336,7 +336,7 @@ def current_supply_chart():
     ).properties(height=400)
     combo_area = combo_base.mark_area(opacity=0.7).transform_filter(alt.datum.fuelType!='Pool Price')
     combo_line = combo_base.mark_line(interpolate='step-after').encode(
-        y=alt.Y('value:Q', title='Current Supply (MW)', scale=alt.Scale(domain=[combo_min/10,combo_max/10])),
+        y=alt.Y('value:Q', title='Price ($)', scale=alt.Scale(domain=[combo_min/10,combo_max/10])),
         color=alt.Color('fuelType:N')).transform_filter(alt.datum.fuelType=='Pool Price')
     return st.altair_chart(alt.layer(combo_area, combo_line).resolve_scale(y='independent'), use_container_width=True)
 
@@ -353,7 +353,7 @@ def next7_outage_chart():
         color=alt.Color('fuelType:N', scale=alt.Scale(domain=list(thm.keys()), range=list(thm.values())), legend=alt.Legend(orient='top')),
     ).transform_filter({'not':alt.FieldOneOfPredicate(field='fuelType', oneOf=['7-Day Wind Forecast','3-Day Solar Forecast'])})
     daily_outage_seven_line = daily_outage_seven_base.mark_line(opacity=0.7, strokeWidth=3).encode(
-        y='value:Q',
+        y=alt.Y('value:Q', title='Wind & Solar Forecast (MW)'),
         color='fuelType:N',
     ).transform_filter(alt.FieldOneOfPredicate(field='fuelType', oneOf=['7-Day Wind Forecast','3-Day Solar Forecast']))
     st.altair_chart(alt.layer(daily_outage_seven_area,daily_outage_seven_line).resolve_scale(y='independent'), use_container_width=True)
@@ -382,7 +382,7 @@ def monthly_outages_chart():
 
 def daily_outage_diff_chart():
     if len(daily_alert_list)>0:
-        st.subheader('Daily Intertie & Outage Differentials (MW)')
+        st.subheader('Daily Intertie & Outage Differentials (Past 7 days)')
         daily_outage_heatmap = alt.Chart(daily_diff[['timeStamp','fuelType','diff_value']]).mark_rect(opacity=0.9, stroke='grey', strokeWidth=0).encode(
             x=alt.X('monthdate(timeStamp):O', title=None, axis=alt.Axis(ticks=False, labelAngle=270)),
             y=alt.Y('fuelType:N', title=None, axis=alt.Axis(labelFontSize=15)),
@@ -397,7 +397,7 @@ def daily_outage_diff_chart():
 
 def monthly_outage_diff_chart():
     if len(monthly_alert_list)>0:
-        st.subheader('Monthly Intertie & Outage Differentials (MW)')
+        st.subheader('Monthly Intertie & Outage Differentials (Past 7 days)')
         monthly_outage_heatmap = alt.Chart(monthly_diff[['timeStamp','fuelType','diff_value']]).mark_rect(opacity=0.9, strokeWidth=0).encode(
             x=alt.X('yearmonth(timeStamp):O', title=None, axis=alt.Axis(ticks=False, labelAngle=270)),
             y=alt.Y('fuelType:N', title=None, axis=alt.Axis(labelFontSize=15)),
