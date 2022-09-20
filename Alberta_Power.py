@@ -340,7 +340,7 @@ def current_supply_chart():
     combo_line = combo_base.mark_line(interpolate='step-after').encode(
         y=alt.Y('value:Q', title='Price ($)', scale=alt.Scale(domain=[combo_min/10,combo_max/10])),
         color=alt.Color('fuelType:N')).transform_filter(alt.datum.fuelType=='Pool Price')
-    return st.altair_chart(alt.layer(combo_area, combo_line).resolve_scale(y='independent'), use_container_width=True)
+    return st.altair_chart(alt.layer(combo_line).resolve_scale(y='independent'), use_container_width=True)
 
 def next7_outage_chart():
     st.subheader('Daily Outages (Next 7-days)')
