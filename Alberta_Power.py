@@ -260,15 +260,15 @@ def text_alert(alert_df, pickle_key):
             msg['To'] = gateway
             if value >= 100:
                 body = f'\n{timeUnit} {fuelType} outage changed by +{value}MW for {timeStamp}'
-                #ALERT: {fuel_type}\n{datetime.now(tz).strftime("%a %b %d, %Y @ %-I:%M%p")}'
             elif value <= 100:
                 body = f'\n{timeUnit} {fuelType} outage has decreased by {value}MW for {timeStamp}'
             msg.attach(MIMEText(body, 'plain'))
-            #server.sendmail(email, gateway, msg.as_string())
+            server.sendmail(email, gateway, msg.as_string())
 
 def diff_calc(pickle_key, old_df, new_df):
     diff_df = pd.merge(old_df, new_df, on=['timeStamp','fuelType'], suffixes=('_new','_old'))
     diff_df['diff_value'] = diff_df['value_old'] - diff_df['value_new']
+    diff_df['date'] = diff_df['timeStamp'].dt.month
     if pickle_key == 'daily_outage_dfs':
         diff_df = diff_df[diff_df['timeStamp'].dt.date < datetime.now(tz).date() + timedelta(days=90)]
     elif pickle_key == 'monthly_outage_dfs':
@@ -286,7 +286,8 @@ def gather_outages(pickle_key, outage_func):
     old_outage_df = default_pickle[pickle_key][6][1]
     old_outage_df = old_outage_df[~old_outage_df['fuelType'].isin(['3-Day Solar Forecast','7-Day Wind Forecast'])]
     alert_df = diff_calc(pickle_key, old_outage_df, new_outage_df)
-    alert_df = alert_df[['timeStamp','fuelType','diff_value']][abs(alert_df['diff_value'])>=cutoff]
+    alert_df = alert_df[['fuelType','diff_value','date']][abs(alert_df['diff_value'])>=cutoff]
+    alert_df = alert_df.groupby(['fuelType','date','diff_value']).max()
     if len(alert_df) > 0:
         text_alert(alert_df, pickle_key)
     # Remove oldest and add newest outage_df from default_pickle file each day
@@ -303,6 +304,7 @@ def outage_diffs(pickle_key):
     diff_df = diff_calc(pickle_key, default_pickle[pickle_key][0][1], default_pickle[pickle_key][6][1])
     alert_list = list(set(diff_df['fuelType'][abs(diff_df['diff_value'])>=cutoff]))
     diff_df = diff_df[diff_df['fuelType'].isin(alert_list)]
+    adf = diff_df.groupby(['fuelType','date','diff_value']).max()
     return diff_df, alert_list
 
 def current_supply_chart():
