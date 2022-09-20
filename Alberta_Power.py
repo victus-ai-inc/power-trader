@@ -108,7 +108,6 @@ def get_data(streamIds, start_date, end_date):
     for streamId in streamIds:
         accessToken = get_token()
         APIdata = pull_data(start_date.strftime('%m/%d/%Y'), end_date.strftime('%m/%d/%Y'), streamId, accessToken)
-        #APIdata['timeStamp']
         release_token(accessToken)
         df = pd.concat([df, APIdata], axis=0)
         df.drop(['streamId','assetCode','streamName','subfuelType','timeInterval','intervalType'], axis=1, inplace=True)
@@ -240,6 +239,7 @@ def monthly_outages():
     return monthly_outages
 
 def text_alert(alert_df, pickle_key):
+    alert_df
     email = st.secrets['email_address']
     pas = st.secrets['email_password']
     sms_gateways = st.secrets['phone_numbers'].values()
@@ -256,7 +256,6 @@ def text_alert(alert_df, pickle_key):
             timeUnit = 'Monthly'
         fuelType = alert_df.iloc[i,1]
         value = float(alert_df.iloc[i,2])
-        st.write(type(value))
         for gateway in sms_gateways:
             msg['To'] = gateway
             if value >= 100:
@@ -265,7 +264,7 @@ def text_alert(alert_df, pickle_key):
             elif value <= 100:
                 body = f'\n{timeUnit} {fuelType} outage has decreased by {value}MW for {timeStamp}'
             msg.attach(MIMEText(body, 'plain'))
-            server.sendmail(email, gateway, msg.as_string())
+            #server.sendmail(email, gateway, msg.as_string())
 
 def diff_calc(pickle_key, old_df, new_df):
     diff_df = pd.merge(old_df, new_df, on=['timeStamp','fuelType'], suffixes=('_new','_old'))
