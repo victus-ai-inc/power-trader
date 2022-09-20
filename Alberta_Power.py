@@ -1,3 +1,4 @@
+from socketserver import ThreadingUnixDatagramServer
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -100,7 +101,7 @@ def pull_data(fromDate, toDate, streamId, accessToken):
     df['value'] = pd.to_numeric(df['value'])
     df.fillna(method='ffill', inplace=True)
     df['timeStamp'] = pd.to_datetime(df['timeStamp'])
-    df['timeStamp'] = df['timeStamp'].dt.tz_localize('America/Edmonton', ambiguous=True, nonexistent='shift_backward')
+    df['timeStamp'] = df['timeStamp'].dt.tz_localize('America/Edmonton', ambiguous=True, nonexistent='shift_forward')
     return df
 
 def get_data(streamIds, start_date, end_date):
@@ -108,12 +109,13 @@ def get_data(streamIds, start_date, end_date):
     for streamId in streamIds:
         accessToken = get_token()
         APIdata = pull_data(start_date.strftime('%m/%d/%Y'), end_date.strftime('%m/%d/%Y'), streamId, accessToken)
+        #APIdata['timeStamp']
         release_token(accessToken)
         df = pd.concat([df, APIdata], axis=0)
         df.drop(['streamId','assetCode','streamName','subfuelType','timeInterval','intervalType'], axis=1, inplace=True)
     return df
 
-#@st.experimental_memo(suppress_st_warning=True, ttl=10)
+#@st.experimental_memo(suppress_st_warning=True, ttl=180000)
 def current_data():
     streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694, 120, 124947, 122, 1]
     if datetime.now(tz).hour==0:
@@ -179,6 +181,9 @@ def pull_grouped_hist():
     query = 'SELECT MAX(timeStamp) FROM nrgdata.hourly_data'
     # Check when BigQuery was last updated
     last_update = bigquery.Client(credentials=credentials).query(query).to_dataframe().iloc[0][0]
+    last_update = last_update.tz_localize('utc',ambiguous=True, nonexistent='shift_forward')
+    last_update = last_update.tz_convert('America/Edmonton')
+    last_update
     # Add data to BQ from when it was last updated to yesterday
     if last_update.date() < (datetime.now(tz).date()-timedelta(days=1)):
         pull_grouped_hist.clear()
@@ -206,9 +211,11 @@ def pull_grouped_hist():
     ORDER BY fuelType, year, month, day, hour, timeStamp
     '''
     history_df = bigquery.Client(credentials=credentials).query(query).to_dataframe()
+    history_df['timeStamp'] = history_df['timeStamp'].dt.tz_localize('utc',ambiguous=True, nonexistent='shift_forward')
+    history_df['timeStamp'] = history_df['timeStamp'].dt.tz_convert('America/Edmonton')   
     return history_df
 
-@st.experimental_memo(suppress_st_warning=True, ttl=180)
+@st.experimental_memo(suppress_st_warning=True, ttl=180000)
 def daily_outages():
     streamIds = [124]
     intertie_outages = get_data(streamIds, datetime.now(tz).date(), datetime.now(tz).date() + relativedelta(months=12, day=1, days=-1))
@@ -222,7 +229,7 @@ def daily_outages():
     daily_outages = pd.concat([intertie_outages,stream_outages,wind_solar])
     return daily_outages
 
-@st.experimental_memo(suppress_st_warning=True, ttl=300)
+@st.experimental_memo(suppress_st_warning=True, ttl=300000)
 def monthly_outages():
     streamIds = [44648, 118361, 322689, 118362, 147262, 322675, 322682, 44651]
     years = [datetime.now(tz).year, datetime.now(tz).year+1, datetime.now(tz).year+2]
@@ -282,8 +289,8 @@ def gather_outages(pickle_key, outage_func):
     old_outage_df = old_outage_df[~old_outage_df['fuelType'].isin(['3-Day Solar Forecast','7-Day Wind Forecast'])]
     alert_df = diff_calc(pickle_key, old_outage_df, new_outage_df)
     alert_df = alert_df[['timeStamp','fuelType','diff_value']][abs(alert_df['diff_value'])>=cutoff]
-    if len(alert_df) > 0:
-        text_alert(alert_df, pickle_key)
+    # if len(alert_df) > 0:
+    #     text_alert(alert_df, pickle_key)
     # Remove oldest and add newest outage_df from default_pickle file each day
     if datetime.now(tz).date() > (default_pickle[pickle_key][0][0].date() + timedelta(days=6)):
         if datetime.now(tz).date() != default_pickle[pickle_key][6][0].date():
@@ -303,6 +310,7 @@ def outage_diffs(pickle_key):
 def current_supply_chart():
     st.subheader('Current Supply (Previous 7-days)')
     thm = {k:v for k,v in theme.items() if k not in ['Intertie','3-Day Solar Forecast','7-Day Wind Forecast']}
+    
     history_df = pull_grouped_hist()
     combo_df = pd.concat([history_df,current_df], axis=0)
     combo_df = sqldf("SELECT * FROM combo_df ORDER BY fuelType", locals())
