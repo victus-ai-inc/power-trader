@@ -238,24 +238,24 @@ def monthly_outages():
     return monthly_outages
 
 def text_alert(alert_df, pickle_key):
-    alert_df
     email = st.secrets['email_address']
     pas = st.secrets['email_password']
     sms_gateways = st.secrets['phone_numbers'].values()
     server = smtplib.SMTP('smtp.gmail.com', 587)
     server.starttls()
     server.login(email, pas)
-    msg = MIMEMultipart()
+      
     for i in range(len(alert_df)):
         if pickle_key == 'daily_outage_dfs':
-            timeStamp = alert_df.iloc[i,0].strftime('%b %d %Y')
+            timeStamp = alert_df.iloc[i,0].strftime('%b %d, %Y')
             timeUnit = 'Daily'
         elif pickle_key == 'monthly_outage_dfs':
-            timeStamp = alert_df.iloc[i,0].strftime('%M %Y')
+            timeStamp = alert_df.iloc[i,0].strftime('%b %Y')
             timeUnit = 'Monthly'
         fuelType = alert_df.iloc[i,1]
-        value = float(alert_df.iloc[i,2])
+        value = round(alert_df.iloc[i,2])
         for gateway in sms_gateways:
+            msg = MIMEMultipart()
             msg['To'] = gateway
             if value >= 100:
                 body = f'\n{timeUnit} {fuelType} outage changed by +{value}MW for {timeStamp}'
@@ -267,11 +267,11 @@ def text_alert(alert_df, pickle_key):
 def diff_calc(pickle_key, old_df, new_df):
     diff_df = pd.merge(old_df, new_df, on=['timeStamp','fuelType'], suffixes=('_new','_old'))
     diff_df['diff_value'] = diff_df['value_old'] - diff_df['value_new']
-    diff_df['date'] = diff_df['timeStamp'].dt.month
+    diff_df['date'] = diff_df['timeStamp'].dt.date
     if pickle_key == 'daily_outage_dfs':
-        diff_df = diff_df[diff_df['timeStamp'].dt.date < datetime.now(tz).date() + timedelta(days=90)]
+        diff_df = diff_df[diff_df['date'] < datetime.now(tz).date() + timedelta(days=90)]
     elif pickle_key == 'monthly_outage_dfs':
-        diff_df = diff_df[diff_df['timeStamp'].dt.date > datetime.now(tz).date() + relativedelta(months=3, day=1, days=-1)]
+        diff_df = diff_df[diff_df['date'] > datetime.now(tz).date() + relativedelta(months=3, day=1, days=-1)]
     return diff_df
 
 def gather_outages(pickle_key, outage_func):
@@ -285,8 +285,8 @@ def gather_outages(pickle_key, outage_func):
     old_outage_df = default_pickle[pickle_key][6][1]
     old_outage_df = old_outage_df[~old_outage_df['fuelType'].isin(['3-Day Solar Forecast','7-Day Wind Forecast'])]
     alert_df = diff_calc(pickle_key, old_outage_df, new_outage_df)
-    alert_df = alert_df[['fuelType','diff_value','date']][abs(alert_df['diff_value'])>=cutoff]
-    alert_df = alert_df.groupby(['fuelType','date','diff_value']).max()
+    alert_df = alert_df[['date','fuelType','diff_value']][abs(alert_df['diff_value'])>=cutoff]
+    alert_df = alert_df.groupby(['date','fuelType','diff_value']).max().reset_index()
     if len(alert_df) > 0:
         text_alert(alert_df, pickle_key)
     # Remove oldest and add newest outage_df from default_pickle file each day
@@ -339,7 +339,7 @@ def current_supply_chart():
     combo_line = combo_base.mark_line(interpolate='step-after').encode(
         y=alt.Y('value:Q', title='Price ($)', scale=alt.Scale(domain=[combo_min/10,combo_max/10])),
         color=alt.Color('fuelType:N')).transform_filter(alt.datum.fuelType=='Pool Price')
-    return st.altair_chart(alt.layer(combo_line).resolve_scale(y='independent'), use_container_width=True)
+    return st.altair_chart(alt.layer(combo_area,combo_line).resolve_scale(y='independent'), use_container_width=True)
 
 def next7_outage_chart():
     st.subheader('Daily Outages (Next 7-days)')
