@@ -22,8 +22,13 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 def get_token():
-    with open('./default_pickle.pickle', 'rb') as handle:
-        default_pickle = pickle.load(handle)
+    try:
+        with open('./default_pickle.pickle', 'rb') as handle:
+            default_pickle = pickle.load(handle)
+    except:
+        time.sleep(1)
+        with open('./default_pickle.pickle', 'rb') as handle:
+            default_pickle = pickle.load(handle)
     try:
         username = st.secrets["nrg_username"]
         password = st.secrets["nrg_password"]
