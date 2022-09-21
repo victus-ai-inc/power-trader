@@ -464,13 +464,13 @@ for seconds in range(450):
         with st.spinner('Gathering Daily Outages...'):
             daily_outage = gather_outages('daily_outage_dfs', daily_outages())
             daily_outage = daily_outage[daily_outage['timeStamp'].dt.date < datetime.now(tz).date() + timedelta(days=90)]
-            # with open('./daily_df.pickle', 'wb') as handle:
-            #     pickle.dump(daily_outage, handle, protocol=pickle.HIGHEST_PROTOCOL)
+            with open('./daily_df.pickle', 'wb') as handle:
+                pickle.dump(daily_outage, handle, protocol=pickle.HIGHEST_PROTOCOL)
     if seconds%150==0:
         with st.spinner('Gathering Monthly Outages...'):
             monthly_outage = gather_outages('monthly_outage_dfs', monthly_outages())
-            # with open('./monthly_df.pickle', 'wb') as handle:
-            #     pickle.dump(monthly_outage, handle, protocol=pickle.HIGHEST_PROTOCOL)
+            with open('./monthly_df.pickle', 'wb') as handle:
+                pickle.dump(monthly_outage, handle, protocol=pickle.HIGHEST_PROTOCOL)
     with open('./default_pickle.pickle', 'wb') as handle:
             pickle.dump(default_pickle, handle, protocol=pickle.HIGHEST_PROTOCOL)
     
