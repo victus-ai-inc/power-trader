@@ -22,6 +22,8 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 def get_token():
+    with open('./default_pickle.pickle', 'rb') as handle:
+        default_pickle = pickle.load(handle)
     try:
         username = st.secrets["nrg_username"]
         password = st.secrets["nrg_password"]
@@ -36,8 +38,6 @@ def get_token():
         res = conn.getresponse()
         res_code = res.status
         # Check if the response is good
-        with open('./default_pickle.pickle', 'rb') as handle:
-                default_pickle = pickle.load(handle)
         if res_code == 200:
             res_data = res.read()
             # Decode the token into an object
@@ -80,6 +80,11 @@ def pull_data(fromDate, toDate, streamId, accessToken):
     headers = {'Accept': 'Application/json', 'Authorization': f'Bearer {accessToken}'}
     conn.request('GET', path, None, headers)
     res = conn.getresponse()
+    if res.status != 200:
+        res.read()
+        conn.close()
+        time.sleep(2)
+        pull_data(fromDate, toDate, streamId, accessToken)
     jsonData = json.loads(res.read().decode('utf-8'))
     conn.close()
     df = pd.json_normalize(jsonData, record_path='data')
@@ -113,7 +118,7 @@ def get_data(streamIds, start_date, end_date):
         df.drop(['streamId','assetCode','streamName','subfuelType','timeInterval','intervalType'], axis=1, inplace=True)
     return df
 
-#@st.experimental_memo(suppress_st_warning=True, ttl=180000)
+@st.experimental_memo(suppress_st_warning=True, ttl=10)
 def current_data():
     streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694, 120, 124947, 122, 1]
     if datetime.now(tz).hour==0:
