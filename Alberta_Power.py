@@ -402,7 +402,7 @@ def daily_outage_diff_chart():
                                                                         domainMax=max(abs(daily_diff['diff_value'])),
                                                                         scheme='redyellowgreen'))),
             tooltip=['fuelType','diff_value','timeStamp']
-        ).properties(height=100 if len(daily_alert_list)==1 else 60 * len(daily_alert_list)).configure_view(strokeWidth=0).configure_axis(grid=False)
+        ).properties(height=110 if len(daily_alert_list)==1 else 60 * len(daily_alert_list)).configure_view(strokeWidth=0).configure_axis(grid=False)
         st.altair_chart(daily_outage_heatmap, use_container_width=True)
 
 def monthly_outage_diff_chart():
@@ -417,7 +417,7 @@ def monthly_outage_diff_chart():
                                                                         domainMax=-max(abs(monthly_diff['diff_value'])),
                                                                         scheme='redyellowgreen'))),
             tooltip=['fuelType','diff_value','timeStamp']
-        ).properties(height=100 if len(monthly_alert_list)==1 else 60 * len(monthly_alert_list)).configure_view(strokeWidth=0).configure_axis(grid=False)
+        ).properties(height=110 if len(monthly_alert_list)==1 else 60 * len(monthly_alert_list)).configure_view(strokeWidth=0).configure_axis(grid=False)
         st.altair_chart(monthly_outage_heatmap, use_container_width=True)
 
 # App config
@@ -482,10 +482,10 @@ for seconds in range(450):
             default_pickle['alert_dates'][fuel_type] = datetime.now(tz).date()
             with open('./default_pickle.pickle', 'wb') as handle:
                 pickle.dump(default_pickle, handle, protocol=pickle.HIGHEST_PROTOCOL)
-            
+
     alert_dict = {k:v for k,v in default_pickle['alert_dates'].items() if v > (datetime.now(tz).date()-timedelta(days=7))}
-    alert_dict = dict(sorted(alert_dict.items(), key=lambda item: item[1]))
     alert_dict = {alert_list:alert_dict[alert_list] for alert_list in alert_list}
+    alert_dict = dict(sorted(alert_dict.items(), key=lambda item: item[1]))
 
     with placeholder.container():
     # KPIs
