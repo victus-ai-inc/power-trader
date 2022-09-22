@@ -123,7 +123,7 @@ def get_data(streamIds, start_date, end_date):
         df.drop(['streamId','assetCode','streamName','subfuelType','timeInterval','intervalType'], axis=1, inplace=True)
     return df
 
-@st.experimental_memo(suppress_st_warning=True, ttl=10)
+@st.experimental_memo(suppress_st_warning=True, ttl=100000)
 def current_data():
     streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694, 120, 124947, 122, 1]
     if datetime.now(tz).hour==0:
@@ -221,7 +221,7 @@ def pull_grouped_hist():
     history_df['timeStamp'] = history_df['timeStamp'].dt.tz_convert('America/Edmonton')   
     return history_df
 
-@st.experimental_memo(suppress_st_warning=True, ttl=180)
+@st.experimental_memo(suppress_st_warning=True, ttl=180000)
 def daily_outages():
     streamIds = [124]
     intertie_outages = get_data(streamIds, datetime.now(tz).date(), datetime.now(tz).date() + relativedelta(months=12, day=1, days=-1))
@@ -235,7 +235,7 @@ def daily_outages():
     daily_outages = pd.concat([intertie_outages,stream_outages,wind_solar])
     return daily_outages
 
-@st.experimental_memo(suppress_st_warning=True, ttl=300)
+@st.experimental_memo(suppress_st_warning=True, ttl=300000)
 def monthly_outages():
     streamIds = [44648, 118361, 322689, 118362, 147262, 322675, 322682, 44651]
     years = [datetime.now(tz).year, datetime.now(tz).year+1, datetime.now(tz).year+2]
@@ -313,7 +313,6 @@ def outage_diffs(pickle_key):
     diff_df = diff_calc(pickle_key, default_pickle[pickle_key][0][1], default_pickle[pickle_key][6][1])
     alert_list = list(set(diff_df['fuelType'][abs(diff_df['diff_value'])>=cutoff]))
     diff_df = diff_df[diff_df['fuelType'].isin(alert_list)]
-    adf = diff_df.groupby(['fuelType','date','diff_value']).max()
     return diff_df, alert_list
 
 def current_supply_chart():
@@ -477,6 +476,7 @@ for seconds in range(450):
     daily_diff, daily_alert_list = outage_diffs('daily_outage_dfs')
     monthly_diff, monthly_alert_list = outage_diffs('monthly_outage_dfs')
     alert_list = set(daily_alert_list + monthly_alert_list)
+    alert_list
 
     for fuel_type in alert_list:
         if (datetime.now(tz).date() - timedelta(days=7)) > default_pickle['alert_dates'][fuel_type]:
@@ -486,6 +486,7 @@ for seconds in range(450):
             
     alert_dict = {k:v for k,v in default_pickle['alert_dates'].items() if v > (datetime.now(tz).date()-timedelta(days=7))}
     alert_dict = dict(sorted(alert_dict.items(), key=lambda item: item[1]))
+    alert_dict = {alert_list:alert_dict[alert_list] for alert_list in alert_list}
 
     with placeholder.container():
     # KPIs
