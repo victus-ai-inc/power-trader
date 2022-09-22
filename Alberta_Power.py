@@ -476,7 +476,6 @@ for seconds in range(450):
     daily_diff, daily_alert_list = outage_diffs('daily_outage_dfs')
     monthly_diff, monthly_alert_list = outage_diffs('monthly_outage_dfs')
     alert_list = set(daily_alert_list + monthly_alert_list)
-    alert_list
 
     for fuel_type in alert_list:
         if (datetime.now(tz).date() - timedelta(days=7)) > default_pickle['alert_dates'][fuel_type]:
