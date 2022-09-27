@@ -22,13 +22,6 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 def get_token():
-    # try:
-    #     with open('./accessToken.pickle', 'rb') as handle:
-    #         default_pickle = pickle.load(handle)
-    # except:
-    #     time.sleep(2)
-    #     with open('./accessToken.pickle', 'rb') as handle:
-    #         default_pickle = pickle.load(handle)
     try:
         username = st.secrets["nrg_username"]
         password = st.secrets["nrg_password"]
@@ -125,7 +118,7 @@ def get_data(streamIds, start_date, end_date):
         df.drop(['streamId','assetCode','streamName','subfuelType','timeInterval','intervalType'], axis=1, inplace=True)
     return df
 
-@st.experimental_memo(suppress_st_warning=True, ttl=100000)
+@st.experimental_memo(suppress_st_warning=True, ttl=10)
 def current_data():
     streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694, 120, 124947, 122, 1]
     if datetime.now(tz).hour==0:
@@ -191,7 +184,6 @@ def pull_grouped_hist():
     query = 'SELECT MAX(timeStamp) FROM nrgdata.hourly_data'
     # Check when BigQuery was last updated
     last_update = bigquery.Client(credentials=credentials).query(query).to_dataframe().iloc[0][0]
-    last_update = last_update.tz_localize('utc',ambiguous=True, nonexistent='shift_forward')
     last_update = last_update.tz_convert('America/Edmonton')
     # Add data to BQ from when it was last updated to yesterday
     if last_update.date() < (datetime.now(tz).date()-timedelta(days=1)):
@@ -214,7 +206,7 @@ def pull_grouped_hist():
         EXTRACT (HOUR FROM timeStamp) AS hour,
         AVG(value) AS value
     FROM nrgdata.hourly_data
-    WHERE timeStamp BETWEEN DATE_SUB(current_date(), INTERVAL 7 DAY) AND current_date()
+    WHERE timeStamp BETWEEN DATE_SUB(TIMESTAMP(current_date(),'America/Edmonton'), INTERVAL 7 DAY) AND TIMESTAMP(current_date(),'America/Edmonton')
     GROUP BY fuelType, year, month, day, hour, timeStamp
     ORDER BY fuelType, year, month, day, hour, timeStamp
     '''
@@ -223,7 +215,7 @@ def pull_grouped_hist():
     history_df['timeStamp'] = history_df['timeStamp'].dt.tz_convert('America/Edmonton')   
     return history_df
 
-@st.experimental_memo(suppress_st_warning=True, ttl=180000)
+@st.experimental_memo(suppress_st_warning=True, ttl=180)
 def daily_outages():
     streamIds = [124]
     intertie_outages = get_data(streamIds, datetime.now(tz).date(), datetime.now(tz).date() + relativedelta(months=12, day=1, days=-1))
@@ -237,7 +229,7 @@ def daily_outages():
     daily_outages = pd.concat([intertie_outages,stream_outages,wind_solar])
     return daily_outages
 
-@st.experimental_memo(suppress_st_warning=True, ttl=300000)
+@st.experimental_memo(suppress_st_warning=True, ttl=300)
 def monthly_outages():
     streamIds = [44648, 118361, 322689, 118362, 147262, 322675, 322682, 44651]
     years = [datetime.now(tz).year, datetime.now(tz).year+1, datetime.now(tz).year+2]
@@ -289,7 +281,6 @@ def gather_outages(pickle_key, outage_func):
     # Pull outages
     with open(f'./{pickle_key}.pickle', 'rb') as outage:
         outage_dfs = pickle.load(outage)
-    outage_dfs
     try:
         outage_df = outage_func
     except:
@@ -303,7 +294,8 @@ def gather_outages(pickle_key, outage_func):
     alert_df = alert_df.groupby(['date','fuelType','diff_value']).max().reset_index()
     #alert_df = pd.DataFrame({'date':[datetime(2022,9,21),datetime(2022,9,21)],'fuelType':['Test','Test2'],'diff_value':[1000,-1000]})
     if len(alert_df) > 0:
-        text_alert(alert_df, pickle_key)
+        #text_alert(alert_df, pickle_key)
+        pass
     # Remove oldest and add newest outage_df from default_pickle file each day
     if datetime.now(tz).date() > (outage_dfs[0][0].date() + timedelta(days=6)):
         if datetime.now(tz).date() != outage_dfs[6][0].date():
@@ -319,7 +311,6 @@ def outage_diffs(pickle_key):
     # Create df and alert list comparing outages a week ago to current outages
     with open(f'./{pickle_key}.pickle', 'rb') as outage:
         outage_dfs = pickle.load(outage)
-    outage_dfs
     diff_df = diff_calc(pickle_key, outage_dfs[0][1], outage_dfs[6][1])
     alert_list = list(set(diff_df['fuelType'][abs(diff_df['diff_value'])>=cutoff]))
     diff_df = diff_df[diff_df['fuelType'].isin(alert_list)]
@@ -454,13 +445,6 @@ tz = pytz.timezone('America/Edmonton')
 
 placeholder = st.empty()
 for seconds in range(450):
-    # try:
-    #     with open('./default_pickle.pickle', 'rb') as handle:
-    #         default_pickle = pickle.load(handle)
-    # except:
-    #     time.sleep(3)
-    #     with open('./default_pickle.pickle', 'rb') as handle:
-    #         default_pickle = pickle.load(handle)
     if seconds%10==0:
         with st.spinner('Gathering Realtime Data...'):
             try:
@@ -475,24 +459,20 @@ for seconds in range(450):
         with st.spinner('Gathering Daily Outages...'):
             daily_outage = gather_outages('daily_df', daily_outages())
             daily_outage = daily_outage[daily_outage['timeStamp'].dt.date < datetime.now(tz).date() + timedelta(days=90)]
-            with open('./daily_df.pickle', 'wb') as handle:
-                pickle.dump(daily_outage, handle, protocol=pickle.HIGHEST_PROTOCOL)
     if seconds%150==0:
         with st.spinner('Gathering Monthly Outages...'):
             monthly_outage = gather_outages('monthly_df', monthly_outages())
-            with open('./monthly_df.pickle', 'wb') as handle:
-                pickle.dump(monthly_outage, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
     daily_diff, daily_alert_list = outage_diffs('daily_df')
     monthly_diff, monthly_alert_list = outage_diffs('monthly_df')
     alert_list = set(daily_alert_list + monthly_alert_list)
 
-    with open('./alerts_dict.pickle', 'rb') as alert:
+    with open('./alert_dates.pickle', 'rb') as alert:
         alerts_dict = pickle.load(alert)
     for fuel_type in alert_list:
         if (datetime.now(tz).date() - timedelta(days=7)) > alerts_dict[fuel_type]:
             alerts_dict[fuel_type] = datetime.now(tz).date()
-    with open('./alerts_dict.pickle', 'wb') as handle:
+    with open('./alert_dates.pickle', 'wb') as handle:
         pickle.dump(alerts_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
     alert_dict = {k:v for k,v in alerts_dict.items() if v > (datetime.now(tz).date()-timedelta(days=7))}
