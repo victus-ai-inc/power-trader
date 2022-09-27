@@ -294,8 +294,7 @@ def gather_outages(pickle_key, outage_func):
     alert_df = alert_df.groupby(['date','fuelType','diff_value']).max().reset_index()
     #alert_df = pd.DataFrame({'date':[datetime(2022,9,21),datetime(2022,9,21)],'fuelType':['Test','Test2'],'diff_value':[1000,-1000]})
     if len(alert_df) > 0:
-        #text_alert(alert_df, pickle_key)
-        pass
+        text_alert(alert_df, pickle_key)
     # Remove oldest and add newest outage_df from default_pickle file each day
     if datetime.now(tz).date() > (outage_dfs[0][0].date() + timedelta(days=6)):
         if datetime.now(tz).date() != outage_dfs[6][0].date():
