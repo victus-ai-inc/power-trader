@@ -468,8 +468,13 @@ for seconds in range(450):
     monthly_diff, monthly_alert_list = outage_diffs('monthly_df')
     alert_list = set(daily_alert_list + monthly_alert_list)
 
-    with open('./alert_dates.pickle', 'rb') as alert:
-        alerts_dict = pickle.load(alert)
+    try:
+        with open('./alert_dates.pickle', 'rb') as alert:
+            alerts_dict = pickle.load(alert)
+    except:
+        time.sleep(2)
+        with open('./alert_dates.pickle', 'rb') as alert:
+            alerts_dict = pickle.load(alert)
     for fuel_type in alert_list:
         if (datetime.now(tz).date() - timedelta(days=7)) > alerts_dict[fuel_type]:
             alerts_dict[fuel_type] = datetime.now(tz).date()
