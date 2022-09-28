@@ -128,14 +128,5 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# NRGstream credentials
-credentials.txt
-
 # Streamlit secrects
 .streamlit/secrets.toml
-
-# SQL Jupyter notebook
-./jupyter_testing.ipynb
-
-# haf
-alerts.py

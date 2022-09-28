@@ -318,7 +318,6 @@ def outage_diffs(pickle_key):
 def current_supply_chart():
     st.subheader('Current Supply (Previous 7-days)')
     thm = {k:v for k,v in theme.items() if k not in ['Intertie','3-Day Solar Forecast','7-Day Wind Forecast']}
-    
     history_df = pull_grouped_hist()
     combo_df = pd.concat([history_df,current_df], axis=0)
     combo_df = sqldf("SELECT * FROM combo_df ORDER BY fuelType", locals())
