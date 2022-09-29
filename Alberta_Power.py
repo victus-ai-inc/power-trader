@@ -87,8 +87,7 @@ def pull_data(fromDate, toDate, streamId, accessToken):
     try:
         jsonData = json.loads(response.read().decode('utf-8'))
     except json.JSONDecodeError:
-        time.sleep(2)
-        pull_data(fromDate, toDate, streamId, accessToken)
+        st.experimental_rerun()
     conn.close()
     df = pd.json_normalize(jsonData, record_path='data')
     # Rename df cols
