@@ -79,16 +79,16 @@ def pull_data(fromDate, toDate, streamId, accessToken):
     path = f'/api/StreamData/{streamId}?fromDate={fromDate}&toDate={toDate}'
     headers = {'Accept': 'Application/json', 'Authorization': f'Bearer {accessToken}'}
     conn.request('GET', path, None, headers)
-    res = conn.getresponse()
-    if res.status != 200:
-        res.read()
+    response = conn.getresponse()
+    if response.status != 200:
         conn.close()
         time.sleep(2)
         pull_data(fromDate, toDate, streamId, accessToken)
     try:
-        jsonData = json.loads(res.read().decode('utf-8'))
-    except:
-        st.experimental_rerun()
+        jsonData = json.loads(response.read().decode('utf-8'))
+    except json.JSONDecodeError:
+        time.sleep(2)
+        pull_data(fromDate, toDate, streamId, accessToken)
     conn.close()
     df = pd.json_normalize(jsonData, record_path='data')
     # Rename df cols
@@ -311,8 +311,11 @@ def gather_outages(pickle_key, outage_func):
 
 def outage_diffs(pickle_key):
     # Create df and alert list comparing outages a week ago to current outages
-    with open(f'./{pickle_key}.pickle', 'rb') as outage:
-        outage_dfs = pickle.load(outage)
+    try:
+        with open(f'./{pickle_key}.pickle', 'rb') as outage:
+            outage_dfs = pickle.load(outage)
+    except:
+        st.experimental_rerun()
     diff_df = diff_calc(pickle_key, outage_dfs[0][1], outage_dfs[6][1])
     alert_list = list(set(diff_df['fuelType'][abs(diff_df['diff_value'])>=cutoff]))
     diff_df = diff_df[diff_df['fuelType'].isin(alert_list)]
