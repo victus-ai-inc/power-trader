@@ -435,31 +435,20 @@ def monthly_outage_diff_chart():
 
 
 def getSystemInfoDict():
-    try:
-        info = dict()
-        info['platform'] = platform.system()
-        info['platform-release'] = platform.release()
-        info['platform-version'] = platform.version()
-        info['architecture'] = platform.machine()
-        info['hostname'] = socket.gethostname()
-        info['ip-address'] = socket.gethostbyname(socket.gethostname())
-        info['mac-address'] = ':'.join(re.findall('..',
-                                                  '%012x' % uuid.getnode()))
-        info['processor'] = platform.processor()
-        info['ram'] = str(
-            round(psutil.virtual_memory().total / (1024.0 ** 3)))+" GB"
-        info['available-memory'] = psutil.virtual_memory().available * 100 / psutil.virtual_memory().total
-        return info
-    except Exception as e:
-        logging.exception(e)
+    info = dict()
+    info['cached'] = str(
+            round(psutil.virtual_memory().cached / (1024.0 ** 2)))+" MB"
+    info['available-memory'] = f'{round(psutil.virtual_memory().available * 100 / psutil.virtual_memory().total)}%'
+    info = json.dumps(info)
+    info = json.loads(info)
+    return info
+
+#def getSystemInfoString():
+    #return json.dumps(getSystemInfoDict())
 
 
-def getSystemInfoString():
-    return json.dumps(getSystemInfoDict())
-
-
-def getSystemInfoJson():
-    return json.loads(getSystemInfoString())
+#def getSystemInfoJson():
+    #eturn json.loads(getSystemInfoString())
 
 
 
@@ -527,7 +516,7 @@ for seconds in range(450):
     alert_dict = dict(sorted(alert_dict.items(), key=lambda item: item[1]))
 
     with placeholder.container():
-        st.write(getSystemInfoJson()['available-memory'])
+        st.write(getSystemInfoDict())
     # KPIs
         current_query = '''
         SELECT
