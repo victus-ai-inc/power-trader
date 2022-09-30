@@ -286,24 +286,26 @@ def gather_outages(pickle_key, outage_func):
     try:
         outage_df = outage_func
     except:
-        outage_df = outage_dfs[6][1]
+        outage_df = outage_dfs[4][1]
     # Send alerts if current outages have changed since last time they were loaded
     new_outage_df = outage_df[~outage_df['fuelType'].isin(['3-Day Solar Forecast','7-Day Wind Forecast'])]
-    old_outage_df = outage_dfs[6][1]
+    old_outage_df = outage_dfs[4][1]
     old_outage_df = old_outage_df[~old_outage_df['fuelType'].isin(['3-Day Solar Forecast','7-Day Wind Forecast'])]
     alert_df = diff_calc(pickle_key, old_outage_df, new_outage_df)
     alert_df = alert_df[['date','fuelType','diff_value']][abs(alert_df['diff_value'])>=cutoff]
     alert_df = alert_df.groupby(['date','fuelType','diff_value']).max().reset_index()
     #alert_df = pd.DataFrame({'date':[datetime(2022,9,21),datetime(2022,9,21)],'fuelType':['Test','Test2'],'diff_value':[1000,-1000]})
+    #alert_df
     if len(alert_df) > 0:
         text_alert(alert_df, pickle_key)
+        #pass
     # Remove oldest and add newest outage_df from default_pickle file each day
     if datetime.now(tz).date() > (outage_dfs[0][0].date() + timedelta(days=6)):
-        if datetime.now(tz).date() != outage_dfs[6][0].date():
+        if datetime.now(tz).date() != outage_dfs[4][0].date():
             outage_dfs.pop(0)
             outage_dfs.insert(len(outage_dfs), (datetime.now(tz), outage_df))
     # Update to most current outage_df in default_pickle file
-    outage_dfs[6] = (datetime.now(tz), outage_df)
+    outage_dfs[4] = (datetime.now(tz), outage_df)
     with open(f'./{pickle_key}.pickle', 'wb') as outage:
         pickle.dump(outage_dfs, outage, protocol=pickle.HIGHEST_PROTOCOL)
     return outage_df
@@ -315,7 +317,7 @@ def outage_diffs(pickle_key):
             outage_dfs = pickle.load(outage)
     except:
         st.experimental_rerun()
-    diff_df = diff_calc(pickle_key, outage_dfs[0][1], outage_dfs[6][1])
+    diff_df = diff_calc(pickle_key, outage_dfs[0][1], outage_dfs[4][1])
     alert_list = list(set(diff_df['fuelType'][abs(diff_df['diff_value'])>=cutoff]))
     diff_df = diff_df[diff_df['fuelType'].isin(alert_list)]
     return diff_df, alert_list
