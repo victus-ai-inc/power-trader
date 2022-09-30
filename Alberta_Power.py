@@ -20,6 +20,13 @@ from google.cloud.exceptions import NotFound
 from pandasql import sqldf
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+import logging
+import platform
+import re
+import socket
+import uuid
+
+import psutil
 
 def get_token():
     try:
@@ -425,8 +432,40 @@ def monthly_outage_diff_chart():
         ).properties(height=110 if len(monthly_alert_list)==1 else 60 * len(monthly_alert_list)).configure_view(strokeWidth=0).configure_axis(grid=False)
         st.altair_chart(monthly_outage_heatmap, use_container_width=True)
 
+
+
+def getSystemInfoDict():
+    try:
+        info = dict()
+        info['platform'] = platform.system()
+        info['platform-release'] = platform.release()
+        info['platform-version'] = platform.version()
+        info['architecture'] = platform.machine()
+        info['hostname'] = socket.gethostname()
+        info['ip-address'] = socket.gethostbyname(socket.gethostname())
+        info['mac-address'] = ':'.join(re.findall('..',
+                                                  '%012x' % uuid.getnode()))
+        info['processor'] = platform.processor()
+        info['ram'] = str(
+            round(psutil.virtual_memory().total / (1024.0 ** 3)))+" GB"
+        info['available-memory'] = psutil.virtual_memory().available * 100 / psutil.virtual_memory().total
+        return info
+    except Exception as e:
+        logging.exception(e)
+
+
+def getSystemInfoString():
+    return json.dumps(getSystemInfoDict())
+
+
+def getSystemInfoJson():
+    return json.loads(getSystemInfoString())
+
+
+
 # App config
 st.set_page_config(layout='wide', initial_sidebar_state='collapsed', menu_items=None)
+
 # Hide Streamlit menus
 hide_menu_style = """
             <style>
@@ -488,6 +527,7 @@ for seconds in range(450):
     alert_dict = dict(sorted(alert_dict.items(), key=lambda item: item[1]))
 
     with placeholder.container():
+        st.write(getSystemInfoJson()['available-memory'])
     # KPIs
         current_query = '''
         SELECT
