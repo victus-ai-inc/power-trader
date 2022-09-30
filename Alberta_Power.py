@@ -301,7 +301,7 @@ def gather_outages(pickle_key, outage_func):
     alert_df = diff_calc(pickle_key, old_outage_df, new_outage_df)
     alert_df = alert_df[['date','fuelType','diff_value']][abs(alert_df['diff_value'])>=cutoff]
     alert_df = alert_df.groupby(['date','fuelType','diff_value']).max().reset_index()
-    #alert_df = pd.DataFrame({'date':[datetime(2022,9,21),datetime(2022,9,21)],'fuelType':['Test','Test2'],'diff_value':[1000,-1000]})
+    alert_df = pd.DataFrame({'date':[datetime(2022,9,21),datetime(2022,9,21)],'fuelType':['Test','Test2'],'diff_value':[1000,-1000]})
     if len(alert_df) > 0:
         text_alert(alert_df, pickle_key)
         #pass
