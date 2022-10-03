@@ -520,6 +520,7 @@ for seconds in range(450):
     with placeholder.container():
         st.write(getSystemInfoDict())
         st.write(socket.gethostbyname(socket.gethostname()))
+        st.write(st.experimental_user)
     # KPIs
         current_query = '''
         SELECT
