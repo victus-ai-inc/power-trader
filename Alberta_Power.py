@@ -129,7 +129,7 @@ def get_data(streamIds, start_date, end_date):
         df.drop(['streamId','assetCode','streamName','subfuelType','timeInterval','intervalType'], axis=1, inplace=True)
     return df
 
-@st.experimental_memo(suppress_st_warning=True, ttl=10, max_entries=1)
+@st.experimental_memo(suppress_st_warning=True, ttl=1000000)
 def current_data():
     streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694, 120, 124947, 122, 1]
     if datetime.now(tz).hour==0:
@@ -226,7 +226,7 @@ def pull_grouped_hist():
     history_df['timeStamp'] = history_df['timeStamp'].dt.tz_convert('America/Edmonton')   
     return history_df
 
-@st.experimental_memo(suppress_st_warning=True, ttl=180, max_entries=1)
+@st.experimental_memo(suppress_st_warning=True, ttl=180000, max_entries=1)
 def daily_outages():
     streamIds = [124]
     intertie_outages = get_data(streamIds, datetime.now(tz).date(), datetime.now(tz).date() + relativedelta(months=12, day=1, days=-1))
@@ -240,7 +240,7 @@ def daily_outages():
     daily_outages = pd.concat([intertie_outages,stream_outages,wind_solar])
     return daily_outages
 
-@st.experimental_memo(suppress_st_warning=True, ttl=300, max_entries=1)
+@st.experimental_memo(suppress_st_warning=True, ttl=300000, max_entries=1)
 def monthly_outages():
     streamIds = [44648, 118361, 322689, 118362, 147262, 322675, 322682, 44651]
     years = [datetime.now(tz).year, datetime.now(tz).year+1, datetime.now(tz).year+2]
@@ -311,9 +311,9 @@ def gather_outages(pickle_key, outage_func):
     if datetime.now(tz).date() > (outage_dfs[0][0].date() + timedelta(days=6)):
         if datetime.now(tz).date() != outage_dfs[4][0].date():
             outage_dfs.pop(0)
-            outage_dfs.insert(len(outage_dfs), (datetime.now(tz), outage_df))
+            outage_dfs.insert(len(outage_dfs), (datetime.now(tz), new_outage_df))
     # Update to most current outage_df in default_pickle file
-    outage_dfs[4] = (datetime.now(tz), outage_df)
+    outage_dfs[4] = (datetime.now(tz), new_outage_df)
     with open(f'./{pickle_key}.pickle', 'wb') as outage:
         pickle.dump(outage_dfs, outage, protocol=pickle.HIGHEST_PROTOCOL)
     return outage_df
