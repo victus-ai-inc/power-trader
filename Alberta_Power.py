@@ -25,6 +25,8 @@ import platform
 import re
 import socket
 import uuid
+import socket
+
 
 import psutil
 
@@ -517,6 +519,7 @@ for seconds in range(450):
 
     with placeholder.container():
         st.write(getSystemInfoDict())
+        st.write(socket.gethostbyname(socket.gethostname()))
     # KPIs
         current_query = '''
         SELECT
