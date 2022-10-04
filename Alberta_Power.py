@@ -10,7 +10,6 @@ import time
 import pytz
 import pickle
 import smtplib
-import alerts
 from st_aggrid import AgGrid
 from datetime import datetime, date, timedelta
 from dateutil.relativedelta import relativedelta
@@ -20,14 +19,7 @@ from google.cloud.exceptions import NotFound
 from pandasql import sqldf
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-import logging
-import platform
-import re
 import socket
-import uuid
-import socket
-
-
 import psutil
 
 def get_token():
@@ -129,7 +121,7 @@ def get_data(streamIds, start_date, end_date):
         df.drop(['streamId','assetCode','streamName','subfuelType','timeInterval','intervalType'], axis=1, inplace=True)
     return df
 
-@st.experimental_memo(suppress_st_warning=True, ttl=10)
+@st.experimental_memo(suppress_st_warning=True, ttl=100000)
 def current_data():
     streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694, 120, 124947, 122, 1]
     if datetime.now(tz).hour==0:
@@ -226,7 +218,7 @@ def pull_grouped_hist():
     history_df['timeStamp'] = history_df['timeStamp'].dt.tz_convert('America/Edmonton')   
     return history_df
 
-@st.experimental_memo(suppress_st_warning=True, ttl=180, max_entries=1)
+@st.experimental_memo(suppress_st_warning=True, ttl=1800000, max_entries=1)
 def daily_outages():
     streamIds = [124]
     intertie_outages = get_data(streamIds, datetime.now(tz).date(), datetime.now(tz).date() + relativedelta(months=12, day=1, days=-1))
@@ -240,7 +232,7 @@ def daily_outages():
     daily_outages = pd.concat([intertie_outages,stream_outages,wind_solar])
     return daily_outages
 
-@st.experimental_memo(suppress_st_warning=True, ttl=300, max_entries=1)
+@st.experimental_memo(suppress_st_warning=True, ttl=3000000, max_entries=1)
 def monthly_outages():
     streamIds = [44648, 118361, 322689, 118362, 147262, 322675, 322682, 44651]
     years = [datetime.now(tz).year, datetime.now(tz).year+1, datetime.now(tz).year+2]
@@ -434,7 +426,9 @@ def monthly_outage_diff_chart():
         ).properties(height=110 if len(monthly_alert_list)==1 else 60 * len(monthly_alert_list)).configure_view(strokeWidth=0).configure_axis(grid=False)
         st.altair_chart(monthly_outage_heatmap, use_container_width=True)
 
-
+#@st.experimental_memo()
+def user_log(user, logon, lastlog):
+    pass
 
 def getSystemInfoDict():
     info = dict()
@@ -476,9 +470,14 @@ theme = {'Biomass & Other':'#1f77b4', 'Coal':'#aec7e8', 'Dual Fuel':'#ff7f0e', '
 # Initialize variables
 cutoff = 100
 tz = pytz.timezone('America/Edmonton')
+user = st.experimental_user.email
+logon = datetime.now(tz)
+user, logon
 
 placeholder = st.empty()
 for seconds in range(450):
+    lastlog = datetime.now(tz)
+
     if seconds%10==0:
         with st.spinner('Gathering Realtime Data...'):
             try:
@@ -519,8 +518,7 @@ for seconds in range(450):
 
     with placeholder.container():
         st.write(getSystemInfoDict())
-        st.write(socket.gethostbyname(socket.gethostname()))
-        st.write(st.experimental_user)
+        st.write(lastlog)
     # KPIs
         current_query = '''
         SELECT
