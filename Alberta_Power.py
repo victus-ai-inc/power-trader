@@ -10,7 +10,6 @@ import time
 import pytz
 import pickle
 import smtplib
-import alerts
 from st_aggrid import AgGrid
 from datetime import datetime, date, timedelta
 from dateutil.relativedelta import relativedelta
@@ -20,6 +19,8 @@ from google.cloud.exceptions import NotFound
 from pandasql import sqldf
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+import socket
+import psutil
 
 def get_token():
     try:
@@ -178,7 +179,7 @@ def warning(type, lst):
      text-align: center;
      padding: 15px 10px;">{lst}</p>''', unsafe_allow_html=True)
 
-@st.experimental_memo(suppress_st_warning=True)
+@st.experimental_memo(suppress_st_warning=True, max_entries=1)
 def pull_grouped_hist():
     # Google BigQuery auth
     credentials = service_account.Credentials.from_service_account_info(st.secrets["gcp_service_account"])
@@ -217,7 +218,7 @@ def pull_grouped_hist():
     history_df['timeStamp'] = history_df['timeStamp'].dt.tz_convert('America/Edmonton')   
     return history_df
 
-@st.experimental_memo(suppress_st_warning=True, ttl=180)
+@st.experimental_memo(suppress_st_warning=True, ttl=180, max_entries=1)
 def daily_outages():
     streamIds = [124]
     intertie_outages = get_data(streamIds, datetime.now(tz).date(), datetime.now(tz).date() + relativedelta(months=12, day=1, days=-1))
@@ -231,7 +232,7 @@ def daily_outages():
     daily_outages = pd.concat([intertie_outages,stream_outages,wind_solar])
     return daily_outages
 
-@st.experimental_memo(suppress_st_warning=True, ttl=300)
+@st.experimental_memo(suppress_st_warning=True, ttl=300, max_entries=1)
 def monthly_outages():
     streamIds = [44648, 118361, 322689, 118362, 147262, 322675, 322682, 44651]
     years = [datetime.now(tz).year, datetime.now(tz).year+1, datetime.now(tz).year+2]
@@ -286,10 +287,10 @@ def gather_outages(pickle_key, outage_func):
     try:
         outage_df = outage_func
     except:
-        outage_df = outage_dfs[6][1]
+        outage_df = outage_dfs[4][1]
     # Send alerts if current outages have changed since last time they were loaded
     new_outage_df = outage_df[~outage_df['fuelType'].isin(['3-Day Solar Forecast','7-Day Wind Forecast'])]
-    old_outage_df = outage_dfs[6][1]
+    old_outage_df = outage_dfs[4][1]
     old_outage_df = old_outage_df[~old_outage_df['fuelType'].isin(['3-Day Solar Forecast','7-Day Wind Forecast'])]
     alert_df = diff_calc(pickle_key, old_outage_df, new_outage_df)
     alert_df = alert_df[['date','fuelType','diff_value']][abs(alert_df['diff_value'])>=cutoff]
@@ -297,13 +298,14 @@ def gather_outages(pickle_key, outage_func):
     #alert_df = pd.DataFrame({'date':[datetime(2022,9,21),datetime(2022,9,21)],'fuelType':['Test','Test2'],'diff_value':[1000,-1000]})
     if len(alert_df) > 0:
         text_alert(alert_df, pickle_key)
+        #pass
     # Remove oldest and add newest outage_df from default_pickle file each day
     if datetime.now(tz).date() > (outage_dfs[0][0].date() + timedelta(days=6)):
-        if datetime.now(tz).date() != outage_dfs[6][0].date():
+        if datetime.now(tz).date() != outage_dfs[4][0].date():
             outage_dfs.pop(0)
-            outage_dfs.insert(len(outage_dfs), (datetime.now(tz), outage_df))
+            outage_dfs.insert(len(outage_dfs), (datetime.now(tz), new_outage_df))
     # Update to most current outage_df in default_pickle file
-    outage_dfs[6] = (datetime.now(tz), outage_df)
+    outage_dfs[4] = (datetime.now(tz), new_outage_df)
     with open(f'./{pickle_key}.pickle', 'wb') as outage:
         pickle.dump(outage_dfs, outage, protocol=pickle.HIGHEST_PROTOCOL)
     return outage_df
@@ -315,7 +317,7 @@ def outage_diffs(pickle_key):
             outage_dfs = pickle.load(outage)
     except:
         st.experimental_rerun()
-    diff_df = diff_calc(pickle_key, outage_dfs[0][1], outage_dfs[6][1])
+    diff_df = diff_calc(pickle_key, outage_dfs[0][1], outage_dfs[4][1])
     alert_list = list(set(diff_df['fuelType'][abs(diff_df['diff_value'])>=cutoff]))
     diff_df = diff_df[diff_df['fuelType'].isin(alert_list)]
     return diff_df, alert_list
@@ -424,8 +426,31 @@ def monthly_outage_diff_chart():
         ).properties(height=110 if len(monthly_alert_list)==1 else 60 * len(monthly_alert_list)).configure_view(strokeWidth=0).configure_axis(grid=False)
         st.altair_chart(monthly_outage_heatmap, use_container_width=True)
 
+#@st.experimental_memo()
+def user_log(user, logon, lastlog):
+    pass
+
+def getSystemInfoDict():
+    info = dict()
+    info['cached'] = str(
+            round(psutil.virtual_memory().cached / (1024.0 ** 2)))+" MB"
+    info['available-memory'] = f'{round(psutil.virtual_memory().available * 100 / psutil.virtual_memory().total)}%'
+    info = json.dumps(info)
+    info = json.loads(info)
+    return info
+
+#def getSystemInfoString():
+    #return json.dumps(getSystemInfoDict())
+
+
+#def getSystemInfoJson():
+    #eturn json.loads(getSystemInfoString())
+
+
+
 # App config
 st.set_page_config(layout='wide', initial_sidebar_state='collapsed', menu_items=None)
+
 # Hide Streamlit menus
 hide_menu_style = """
             <style>
@@ -445,9 +470,14 @@ theme = {'Biomass & Other':'#1f77b4', 'Coal':'#aec7e8', 'Dual Fuel':'#ff7f0e', '
 # Initialize variables
 cutoff = 100
 tz = pytz.timezone('America/Edmonton')
+user = st.experimental_user.email
+logon = datetime.now(tz)
+user, logon
 
 placeholder = st.empty()
 for seconds in range(450):
+    lastlog = datetime.now(tz)
+
     if seconds%10==0:
         with st.spinner('Gathering Realtime Data...'):
             try:
@@ -487,6 +517,8 @@ for seconds in range(450):
     alert_dict = dict(sorted(alert_dict.items(), key=lambda item: item[1]))
 
     with placeholder.container():
+        st.write(getSystemInfoDict())
+        st.write(lastlog)
     # KPIs
         current_query = '''
         SELECT
