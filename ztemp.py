@@ -1,10 +1,8 @@
 import streamlit as st
-from datetime import datetime, timedelta
-import pandas as pd
+import time
 
-st.experimental_memo()
-def dct():
-    df = {'email':{'logon':datetime.now()-timedelta(hours=1),'logoff':datetime.now()}}
-    return df
-a = dct()
-a
+placeholder = st.empty()
+for seconds in range(100000):
+    with placeholder.container():
+        st.title(seconds)
+        time.sleep(1)
