@@ -106,7 +106,7 @@ def get_data(streamIds, start_date, end_date):
     return df
 
 # HISTORICAL
-def update_historical_data(credentials):
+def update_historical_data():
     # Check when historical data was last added to BigQuery
     if 'last_history_update' not in st.session_state:
         query = 'SELECT MAX(timeStamp) FROM nrgdata.historical_data'
@@ -119,34 +119,6 @@ def update_historical_data(credentials):
         history_df = get_data(streamIds, last_history_update.date(), datetime.now(tz).date())
         bigquery.Client(credentials=credentials).load_table_from_dataframe(history_df, 'nrgdata.historical_data')
         st.session_state['last_history_update'] = max(history_df['timeStamp'])
-
-# Pull data from BQ
-@st.experimental_memo(suppress_st_warning=True)
-def read_historical_data(credentials):
-    query = '''
-    SELECT
-        DATETIME(
-            EXTRACT (YEAR FROM timeStamp), 
-            EXTRACT (MONTH FROM timeStamp),
-            EXTRACT (DAY FROM timeStamp),
-            EXTRACT (HOUR FROM timeStamp), 0, 0) AS timeStamp,
-        fuelType,
-        EXTRACT (YEAR FROM timeStamp) AS year,
-        EXTRACT (MONTH FROM timeStamp) AS month,
-        EXTRACT (DAY FROM timeStamp) AS day,
-        EXTRACT (HOUR FROM timeStamp) AS hour,
-        AVG(value) AS value
-    FROM nrgdata.historical_data
-    WHERE timeStamp BETWEEN
-        DATE_SUB(TIMESTAMP(current_date(),'America/Edmonton'), INTERVAL 7 DAY) AND 
-        TIMESTAMP(current_date(),'America/Edmonton')
-    GROUP BY fuelType, year, month, day, hour, timeStamp
-    ORDER BY fuelType, year, month, day, hour, timeStamp
-    '''
-    history_df = bigquery.Client(credentials=credentials).query(query).to_dataframe()
-    history_df['timeStamp'] = history_df['timeStamp'].dt.tz_localize('utc',ambiguous=True, nonexistent='shift_forward')
-    history_df['timeStamp'] = history_df['timeStamp'].dt.tz_convert(tz)
-    return history_df
 
 # OUTAGES
     # ****add the date when the outages were pulled to outage database****
@@ -182,19 +154,25 @@ def read_historical_data(credentials):
 
 # MAIN APP CODE
 # **** make text messages of when each element was last run ****
+
+# Set timezone
 tz = pytz.timezone('America/Edmonton')
 # Google BigQuery auth
 credentials = service_account.Credentials.from_service_account_info(st.secrets["gcp_service_account"])
 
 placeholder = st.empty()
-for seconds in range(100):
-    with st.spinner('Updating historical data...'):
-        update_historical_data(credentials)
-    #with st.spinner('Updating current data...'):
-        #pass
-    #with st.spinner('Updating daily outages...'):
-        #pass
-    #with st.spinner('Updating monthly outages...'):
-        #pass
+# **** data will relaod every second but only rerun when the ttl is up ****
+for seconds in range(300):
+    with placeholder.container():
+        with st.spinner('Updating historical data...'):
+            update_historical_data()
+        #with st.spinner('Updating current data...'):
+            #pass
+        #with st.spinner('Updating daily outages...'):
+            #pass
+        #with st.spinner('Updating monthly outages...'):
+            #pass
     time.sleep(1)
+st.experimental_rerun()
+
 
