@@ -56,8 +56,6 @@ def pull_data(fromDate, toDate, streamId, accessToken, tokenExpiry):
     res = conn.getresponse()
     if res.code != 200:
         conn.close()
-        time.sleep(5)
-        st.write(f'trying, code = {res.code}')
         pull_data(fromDate, toDate, streamId, accessToken, tokenExpiry)
     # Load json data & create pandas df
     else:
@@ -67,20 +65,13 @@ def pull_data(fromDate, toDate, streamId, accessToken, tokenExpiry):
         df.rename(columns={0:'timeStamp', 1:'value'}, inplace=True)
         # Add streamInfo cols to df
         streamInfo = get_streamInfo(streamId)
-        assetCode = streamInfo.iloc[0,1]
-        streamName = streamInfo.iloc[0,2]
         fuelType = streamInfo.iloc[0,3]
-        subfuelType = streamInfo.iloc[0,4]
-        timeInterval = streamInfo.iloc[0,5]
-        intervalType = streamInfo.iloc[0,6]
-        df = df.assign(streamId=streamId, assetCode=assetCode, streamName=streamName, fuelType=fuelType, \
-                        subfuelType=subfuelType, timeInterval=timeInterval, intervalType=intervalType)
+        df = df.assign(fuelType=fuelType)
         # Changing 'value' col to numeric and filling in NA's with previous value in col
         df.replace(to_replace={'value':''}, value=0, inplace=True)
         df['value'] = pd.to_numeric(df['value'])
         df.fillna(method='ffill', inplace=True)
         conn.close()
-    time.sleep(1)
     return df
 
 # Release generated token
