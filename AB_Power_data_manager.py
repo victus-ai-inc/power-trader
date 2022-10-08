@@ -161,9 +161,10 @@ tz = pytz.timezone('America/Edmonton')
 credentials = service_account.Credentials.from_service_account_info(st.secrets["gcp_service_account"])
 
 placeholder = st.empty()
-# **** data will relaod every second but only rerun when the ttl is up ****
+
 for seconds in range(300):
     with placeholder.container():
+        # **** data will relaod every second but only rerun when the ttl is up ****
         with st.spinner('Updating historical data...'):
             update_historical_data()
         #with st.spinner('Updating current data...'):

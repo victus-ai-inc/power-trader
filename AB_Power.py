@@ -77,9 +77,11 @@ credentials = service_account.Credentials.from_service_account_info(st.secrets["
 placeholder = st.empty()
 for seconds in range(10):
     history_df = read_historical_data()
+    history_df
+
     # with placeholder.container():
 
-    # time.sleep(1)
+    time.sleep(1)
 # DAILY OUTAGE DATA
     # daily_outage_df = Pull today's version of current daily outages from BQ
     # old_daily_outage_df = Pull a week ago's version of current daily outages from BQ
