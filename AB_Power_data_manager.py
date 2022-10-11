@@ -31,6 +31,7 @@ def get_token():
     conn.request('POST', tokenPath, tokenPayload, headers)
     res = conn.getresponse()
     res_code = res.status
+    res_code
     # Check if the response is good
     if res_code == 200:
         res_data = res.read()
@@ -40,12 +41,13 @@ def get_token():
         # Put accessToken into session_state in case token is not successfully released
         st.session_state['accessToken'] = accessToken
     # If accessToken wasn't successfully released then pull from session_state
-    elif res_code == 400:
-        res.read()
-        release_token(st.session_state['accessToken'])
-        get_token()
     else:
-        res_data = res.read()
+        res.read()
+        if 'accessToken' in st.session_state:
+            release_token(st.session_state['accessToken'])
+            get_token()
+        else:
+            get_token()
     conn.close()
     return accessToken
 
