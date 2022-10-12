@@ -23,7 +23,7 @@ if __name__ == '__main__':
         pull_nrg_data.release_token(accessToken)
         APIdata['timeStamp'] = pd.to_datetime(APIdata['timeStamp'])
         APIdata['timeStamp'] = APIdata['timeStamp'].dt.tz_localize('America/Edmonton', ambiguous=True, nonexistent='shift_forward')
-        bigquery.Client(credentials=credentials).load_table_from_dataframe(APIdata, 'nrgdata.historical_data')
-        #print(APIdata)
+        #bigquery.Client(credentials=credentials).load_table_from_dataframe(APIdata, 'nrgdata.historical_data')
+        print(APIdata)
         print(f'STREAM #{id} finished, {stream_count-count} streams remaining')
         count += 1

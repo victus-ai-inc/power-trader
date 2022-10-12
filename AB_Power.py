@@ -13,9 +13,9 @@ import smtplib
 from st_aggrid import AgGrid
 from datetime import datetime, date, timedelta
 from dateutil.relativedelta import relativedelta
-from google.cloud import bigquery
 from google.oauth2 import service_account
-from google.cloud.exceptions import NotFound
+from google.cloud import bigquery
+from google.cloud import firestore
 from pandasql import sqldf
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
