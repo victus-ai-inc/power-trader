@@ -472,11 +472,11 @@ cutoff = 100
 tz = pytz.timezone('America/Edmonton')
 user = st.experimental_user.email
 logon = datetime.now(tz)
-user, logon
+#user, logon
 
 placeholder = st.empty()
 for seconds in range(450):
-    lastlog = datetime.now(tz)
+    #lastlog = datetime.now(tz)
 
     if seconds%10==0:
         with st.spinner('Gathering Realtime Data...'):
@@ -517,8 +517,8 @@ for seconds in range(450):
     alert_dict = dict(sorted(alert_dict.items(), key=lambda item: item[1]))
 
     with placeholder.container():
-        st.write(getSystemInfoDict())
-        st.write(lastlog)
+        #st.write(getSystemInfoDict())
+        #st.write(lastlog)
     # KPIs
         current_query = '''
         SELECT
