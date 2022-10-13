@@ -26,6 +26,7 @@ def getToken():
     conn.request('POST', tokenPath, tokenPayload, headers)
     res = conn.getresponse()
     res_code = res.status
+    print(res_code)
     # Check if the response is good
     if res_code == 200:
         res_data = res.read()
@@ -83,3 +84,6 @@ def release_token(accessToken):
     conn = http.client.HTTPSConnection(server,context=context)
     conn.request('DELETE', path, None, headers)
     res = conn.getresponse()
+
+accessToken, tokenExpiry = getToken()
+accessToken
