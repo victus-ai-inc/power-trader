@@ -6,6 +6,7 @@ import certifi
 import ssl
 import json
 import streamlit as st
+import pickle
 
 # Pull NRG credentials from Streamlit secrets manager
 def get_nrg_creds():
@@ -33,10 +34,16 @@ def getToken():
         # Decode the token into an object
         jsonData = json.loads(res_data.decode('utf-8'))
         accessToken = jsonData['access_token']
+        with open('./accessToken.pickle', 'wb') as token:
+            pickle.dump(accessToken, token, protocol=pickle.HIGHEST_PROTOCOL)
         # Calculate new expiry date
         tokenExpiry = datetime.now() + timedelta(seconds=jsonData['expires_in'])
     else:
         res_data = res.read()
+        with open('./accessToken.pickle', 'rb') as token:
+            accessToken = pickle.load(token)
+        release_token(accessToken)
+        tokenExpiry = datetime.now()
     conn.close()
     return (accessToken, tokenExpiry)
 

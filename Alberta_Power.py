@@ -184,41 +184,44 @@ def warning(type, lst):
 
 @st.experimental_memo(suppress_st_warning=True, max_entries=1)
 def pull_grouped_hist():
-    # Google BigQuery auth
-    credentials = service_account.Credentials.from_service_account_info(st.secrets["gcp_service_account"])
-    # Check when data was last added to BigQuery
-    query = 'SELECT MAX(timeStamp) FROM nrgdata.hourly_data'
-    # Check when BigQuery was last updated
-    last_update = bigquery.Client(credentials=credentials).query(query).to_dataframe().iloc[0][0]
-    last_update = last_update.tz_convert('America/Edmonton')
-    # Add data to BQ from when it was last updated to yesterday
-    if last_update.date() < (datetime.now(tz).date()-timedelta(days=1)):
-        pull_grouped_hist.clear()
-        streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694, 120, 124947, 122, 1]
-        history_df = get_data(streamIds, last_update.date(), datetime.now(tz).date())
-        bigquery.Client(credentials=credentials).load_table_from_dataframe(history_df, 'nrgdata.hourly_data')
-    # Pull data from BQ
-    query = '''
-    SELECT
-        DATETIME(
-            EXTRACT (YEAR FROM timeStamp), 
-            EXTRACT (MONTH FROM timeStamp),
-            EXTRACT (DAY FROM timeStamp),
-            EXTRACT (HOUR FROM timeStamp), 0, 0) AS timeStamp,
-        fuelType,
-        EXTRACT (YEAR FROM timeStamp) AS year,
-        EXTRACT (MONTH FROM timeStamp) AS month,
-        EXTRACT (DAY FROM timeStamp) AS day,
-        EXTRACT (HOUR FROM timeStamp) AS hour,
-        AVG(value) AS value
-    FROM nrgdata.hourly_data
-    WHERE timeStamp BETWEEN DATE_SUB(TIMESTAMP(current_date(),'America/Edmonton'), INTERVAL 7 DAY) AND TIMESTAMP(current_date(),'America/Edmonton')
-    GROUP BY fuelType, year, month, day, hour, timeStamp
-    ORDER BY fuelType, year, month, day, hour, timeStamp
-    '''
-    history_df = bigquery.Client(credentials=credentials).query(query).to_dataframe()
-    history_df['timeStamp'] = history_df['timeStamp'].dt.tz_localize('utc',ambiguous=True, nonexistent='shift_forward')
-    history_df['timeStamp'] = history_df['timeStamp'].dt.tz_convert('America/Edmonton')   
+    # # Google BigQuery auth
+    # credentials = service_account.Credentials.from_service_account_info(st.secrets["gcp_service_account"])
+    # # Check when data was last added to BigQuery
+    # query = 'SELECT MAX(timeStamp) FROM nrgdata.hourly_data'
+    # # Check when BigQuery was last updated
+    # last_update = bigquery.Client(credentials=credentials).query(query).to_dataframe().iloc[0][0]
+    # last_update = last_update.tz_convert('America/Edmonton')
+    # # Add data to BQ from when it was last updated to yesterday
+    # if last_update.date() < (datetime.now(tz).date()-timedelta(days=1)):
+    #     pull_grouped_hist.clear()
+    #     streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694, 120, 124947, 122, 1]
+    #     history_df = get_data(streamIds, last_update.date(), datetime.now(tz).date())
+    #     bigquery.Client(credentials=credentials).load_table_from_dataframe(history_df, 'nrgdata.hourly_data')
+    # # Pull data from BQ
+    # query = '''
+    # SELECT
+    #     DATETIME(
+    #         EXTRACT (YEAR FROM timeStamp), 
+    #         EXTRACT (MONTH FROM timeStamp),
+    #         EXTRACT (DAY FROM timeStamp),
+    #         EXTRACT (HOUR FROM timeStamp), 0, 0) AS timeStamp,
+    #     fuelType,
+    #     EXTRACT (YEAR FROM timeStamp) AS year,
+    #     EXTRACT (MONTH FROM timeStamp) AS month,
+    #     EXTRACT (DAY FROM timeStamp) AS day,
+    #     EXTRACT (HOUR FROM timeStamp) AS hour,
+    #     AVG(value) AS value
+    # FROM nrgdata.hourly_data
+    # WHERE timeStamp BETWEEN DATE_SUB(TIMESTAMP(current_date(),'America/Edmonton'), INTERVAL 7 DAY) AND TIMESTAMP(current_date(),'America/Edmonton')
+    # GROUP BY fuelType, year, month, day, hour, timeStamp
+    # ORDER BY fuelType, year, month, day, hour, timeStamp
+    # '''
+    # history_df = bigquery.Client(credentials=credentials).query(query).to_dataframe()
+    # history_df['timeStamp'] = history_df['timeStamp'].dt.tz_localize('utc',ambiguous=True, nonexistent='shift_forward')
+    # history_df['timeStamp'] = history_df['timeStamp'].dt.tz_convert('America/Edmonton')
+    historicalData_ref = db.collection(u'appData').document('historicalData')
+    history_df = pd.DataFrame.from_dict(historicalData_ref.get().to_dict())
+    history_df['timeStamp'] = history_df['timeStamp'].dt.tz_convert('America/Edmonton')
     return history_df
 
 @st.experimental_memo(suppress_st_warning=True, ttl=180, max_entries=1)
@@ -442,18 +445,13 @@ def getSystemInfoDict():
     info = json.loads(info)
     return info
 
-@st.experimental_singleton()
+@st.experimental_singleton(suppress_st_warning=True)
 def fblogin():
-    cred = credentials.Certificate(st.secrets["gcp_service_account"])
-    app = firebase_admin.initialize_app(cred)
-    db = firestore.client()
-    return db
-
-
-#def getSystemInfoJson():
-    #eturn json.loads(getSystemInfoString())
-
-
+    try:
+        firebase_admin.get_app()
+    except:
+        firebase_admin.initialize_app(credential=credentials.Certificate(st.secrets["gcp_service_account"]))
+    return firestore.client()
 
 # App config
 st.set_page_config(layout='wide', initial_sidebar_state='collapsed', menu_items=None)
@@ -483,12 +481,10 @@ currentData_ref = db.collection(u'appData').document(u'currentData')
 
 placeholder = st.empty()
 for seconds in range(450):
-    #lastlog = datetime.now(tz)
-
     with st.spinner('Gathering Realtime Data...'):
         # Read current_df from Firestore
         realtime_df = pd.DataFrame.from_dict(currentData_ref.get().to_dict())
-        realtime_df['timeStamp'] = realtime_df['timeStamp'].dt.tz_convert('America/Edmonton') 
+        realtime_df['timeStamp'] = realtime_df['timeStamp'].dt.tz_convert('America/Edmonton')
         last_update = datetime.now()
     if seconds%90==0:
         with st.spinner('Gathering Daily Outages...'):
@@ -517,10 +513,7 @@ for seconds in range(450):
     #alert_dict = {k:v for k,v in alerts_dict.items() if v > (datetime.now(tz).date()-timedelta(days=7))}
     alert_dict = {alert_list:alerts_dict[alert_list] for alert_list in alert_list}
     alert_dict = dict(sorted(alert_dict.items(), key=lambda item: item[1]))
-
     with placeholder.container():
-        #st.write(getSystemInfoDict())
-        #st.write(lastlog)
     # KPIs
         current_query = '''
         SELECT
@@ -544,10 +537,8 @@ for seconds in range(450):
         realtime['value'] = np.where(realtime['timeStamp_y']>realtime['timeStamp_x'], realtime['value_y'], realtime['value_x'])
         realtime.drop(['value_x','timeStamp_x','value_y','timeStamp_y'], axis=1, inplace=True)
         realtime = realtime.astype({'fuelType':'object','value':'float64'})
-        #previousHour = current_df[['fuelType','value']][current_df['hour']==datetime.now(tz).hour-1]
-        #currentHour = current_df[['fuelType','value']][current_df['hour']==datetime.now(tz).hour]
-        previousHour = current_df[['fuelType','value']][current_df['hour']==22]
-        currentHour = current_df[['fuelType','value']][current_df['hour']==23]
+        previousHour = current_df[['fuelType','value']][(current_df['hour']==datetime.now(tz).hour-1) & (current_df['day']==datetime.now(tz).day)]
+        currentHour = current_df[['fuelType','value']][(current_df['hour']==datetime.now(tz).hour) & (current_df['day']==datetime.now(tz).day)]
         with st.expander('*Click here to expand/collapse KPIs',expanded=True):
             kpi_df = kpi(previousHour, realtime, 'Real Time')
             kpi(previousHour, currentHour, 'Hourly Average')

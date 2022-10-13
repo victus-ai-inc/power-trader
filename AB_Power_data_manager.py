@@ -13,13 +13,19 @@ import smtplib
 import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import firestore
-from google.cloud import bigquery
-from google.oauth2 import service_account
 from pandasql import sqldf
 from datetime import datetime, date, timedelta
 from dateutil.relativedelta import relativedelta
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+
+@st.experimental_singleton(suppress_st_warning=True)
+def firestore_db_instance():
+    try:
+        firebase_admin.initialize_app(credential=credentials.Certificate(st.secrets["gcp_service_account"]))
+    except:
+        firebase_admin.get_app()
+    return firestore.client()
 
 def get_token():
     username = st.secrets["nrg_username"]
@@ -108,31 +114,38 @@ def pull_NRG_data(fromDate, toDate, streamId, accessToken):
     return df
 
 def get_data(streamIds, start_date, end_date):
-    start_date, end_date
     df = pd.DataFrame([])
     for streamId in streamIds:
         accessToken = get_token()
-        APIdata = pull_NRG_data(start_date.strftime('%m/%d/%Y')-timedelta(days=1), end_date.strftime('%m/%d/%Y'), streamId, accessToken)
+        APIdata = pull_NRG_data(start_date.strftime('%m/%d/%Y'), end_date.strftime('%m/%d/%Y'), streamId, accessToken)
         release_token(accessToken)
         df = pd.concat([df, APIdata], axis=0)
     return df
 
 # HISTORICAL
 def update_historical_data():
-    bq_cred = service_account.Credentials.from_service_account_info(st.secrets["gcp_service_account"])
-    # Check when historical data was last added to BigQuery
+    historicalData_ref = db.collection(u'appData').document('historicalData')
     if 'last_history_update' not in st.session_state:
-        query = 'SELECT MAX(timeStamp) FROM nrgdata.historical_data'
-        last_history_update = bigquery.Client(credentials=bq_cred).query(query).to_dataframe().iloc[0][0]
-        last_history_update = last_history_update.tz_convert(tz)
-        st.session_state['last_history_update'] = last_history_update
-    # Insert data to BQ from when it was last updated to yesterday
-    if st.session_state['last_history_update'].date() < (datetime.now(tz).date()-timedelta(days=1)):
+        st.write('not in ss')
+        df = pd.DataFrame.from_dict(historicalData_ref.get().to_dict())
+        df['timeStamp'] = df['timeStamp'].dt.tz_convert('America/Edmonton')
+        st.session_state['last_history_update'] = min(df['timeStamp'])
+    if st.session_state['last_history_update'].date() < (datetime.now(tz).date()-timedelta(days=7)):
+        st.warning('HISTORY BEING UPDATED')
         streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694, 120, 124947, 122, 1]
-        last_history_update
-        history_df = get_data(streamIds, last_history_update.date(), datetime.now(tz).date())
-        bigquery.Client(credentials=bq_cred).load_table_from_dataframe(history_df, 'nrgdata.historical_data')
-        st.session_state['last_history_update'] = max(history_df['timeStamp'])
+        startDate = datetime.now(tz).date()-timedelta(days=7)
+        endDate = datetime.now(tz).date()
+        history_df = get_data(streamIds, startDate, endDate)
+        historicalData_ref.set(history_df.to_dict('list'))
+        st.session_state['last_history_update'] = min(history_df['timeStamp'])
+
+    # streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694, 120, 124947, 122, 1]
+    # startDate = datetime.now(tz).date()-timedelta(days=7)
+    # endDate = datetime.now(tz).date()
+    # history_df = get_data(streamIds, startDate, endDate)
+    # st.write(min(history_df['timeStamp']))
+    # historicalData_ref.set(history_df.to_dict('list'))
+    # st.stop()
 
 # OUTAGES
     # ****add the date when the outages were pulled to outage database****
@@ -150,21 +163,14 @@ def update_historical_data():
             # send charts to users
         # Remove outages in BQ older than a week ago
 
-@st.experimental_singleton()
-def firestore_db_instance():
-    st.warning('inside db')
-    fb_cred = credentials.Certificate(st.secrets["gcp_service_account"])
-    app = firebase_admin.initialize_app(fb_cred)
-    db = firestore.client()
-    return db
-
 @st.experimental_memo(suppress_st_warning=True, ttl=15)
-def update_current_data(_currentData_ref):
+def update_current_data():
     # Pull current day's data from NRG
     streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694, 120, 124947, 122, 1]
     current_df = get_data(streamIds, datetime.now(tz).date(), datetime.now(tz).date()+timedelta(days=1))
     last_update = datetime.now(tz)
     # Update current_df data in Firestore DB
+    currentData_ref = db.collection(u'appData').document('currentData')
     currentData_ref.set(current_df.to_dict('list'), merge=True)
     return current_df, last_update
 
@@ -175,7 +181,7 @@ st.title('Alberta Power Data Manager')
 tz = pytz.timezone('America/Edmonton')
 # Google BigQuery auth
 db = firestore_db_instance()
-currentData_ref = db.collection(u'appData').document('currentData')
+
 placeholder = st.empty()
 for seconds in range(300000):
     with placeholder.container():
@@ -183,11 +189,11 @@ for seconds in range(300000):
         st.header('HISTORY')
         with st.spinner('Updating historical data...'):
             update_historical_data()
-        st.success(f"Historical data has been updated to: {st.session_state['last_history_update'].strftime('%a, %b %d @ %X')}")
+        st.success(f"Historical data has been updated from {st.session_state['last_history_update'].strftime('%a, %b %d')} to {datetime.today().strftime('%a, %b %d')}.")
         st.write('---')
         st.header('CURRENT DATA')
         with st.spinner('Updating current data...'):
-            current_df, last_update = update_current_data(currentData_ref)
+            current_df, last_update = update_current_data()
         st.success(f"Current data last updated: {last_update.strftime('%a, %b %d @ %X')}")
         st.write('---')
         st.header('DAILY OUTAGES')
