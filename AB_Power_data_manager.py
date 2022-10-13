@@ -46,7 +46,7 @@ def get_token():
         else:
             st.error('token NOT in SS')
             time.sleep(1)
-            get_token()
+            st.experimental_rerun()
     else:
         res_data = res.read()
         # Decode the token into an object
@@ -124,7 +124,7 @@ def update_historical_data():
     # Insert data to BQ from when it was last updated to yesterday
     if st.session_state['last_history_update'].date() < (datetime.now(tz).date()-timedelta(days=1)):
         streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694, 120, 124947, 122, 1]
-        history_df = get_data(streamIds, last_history_update.date(), datetime.now(tz).date())
+        history_df = get_data(streamIds, st.session_state['last_history_update'].date(), datetime.now(tz).date())
         bigquery.Client(credentials=bq_cred).load_table_from_dataframe(history_df, 'nrgdata.historical_data')
         st.session_state['last_history_update'] = max(history_df['timeStamp'])
 
