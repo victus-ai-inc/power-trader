@@ -189,7 +189,7 @@ for seconds in range(300000):
         st.header('HISTORY')
         with st.spinner('Updating historical data...'):
             update_historical_data()
-        st.success(f"Historical data has been updated from {st.session_state['last_history_update'].strftime('%a, %b %d')} to {datetime.today().strftime('%a, %b %d')}.")
+        st.success(f"Historical data has been updated from {st.session_state['last_history_update'].strftime('%a, %b %d')} to {(datetime.today()-timedelta(days=1)).strftime('%a, %b %d')}.")
         st.write('---')
         st.header('CURRENT DATA')
         with st.spinner('Updating current data...'):
