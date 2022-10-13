@@ -143,7 +143,7 @@ def update_current_data():
     last_update = datetime.now(tz)
     # Update current_df data in Firestore DB
     currentData_ref = db.collection(u'appData').document('currentData')
-    currentData_ref.set(current_df.to_dict('list'), merge=True)
+    currentData_ref.set(current_df.to_dict('list'))
     return current_df, last_update
 
     # streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694, 120, 124947, 122, 1]
