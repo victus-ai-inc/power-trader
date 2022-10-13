@@ -9,11 +9,14 @@ import certifi
 import time
 import pytz
 import smtplib
-from datetime import datetime, date, timedelta
-from dateutil.relativedelta import relativedelta
-from pandasql import sqldf
+import firebase_admin
+from firebase_admin import credentials
+from firebase_admin import firestore
 from google.cloud import bigquery
 from google.oauth2 import service_account
+from pandasql import sqldf
+from datetime import datetime, date, timedelta
+from dateutil.relativedelta import relativedelta
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
@@ -30,9 +33,21 @@ def get_token():
     conn.request('POST', tokenPath, tokenPayload, headers)
     res = conn.getresponse()
     res_code = res.status
-    res_code
     # Check if the response is good
-    if res_code == 200:
+    if res_code != 200:
+        res_code
+        res.read()
+        if 'accessToken' in st.session_state:
+            st.error('token in SS')
+            release_token(st.session_state['accessToken'])
+            time.sleep(1)
+            st.experimental_rerun()
+            get_token()
+        else:
+            st.error('token NOT in SS')
+            time.sleep(1)
+            get_token()
+    else:
         res_data = res.read()
         # Decode the token into an object
         jsonData = json.loads(res_data.decode('utf-8'))
@@ -40,15 +55,8 @@ def get_token():
         # Put accessToken into session_state in case token is not successfully released
         st.session_state['accessToken'] = accessToken
     # If accessToken wasn't successfully released then pull from session_state
-    else:
-        res.read()
-        if 'accessToken' in st.session_state:
-            release_token(st.session_state['accessToken'])
-            get_token()
-        else:
-            get_token()
     conn.close()
-    return accessToken
+    return st.session_state['accessToken']
 
 def release_token(accessToken):
     path = '/api/ReleaseToken'
@@ -106,17 +114,18 @@ def get_data(streamIds, start_date, end_date):
 
 # HISTORICAL
 def update_historical_data():
+    bq_cred = service_account.Credentials.from_service_account_info(st.secrets["gcp_service_account"])
     # Check when historical data was last added to BigQuery
     if 'last_history_update' not in st.session_state:
         query = 'SELECT MAX(timeStamp) FROM nrgdata.historical_data'
-        last_history_update = bigquery.Client(credentials=credentials).query(query).to_dataframe().iloc[0][0]
+        last_history_update = bigquery.Client(credentials=bq_cred).query(query).to_dataframe().iloc[0][0]
         last_history_update = last_history_update.tz_convert(tz)
         st.session_state['last_history_update'] = last_history_update
     # Insert data to BQ from when it was last updated to yesterday
     if st.session_state['last_history_update'].date() < (datetime.now(tz).date()-timedelta(days=1)):
         streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694, 120, 124947, 122, 1]
         history_df = get_data(streamIds, last_history_update.date(), datetime.now(tz).date())
-        bigquery.Client(credentials=credentials).load_table_from_dataframe(history_df, 'nrgdata.historical_data')
+        bigquery.Client(credentials=bq_cred).load_table_from_dataframe(history_df, 'nrgdata.historical_data')
         st.session_state['last_history_update'] = max(history_df['timeStamp'])
 
 # OUTAGES
@@ -135,44 +144,55 @@ def update_historical_data():
             # send charts to users
         # Remove outages in BQ older than a week ago
 
-# CURRENT
-    # Refresh every 10 sec:
-    # def update_current_data():
-        # pull current_df from NRG
-        # put current_df into session_state
-            # st.session_state['current_df'] = current_df
-        # clear read_current_data() memoization to refresh new current_df and make available to the apps
-            # read_current_data.clear()
+@st.experimental_singleton()
+def firestore_db_instance():
+    st.warning('inside db')
+    fb_cred = credentials.Certificate(st.secrets["gcp_service_account"])
+    app = firebase_admin.initialize_app(fb_cred)
+    db = firestore.client()
+    return db
 
-    # @st.experimental_memo()
-    # def read_current_data():
-        # Apps will always read from memo, and memo is only updated when new data is pulled 
-        # read current_df from session_state
-            # current_df = st.session_state['current_df']
-        # return current_df
+@st.experimental_memo(suppress_st_warning=True, ttl=15)
+def update_current_data(_currentData_ref):
+    # Pull current day's data from NRG
+    streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694, 120, 124947, 122, 1]
+    current_df = get_data(streamIds, datetime.now(tz).date(), datetime.now(tz).date()+timedelta(days=1))
+    last_update = datetime.now(tz)
+    # Update current_df data in Firestore DB
+    currentData_ref.set(current_df.to_dict('list'), merge=True)
+    return current_df, last_update
 
 # MAIN APP CODE
-# **** make text messages of when each element was last run ****
+st.title('Alberta Power Data Manager')
 
 # Set timezone
 tz = pytz.timezone('America/Edmonton')
 # Google BigQuery auth
-credentials = service_account.Credentials.from_service_account_info(st.secrets["gcp_service_account"])
-
+db = firestore_db_instance()
+currentData_ref = db.collection(u'appData').document('currentData')
 placeholder = st.empty()
-
-for seconds in range(300):
+for seconds in range(300000):
     with placeholder.container():
         # **** data will relaod every second but only rerun when the ttl is up ****
+        st.header('HISTORY')
         with st.spinner('Updating historical data...'):
             update_historical_data()
-        #with st.spinner('Updating current data...'):
-            #pass
+        st.success(f"Historical data has been updated to: {st.session_state['last_history_update'].strftime('%a, %b %d @ %X')}")
+        st.write('---')
+        st.header('CURRENT DATA')
+        with st.spinner('Updating current data...'):
+            current_df, last_update = update_current_data(currentData_ref)
+        st.success(f"Current data last updated: {last_update.strftime('%a, %b %d @ %X')}")
+        st.write('---')
+        st.header('DAILY OUTAGES')
         #with st.spinner('Updating daily outages...'):
             #pass
+        st.write('---')
+        st.header('MONTHLY OUTAGES')
         #with st.spinner('Updating monthly outages...'):
             #pass
-    time.sleep(1)
+        st.write('---')
+    #time.sleep(1)
 st.experimental_rerun()
 
 
