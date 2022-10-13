@@ -8,6 +8,7 @@ import http.client
 import certifi
 import time
 import pytz
+import pickle
 import smtplib
 import firebase_admin
 from firebase_admin import credentials
@@ -46,12 +47,15 @@ def get_token():
         else:
             st.error('token NOT in SS')
             time.sleep(1)
+            #st.experimental_rerun()
             get_token()
     else:
         res_data = res.read()
         # Decode the token into an object
         jsonData = json.loads(res_data.decode('utf-8'))
         accessToken = jsonData['access_token']
+        with open('./accessToken.pickle', 'wb') as token:
+            pickle.dump(accessToken, token, protocol=pickle.HIGHEST_PROTOCOL)
         # Put accessToken into session_state in case token is not successfully released
         st.session_state['accessToken'] = accessToken
     # If accessToken wasn't successfully released then pull from session_state
@@ -104,10 +108,11 @@ def pull_NRG_data(fromDate, toDate, streamId, accessToken):
     return df
 
 def get_data(streamIds, start_date, end_date):
+    start_date, end_date
     df = pd.DataFrame([])
     for streamId in streamIds:
         accessToken = get_token()
-        APIdata = pull_NRG_data(start_date.strftime('%m/%d/%Y'), end_date.strftime('%m/%d/%Y'), streamId, accessToken)
+        APIdata = pull_NRG_data(start_date.strftime('%m/%d/%Y')-timedelta(days=1), end_date.strftime('%m/%d/%Y'), streamId, accessToken)
         release_token(accessToken)
         df = pd.concat([df, APIdata], axis=0)
     return df
@@ -124,6 +129,7 @@ def update_historical_data():
     # Insert data to BQ from when it was last updated to yesterday
     if st.session_state['last_history_update'].date() < (datetime.now(tz).date()-timedelta(days=1)):
         streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694, 120, 124947, 122, 1]
+        last_history_update
         history_df = get_data(streamIds, last_history_update.date(), datetime.now(tz).date())
         bigquery.Client(credentials=bq_cred).load_table_from_dataframe(history_df, 'nrgdata.historical_data')
         st.session_state['last_history_update'] = max(history_df['timeStamp'])

@@ -544,8 +544,10 @@ for seconds in range(450):
         realtime['value'] = np.where(realtime['timeStamp_y']>realtime['timeStamp_x'], realtime['value_y'], realtime['value_x'])
         realtime.drop(['value_x','timeStamp_x','value_y','timeStamp_y'], axis=1, inplace=True)
         realtime = realtime.astype({'fuelType':'object','value':'float64'})
-        previousHour = current_df[['fuelType','value']][current_df['hour']==datetime.now(tz).hour-1]
-        currentHour = current_df[['fuelType','value']][current_df['hour']==datetime.now(tz).hour]
+        #previousHour = current_df[['fuelType','value']][current_df['hour']==datetime.now(tz).hour-1]
+        #currentHour = current_df[['fuelType','value']][current_df['hour']==datetime.now(tz).hour]
+        previousHour = current_df[['fuelType','value']][current_df['hour']==22]
+        currentHour = current_df[['fuelType','value']][current_df['hour']==23]
         with st.expander('*Click here to expand/collapse KPIs',expanded=True):
             kpi_df = kpi(previousHour, realtime, 'Real Time')
             kpi(previousHour, currentHour, 'Hourly Average')
