@@ -564,5 +564,5 @@ for seconds in range(450):
             next7_outage_chart()
             monthly_outages_chart()
             monthly_outage_diff_chart()
-    time.sleep(1)
+    #time.sleep(1)
 st.experimental_rerun()
