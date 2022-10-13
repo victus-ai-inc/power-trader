@@ -21,6 +21,9 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import socket
 import psutil
+import firebase_admin
+from firebase_admin import credentials
+from firebase_admin import firestore
 
 def get_token():
     try:
@@ -297,8 +300,8 @@ def gather_outages(pickle_key, outage_func):
     alert_df = alert_df.groupby(['date','fuelType','diff_value']).max().reset_index()
     #alert_df = pd.DataFrame({'date':[datetime(2022,9,21),datetime(2022,9,21)],'fuelType':['Test','Test2'],'diff_value':[1000,-1000]})
     if len(alert_df) > 0:
-        text_alert(alert_df, pickle_key)
-        #pass
+        #text_alert(alert_df, pickle_key)
+        pass
     # Remove oldest and add newest outage_df from default_pickle file each day
     if datetime.now(tz).date() > (outage_dfs[0][0].date() + timedelta(days=6)):
         if datetime.now(tz).date() != outage_dfs[4][0].date():
@@ -439,8 +442,12 @@ def getSystemInfoDict():
     info = json.loads(info)
     return info
 
-#def getSystemInfoString():
-    #return json.dumps(getSystemInfoDict())
+@st.experimental_singleton()
+def fblogin():
+    cred = credentials.Certificate(st.secrets["gcp_service_account"])
+    app = firebase_admin.initialize_app(cred)
+    db = firestore.client()
+    return db
 
 
 #def getSystemInfoJson():
@@ -470,9 +477,9 @@ theme = {'Biomass & Other':'#1f77b4', 'Coal':'#aec7e8', 'Dual Fuel':'#ff7f0e', '
 # Initialize variables
 cutoff = 100
 tz = pytz.timezone('America/Edmonton')
-user = st.experimental_user.email
-logon = datetime.now(tz)
-#user, logon
+db = fblogin()
+# Set path to Firestore DB
+currentData_ref = db.collection(u'appData').document(u'currentData')
 
 placeholder = st.empty()
 for seconds in range(450):
@@ -480,14 +487,10 @@ for seconds in range(450):
 
     if seconds%10==0:
         with st.spinner('Gathering Realtime Data...'):
-            try:
-                realtime_df, last_update = current_data()
-                current_dfs = (last_update, realtime_df)
-                with open('./current_df.pickle', 'wb') as current:
-                    pickle.dump(current_dfs, current, protocol=pickle.HIGHEST_PROTOCOL)
-            except:
-                with open('./current_df.pickle', 'rb') as current:
-                    last_update, realtime_df = pickle.load(current)
+            # Read current_df from Firestore
+            realtime_df = pd.DataFrame.from_dict(currentData_ref.get().to_dict())
+            realtime_df['timeStamp'] = realtime_df['timeStamp'].dt.tz_convert('America/Edmonton') 
+            last_update = datetime.now()
     if seconds%90==0:
         with st.spinner('Gathering Daily Outages...'):
             daily_outage = gather_outages('daily_df', daily_outages())
