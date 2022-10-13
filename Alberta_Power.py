@@ -442,7 +442,8 @@ st.markdown(hide_menu_style, unsafe_allow_html=True)
 theme = {'Biomass & Other':'#1f77b4', 'Coal':'#aec7e8', 'Dual Fuel':'#ff7f0e', 'Energy Storage':'#ffbb78', 'Hydro':'#2ca02c', 'Natural Gas':'#98df8a',
             'Solar':'#d62728', 'Wind':'#7f7f7f', 'BC':'#9467bd', 'Saskatchewan':'#c5b0d5', 'Montana':'#e377c2', 'Intertie':'#17becf', 'Pool Price':'#000000',
             '3-Day Solar Forecast':'#d62728','7-Day Wind Forecast':'#3f3f3f'}
-
+with st.sidebar:
+    'https://victus-ai-inc-power-trader-ab-power-data-manager-et8pt6.streamlitapp.com/'
 # Initialize variables
 cutoff = 100
 tz = pytz.timezone('America/Edmonton')
