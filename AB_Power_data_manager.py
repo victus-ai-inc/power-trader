@@ -29,45 +29,40 @@ def firestore_db_instance():
     return firestore.client()
 
 def get_token():
-    username = st.secrets["nrg_username"]
-    password = st.secrets["nrg_password"]
-    server = 'api.nrgstream.com'
-    tokenPath = '/api/security/token'
-    tokenPayload = f'grant_type=password&username={username}&password={password}'
-    headers = {"Content-type": "application/x-www-form-urlencoded"}
-    # Connect to API server to get a token
-    context = ssl.create_default_context(cafile=certifi.where())
-    conn = http.client.HTTPSConnection(server,context=context)
-    conn.request('POST', tokenPath, tokenPayload, headers)
-    res = conn.getresponse()
-    res_code = res.status
-    # Check if the response is good
-    if res_code != 200:
-        res_code
-        res.read()
-        if 'accessToken' in st.session_state:
-            st.error('token in SS')
-            release_token(st.session_state['accessToken'])
-            time.sleep(1)
-            st.experimental_rerun()
+    try:
+        username = st.secrets["nrg_username"]
+        password = st.secrets["nrg_password"]
+        server = 'api.nrgstream.com'
+        tokenPath = '/api/security/token'
+        tokenPayload = f'grant_type=password&username={username}&password={password}'
+        headers = {"Content-type": "application/x-www-form-urlencoded"}
+        # Connect to API server to get a token
+        context = ssl.create_default_context(cafile=certifi.where())
+        conn = http.client.HTTPSConnection(server,context=context)
+        conn.request('POST', tokenPath, tokenPayload, headers)
+        res = conn.getresponse()
+        res_code = res.status
+        # Check if the response is good
+        if res_code == 200:
+            res_data = res.read()
+            # Decode the token into an object
+            jsonData = json.loads(res_data.decode('utf-8'))
+            accessToken = jsonData['access_token']
+            #default_pickle['accessToken'] = accessToken
+            with open('./accessToken.pickle', 'wb') as token:
+                pickle.dump(accessToken, token, protocol=pickle.HIGHEST_PROTOCOL)
+        elif res_code == 400:
+            res.read()
+            with open('./accessToken.pickle', 'rb') as token:
+                accessToken = pickle.load(token)
+            release_token(accessToken)
             get_token()
         else:
-            st.error('token NOT in SS')
-            time.sleep(1)
-            #st.experimental_rerun()
-            get_token()
-    else:
-        res_data = res.read()
-        # Decode the token into an object
-        jsonData = json.loads(res_data.decode('utf-8'))
-        accessToken = jsonData['access_token']
-        with open('./accessToken.pickle', 'wb') as token:
-            pickle.dump(accessToken, token, protocol=pickle.HIGHEST_PROTOCOL)
-        # Put accessToken into session_state in case token is not successfully released
-        st.session_state['accessToken'] = accessToken
-    # If accessToken wasn't successfully released then pull from session_state
-    conn.close()
-    return st.session_state['accessToken']
+            res_data = res.read()
+        conn.close()
+    except:
+        pass
+    return accessToken
 
 def release_token(accessToken):
     path = '/api/ReleaseToken'
