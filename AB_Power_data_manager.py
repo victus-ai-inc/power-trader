@@ -139,6 +139,17 @@ def update_historical_data():
         historicalData_ref.set(history_df.to_dict('list'))
         st.session_state['last_history_update'] = min(history_df['timeStamp'])
 
+@st.experimental_memo(suppress_st_warning=True, ttl=15)
+def update_current_data():
+    # Pull current day's data from NRG
+    streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694, 120, 124947, 122, 1]
+    current_df = get_data(streamIds, datetime.now(tz).date(), datetime.now(tz).date()+timedelta(days=1))
+    last_update = datetime.now(tz)
+    # Update current_df data in Firestore DB
+    currentData_ref = db.collection(u'appData').document('currentData')
+    currentData_ref.set(current_df.to_dict('list'), merge=True)
+    return current_df, last_update
+
     # streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694, 120, 124947, 122, 1]
     # startDate = datetime.now(tz).date()-timedelta(days=7)
     # endDate = datetime.now(tz).date()
@@ -162,17 +173,6 @@ def update_historical_data():
             # render alert chart (as diff charts pic: https://altair-viz.github.io/user_guide/saving_charts.html)
             # send charts to users
         # Remove outages in BQ older than a week ago
-
-@st.experimental_memo(suppress_st_warning=True, ttl=15)
-def update_current_data():
-    # Pull current day's data from NRG
-    streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694, 120, 124947, 122, 1]
-    current_df = get_data(streamIds, datetime.now(tz).date(), datetime.now(tz).date()+timedelta(days=1))
-    last_update = datetime.now(tz)
-    # Update current_df data in Firestore DB
-    currentData_ref = db.collection(u'appData').document('currentData')
-    currentData_ref.set(current_df.to_dict('list'), merge=True)
-    return current_df, last_update
 
 # MAIN APP CODE
 st.title('Alberta Power Data Manager')
@@ -206,5 +206,3 @@ for seconds in range(300000):
         st.write('---')
     #time.sleep(1)
 st.experimental_rerun()
-
-
