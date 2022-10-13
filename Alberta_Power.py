@@ -510,7 +510,7 @@ for seconds in range(450):
         with open('./alert_dates.pickle', 'rb') as alert:
             alerts_dict = pickle.load(alert)
     for fuel_type in alert_list:
-        if (datetime.now(tz).date() - timedelta(days=7)) > alerts_dict[fuel_type]:
+        if (datetime.now(tz).date() - timedelta(days=7)) > alerts_dict[fuel_type].date():
             alerts_dict[fuel_type] = datetime.now(tz).date()
     with open('./alert_dates.pickle', 'wb') as handle:
         pickle.dump(alerts_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
