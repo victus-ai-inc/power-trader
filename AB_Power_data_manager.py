@@ -21,6 +21,7 @@ from email.mime.multipart import MIMEMultipart
 
 @st.experimental_singleton(suppress_st_warning=True)
 def firestore_db_instance():
+    firebase_admin.initialize_app(credential=credentials.Certificate(st.secrets["gcp_service_account"]))
     try:
         firebase_admin.initialize_app(credential=credentials.Certificate(st.secrets["gcp_service_account"]))
     except:
