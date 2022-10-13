@@ -6,3 +6,4 @@ google-cloud-bigquery
 pandasql
 db-dtypes
 psutil
+firebase-admin
