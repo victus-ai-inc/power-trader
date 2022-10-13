@@ -485,7 +485,7 @@ placeholder = st.empty()
 for seconds in range(450):
     #lastlog = datetime.now(tz)
 
-    if seconds%10==0:
+    if seconds%5==0:
         with st.spinner('Gathering Realtime Data...'):
             # Read current_df from Firestore
             realtime_df = pd.DataFrame.from_dict(currentData_ref.get().to_dict())
