@@ -10,17 +10,11 @@ import time
 import pytz
 import pickle
 import smtplib
-from st_aggrid import AgGrid
-from datetime import datetime, date, timedelta
+from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
-from google.cloud import bigquery
-from google.oauth2 import service_account
-from google.cloud.exceptions import NotFound
 from pandasql import sqldf
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-import socket
-import psutil
 import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import firestore

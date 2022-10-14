@@ -13,7 +13,6 @@ import smtplib
 import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import firestore
-from pandasql import sqldf
 from datetime import datetime, date, timedelta
 from dateutil.relativedelta import relativedelta
 from email.mime.text import MIMEText

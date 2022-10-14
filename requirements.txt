@@ -1,9 +1,8 @@
 pandas
 altair
 streamlit
-streamlit-aggrid
-google-cloud-bigquery
 pandasql
 db-dtypes
 psutil
 firebase-admin
+protobuf==3.19.6
