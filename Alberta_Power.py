@@ -18,6 +18,10 @@ from email.mime.multipart import MIMEMultipart
 import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import firestore
+import linecache
+import os
+import tracemalloc
+
 
 def get_token():
     try:
@@ -388,6 +392,30 @@ def fblogin():
         firebase_admin.initialize_app(credential=credentials.Certificate(st.secrets["gcp_service_account"]))
     return firestore.client()
 
+def display_top(snapshot, key_type='lineno', limit=10):
+    snapshot = snapshot.filter_traces((
+        tracemalloc.Filter(False, "<frozen importlib._bootstrap>"),
+        tracemalloc.Filter(False, "<unknown>"),
+    ))
+    top_stats = snapshot.statistics(key_type)
+
+    print("Top %s lines" % limit)
+    for index, stat in enumerate(top_stats[:limit], 1):
+        frame = stat.traceback[0]
+        print("#%s: %s:%s: %.1f KiB"
+              % (index, frame.filename, frame.lineno, stat.size / 1024))
+        line = linecache.getline(frame.filename, frame.lineno).strip()
+        if line:
+            print('    %s' % line)
+
+    other = top_stats[limit:]
+    if other:
+        size = sum(stat.size for stat in other)
+        print("%s other: %.1f KiB" % (len(other), size / 1024))
+    total = sum(stat.size for stat in top_stats)
+    print("Total allocated size: %.1f KiB" % (total / 1024))
+
+tracemalloc.start()
 # App config
 st.set_page_config(layout='wide', initial_sidebar_state='collapsed', menu_items=None)
 
@@ -500,5 +528,7 @@ for seconds in range(450):
             next7_outage_chart()
             monthly_outages_chart()
             monthly_outage_diff_chart()
+        snapshot = tracemalloc.take_snapshot()
+        display_top(snapshot)
     #time.sleep(1)
 st.experimental_rerun()
