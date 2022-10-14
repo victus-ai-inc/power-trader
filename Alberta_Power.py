@@ -181,7 +181,7 @@ def warning(type, lst):
      text-align: center;
      padding: 15px 10px;">{lst}</p>''', unsafe_allow_html=True)
 
-@st.experimental_memo(suppress_st_warning=True, max_entries=1)
+@st.experimental_memo(suppress_st_warning=True)
 def pull_grouped_hist():
     historicalData_ref = db.collection(u'appData').document('historicalData')
     history_df = pd.DataFrame.from_dict(historicalData_ref.get().to_dict())
