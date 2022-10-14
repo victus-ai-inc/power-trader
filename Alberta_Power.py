@@ -24,117 +24,115 @@ import os
 import tracemalloc
 tracemalloc.start()
 
+# def get_token():
+#     try:
+#         username = st.secrets["nrg_username"]
+#         password = st.secrets["nrg_password"]
+#         server = 'api.nrgstream.com'
+#         tokenPath = '/api/security/token'
+#         tokenPayload = f'grant_type=password&username={username}&password={password}'
+#         headers = {"Content-type": "application/x-www-form-urlencoded"}
+#         # Connect to API server to get a token
+#         context = ssl.create_default_context(cafile=certifi.where())
+#         conn = http.client.HTTPSConnection(server,context=context)
+#         conn.request('POST', tokenPath, tokenPayload, headers)
+#         res = conn.getresponse()
+#         res_code = res.status
+#         # Check if the response is good
+#         if res_code == 200:
+#             res_data = res.read()
+#             # Decode the token into an object
+#             jsonData = json.loads(res_data.decode('utf-8'))
+#             accessToken = jsonData['access_token']
+#             #default_pickle['accessToken'] = accessToken
+#             with open('./accessToken.pickle', 'wb') as token:
+#                 pickle.dump(accessToken, token, protocol=pickle.HIGHEST_PROTOCOL)
+#         elif res_code == 400:
+#             res.read()
+#             with open('./accessToken.pickle', 'rb') as token:
+#                 accessToken = pickle.load(token)
+#             release_token(accessToken)
+#             get_token()
+#         else:
+#             res_data = res.read()
+#         conn.close()
+#     except:
+#         pass
+#     return accessToken
+
+# def release_token(accessToken):
+#     path = '/api/ReleaseToken'
+#     server = 'api.nrgstream.com'
+#     headers = {'Authorization': f'Bearer {accessToken}'}
+#     context = ssl.create_default_context(cafile=certifi.where())
+#     conn = http.client.HTTPSConnection(server,context=context)
+#     conn.request('DELETE', path, None, headers)
+#     res = conn.getresponse()
+
+# @st.experimental_memo
+# def get_streamInfo(streamId):
+#     streamInfo = pd.read_csv('stream_codes.csv')
+#     streamInfo = streamInfo[streamInfo['streamId']==streamId]
+#     return streamInfo
+
+# def pull_data(fromDate, toDate, streamId, accessToken):
+#     server = 'api.nrgstream.com'
+#     context = ssl.create_default_context(cafile=certifi.where())
+#     conn = http.client.HTTPSConnection(server, context=context)
+#     path = f'/api/StreamData/{streamId}?fromDate={fromDate}&toDate={toDate}'
+#     headers = {'Accept': 'Application/json', 'Authorization': f'Bearer {accessToken}'}
+#     conn.request('GET', path, None, headers)
+#     response = conn.getresponse()
+#     if response.status != 200:
+#         conn.close()
+#         time.sleep(2)
+#         pull_data(fromDate, toDate, streamId, accessToken)
+#     try:
+#         jsonData = json.loads(response.read().decode('utf-8'))
+#     except json.JSONDecodeError:
+#         st.experimental_rerun()
+#     conn.close()
+#     df = pd.json_normalize(jsonData, record_path='data')
+#     # Rename df cols
+#     df.rename(columns={0:'timeStamp', 1:'value'}, inplace=True)
+#     # Add streamInfo cols to df
+#     streamInfo = get_streamInfo(streamId)
+#     assetCode = streamInfo.iloc[0,1]
+#     streamName = streamInfo.iloc[0,2]
+#     fuelType = streamInfo.iloc[0,3]
+#     subfuelType = streamInfo.iloc[0,4]
+#     timeInterval = streamInfo.iloc[0,5]
+#     intervalType = streamInfo.iloc[0,6]
+#     df = df.assign(streamId=streamId, assetCode=assetCode, streamName=streamName, fuelType=fuelType, \
+#                     subfuelType=subfuelType, timeInterval=timeInterval, intervalType=intervalType)
+#     # Changing 'value' col to numeric and filling in NA's with previous value in col
+#     df.replace(to_replace={'value':''}, value=0, inplace=True)
+#     df['value'] = pd.to_numeric(df['value'])
+#     df.fillna(method='ffill', inplace=True)
+#     df['timeStamp'] = pd.to_datetime(df['timeStamp'])
+#     df['timeStamp'] = df['timeStamp'].dt.tz_localize('America/Edmonton', ambiguous=True, nonexistent='shift_forward')
+#     return df
+
+# def get_data(streamIds, start_date, end_date):
+#     df = pd.DataFrame([])
+#     for streamId in streamIds:
+#         accessToken = get_token()
+#         APIdata = pull_data(start_date.strftime('%m/%d/%Y'), end_date.strftime('%m/%d/%Y'), streamId, accessToken)
+#         release_token(accessToken)
+#         df = pd.concat([df, APIdata], axis=0)
+#         df.drop(['streamId','assetCode','streamName','subfuelType','timeInterval','intervalType'], axis=1, inplace=True)
+#     return df
+
+# @st.experimental_memo(suppress_st_warning=True, ttl=10)
+# def current_data():
+#     streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694, 120, 124947, 122, 1]
+#     if datetime.now(tz).hour==0:
+#         realtime_df = get_data(streamIds, datetime.now(tz).date()-timedelta(days=1), datetime.now(tz).date()+timedelta(days=1))
+#     else:
+#         realtime_df = get_data(streamIds, datetime.now(tz).date(), datetime.now(tz).date()+timedelta(days=1))
+#     last_update = datetime.now(tz)
+#     return realtime_df, last_update
 snapshot1 = tracemalloc.take_snapshot()
-def get_token():
-    try:
-        username = st.secrets["nrg_username"]
-        password = st.secrets["nrg_password"]
-        server = 'api.nrgstream.com'
-        tokenPath = '/api/security/token'
-        tokenPayload = f'grant_type=password&username={username}&password={password}'
-        headers = {"Content-type": "application/x-www-form-urlencoded"}
-        # Connect to API server to get a token
-        context = ssl.create_default_context(cafile=certifi.where())
-        conn = http.client.HTTPSConnection(server,context=context)
-        conn.request('POST', tokenPath, tokenPayload, headers)
-        res = conn.getresponse()
-        res_code = res.status
-        # Check if the response is good
-        if res_code == 200:
-            res_data = res.read()
-            # Decode the token into an object
-            jsonData = json.loads(res_data.decode('utf-8'))
-            accessToken = jsonData['access_token']
-            #default_pickle['accessToken'] = accessToken
-            with open('./accessToken.pickle', 'wb') as token:
-                pickle.dump(accessToken, token, protocol=pickle.HIGHEST_PROTOCOL)
-        elif res_code == 400:
-            res.read()
-            with open('./accessToken.pickle', 'rb') as token:
-                accessToken = pickle.load(token)
-            release_token(accessToken)
-            get_token()
-        else:
-            res_data = res.read()
-        conn.close()
-    except:
-        pass
-    return accessToken
-snapshot2 = tracemalloc.take_snapshot()
-
-def release_token(accessToken):
-    path = '/api/ReleaseToken'
-    server = 'api.nrgstream.com'
-    headers = {'Authorization': f'Bearer {accessToken}'}
-    context = ssl.create_default_context(cafile=certifi.where())
-    conn = http.client.HTTPSConnection(server,context=context)
-    conn.request('DELETE', path, None, headers)
-    res = conn.getresponse()
-
-@st.experimental_memo
-def get_streamInfo(streamId):
-    streamInfo = pd.read_csv('stream_codes.csv')
-    streamInfo = streamInfo[streamInfo['streamId']==streamId]
-    return streamInfo
-
-def pull_data(fromDate, toDate, streamId, accessToken):
-    server = 'api.nrgstream.com'
-    context = ssl.create_default_context(cafile=certifi.where())
-    conn = http.client.HTTPSConnection(server, context=context)
-    path = f'/api/StreamData/{streamId}?fromDate={fromDate}&toDate={toDate}'
-    headers = {'Accept': 'Application/json', 'Authorization': f'Bearer {accessToken}'}
-    conn.request('GET', path, None, headers)
-    response = conn.getresponse()
-    if response.status != 200:
-        conn.close()
-        time.sleep(2)
-        pull_data(fromDate, toDate, streamId, accessToken)
-    try:
-        jsonData = json.loads(response.read().decode('utf-8'))
-    except json.JSONDecodeError:
-        st.experimental_rerun()
-    conn.close()
-    df = pd.json_normalize(jsonData, record_path='data')
-    # Rename df cols
-    df.rename(columns={0:'timeStamp', 1:'value'}, inplace=True)
-    # Add streamInfo cols to df
-    streamInfo = get_streamInfo(streamId)
-    assetCode = streamInfo.iloc[0,1]
-    streamName = streamInfo.iloc[0,2]
-    fuelType = streamInfo.iloc[0,3]
-    subfuelType = streamInfo.iloc[0,4]
-    timeInterval = streamInfo.iloc[0,5]
-    intervalType = streamInfo.iloc[0,6]
-    df = df.assign(streamId=streamId, assetCode=assetCode, streamName=streamName, fuelType=fuelType, \
-                    subfuelType=subfuelType, timeInterval=timeInterval, intervalType=intervalType)
-    # Changing 'value' col to numeric and filling in NA's with previous value in col
-    df.replace(to_replace={'value':''}, value=0, inplace=True)
-    df['value'] = pd.to_numeric(df['value'])
-    df.fillna(method='ffill', inplace=True)
-    df['timeStamp'] = pd.to_datetime(df['timeStamp'])
-    df['timeStamp'] = df['timeStamp'].dt.tz_localize('America/Edmonton', ambiguous=True, nonexistent='shift_forward')
-    return df
-
-def get_data(streamIds, start_date, end_date):
-    df = pd.DataFrame([])
-    for streamId in streamIds:
-        accessToken = get_token()
-        APIdata = pull_data(start_date.strftime('%m/%d/%Y'), end_date.strftime('%m/%d/%Y'), streamId, accessToken)
-        release_token(accessToken)
-        df = pd.concat([df, APIdata], axis=0)
-        df.drop(['streamId','assetCode','streamName','subfuelType','timeInterval','intervalType'], axis=1, inplace=True)
-    return df
-
-@st.experimental_memo(suppress_st_warning=True, ttl=10)
-def current_data():
-    streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694, 120, 124947, 122, 1]
-    if datetime.now(tz).hour==0:
-        realtime_df = get_data(streamIds, datetime.now(tz).date()-timedelta(days=1), datetime.now(tz).date()+timedelta(days=1))
-    else:
-        realtime_df = get_data(streamIds, datetime.now(tz).date(), datetime.now(tz).date()+timedelta(days=1))
-    last_update = datetime.now(tz)
-    return realtime_df, last_update
-
 def kpi(left_df, right_df, title):
     # Merging KPIs into one dataframe
     kpi_df = left_df.merge(right_df, how='left', on='fuelType', suffixes=('Previous','Current'))
@@ -158,7 +156,7 @@ def kpi(left_df, right_df, title):
     col11.metric(label=kpi_df.iloc[9,0], value=kpi_df.iloc[9,2], delta=kpi_df.iloc[9,3]) # Sask
     col12.metric(label=kpi_df.iloc[8,0], value=kpi_df.iloc[8,2], delta=kpi_df.iloc[8,3]) # Pool Price
     return kpi_df
-
+snapshot2 = tracemalloc.take_snapshot()
 def warning(type, lst):
     if type == 'warning':
         background_color = 'rgba(214, 39, 40, .1)'
