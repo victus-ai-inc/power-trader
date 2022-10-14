@@ -191,16 +191,6 @@ def pull_grouped_hist():
 
 @st.experimental_memo(suppress_st_warning=True, ttl=180, max_entries=1)
 def daily_outages():
-    # streamIds = [124]
-    # intertie_outages = get_data(streamIds, datetime.now(tz).date(), datetime.now(tz).date() + relativedelta(months=12, day=1, days=-1))
-    # intertie_outages['value'] = max(intertie_outages['value']) - intertie_outages['value']
-    # streamIds = [102225, 293354]
-    # wind_solar = get_data(streamIds, datetime.now(tz).date(), datetime.now(tz).date() + relativedelta(days=7))
-    # streamIds = [118366, 118363, 322685, 118365, 118364, 322667, 322678, 147263]
-    # stream_outages = get_data(streamIds, datetime.now(tz).date(), datetime.now(tz).date() + relativedelta(months=4, day=1))
-    # stream_outages = stream_outages.pivot(index='timeStamp',columns='fuelType',values='value').asfreq(freq='H', method='ffill').reset_index()
-    # stream_outages = stream_outages.melt(id_vars='timeStamp',value_vars=['Biomass & Other','Coal','Dual Fuel','Energy Storage','Hydro','Natural Gas','Solar','Wind'])
-    # daily_outages = pd.concat([intertie_outages,stream_outages,wind_solar])
     dailyOutages_ref = db.collection(u'appData').document('dailyOutages')
     daily_outages = pd.DataFrame.from_dict(dailyOutages_ref.get().to_dict())
     daily_outages['timeStamp'] = daily_outages['timeStamp'].dt.tz_convert('America/Edmonton')
@@ -208,13 +198,6 @@ def daily_outages():
 
 @st.experimental_memo(suppress_st_warning=True, ttl=300, max_entries=1)
 def monthly_outages():
-    # streamIds = [44648, 118361, 322689, 118362, 147262, 322675, 322682, 44651]
-    # years = [datetime.now(tz).year, datetime.now(tz).year+1, datetime.now(tz).year+2]
-    # monthly_outages = pd.DataFrame([])
-    # for year in years:
-    #     df = get_data(streamIds, date(year,1,1), date(year+1,1,1))
-    #     monthly_outages = pd.concat([monthly_outages, df], axis=0)
-    # monthly_outages = monthly_outages[monthly_outages['timeStamp'].dt.date>(datetime.now(tz).date())]
     monthlyOutages_ref = db.collection(u'appData').document('monthlyOutages')
     monthly_outages = pd.DataFrame.from_dict(monthlyOutages_ref.get().to_dict())
     monthly_outages['timeStamp'] = monthly_outages['timeStamp'].dt.tz_convert('America/Edmonton')
@@ -402,19 +385,6 @@ def monthly_outage_diff_chart():
             tooltip=['fuelType','diff_value','timeStamp']
         ).properties(height=110 if len(monthly_alert_list)==1 else 60 * len(monthly_alert_list)).configure_view(strokeWidth=0).configure_axis(grid=False)
         st.altair_chart(monthly_outage_heatmap, use_container_width=True)
-
-#@st.experimental_memo()
-def user_log(user, logon, lastlog):
-    pass
-
-def getSystemInfoDict():
-    info = dict()
-    info['cached'] = str(
-            round(psutil.virtual_memory().cached / (1024.0 ** 2)))+" MB"
-    info['available-memory'] = f'{round(psutil.virtual_memory().available * 100 / psutil.virtual_memory().total)}%'
-    info = json.dumps(info)
-    info = json.loads(info)
-    return info
 
 @st.experimental_singleton(suppress_st_warning=True)
 def fblogin():
