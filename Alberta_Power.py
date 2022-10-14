@@ -281,10 +281,9 @@ def outage_diffs(pickle_key):
     diff_df = diff_df[diff_df['fuelType'].isin(alert_list)]
     return diff_df, alert_list
 
-def current_supply_chart():
+def current_supply_chart(history_df):
     st.subheader('Current Supply (Previous 7-days)')
     thm = {k:v for k,v in theme.items() if k not in ['Intertie','3-Day Solar Forecast','7-Day Wind Forecast']}
-    history_df = pull_grouped_hist()
     combo_df = pd.concat([history_df,current_df], axis=0)
     combo_df = sqldf("SELECT * FROM combo_df ORDER BY fuelType", locals())
     combo_max = sqldf(
@@ -523,7 +522,8 @@ for seconds in range(450):
         # Charts
         col1, col2 = st.columns(2)
         with col1:
-            current_supply_chart()
+            history_df = pull_grouped_hist()
+            current_supply_chart(history_df)
             next90_outage_chart()
             daily_outage_diff_chart()
         with col2:
