@@ -131,9 +131,9 @@ dmypy.json
 # Streamlit secrects
 .streamlit/secrets.toml
 
-/alerts.py
-/data_pull.py
-/jupyter_testing.ipynb
-/old_app.py
-/pull_nrg_data.py
-/ztemp.py
+~/power-trader/alerts.py
+~/power-trader/data_pull.py
+~/power-trader/jupyter_testing.ipynb
+~/power-trader/old_app.py
+~/power-trader/pull_nrg_data.py
+~/power-trader/ztemp.py
