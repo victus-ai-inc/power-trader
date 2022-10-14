@@ -20,9 +20,11 @@ from firebase_admin import credentials
 from firebase_admin import firestore
 import linecache
 import os
+
 import tracemalloc
+tracemalloc.start()
 
-
+snapshot1 = tracemalloc.take_snapshot()
 def get_token():
     try:
         username = st.secrets["nrg_username"]
@@ -58,6 +60,7 @@ def get_token():
     except:
         pass
     return accessToken
+snapshot2 = tracemalloc.take_snapshot()
 
 def release_token(accessToken):
     path = '/api/ReleaseToken'
@@ -528,7 +531,10 @@ for seconds in range(450):
             next7_outage_chart()
             monthly_outages_chart()
             monthly_outage_diff_chart()
-        snapshot = tracemalloc.take_snapshot()
-        display_top(snapshot)
+        top_stats = snapshot2.compare_to(snapshot1, 'lineno')
+
+        print("[ Top 10 differences ]")
+        for stat in top_stats[:10]:
+            print(stat)
     #time.sleep(1)
 st.experimental_rerun()
