@@ -20,7 +20,6 @@ from firebase_admin import credentials
 from firebase_admin import firestore
 import linecache
 import os
-from memory_profiler import profile
 
 import tracemalloc
 tracemalloc.start()
