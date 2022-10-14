@@ -533,8 +533,8 @@ for seconds in range(450):
             monthly_outage_diff_chart()
         top_stats = snapshot2.compare_to(snapshot1, 'lineno')
 
-        print("[ Top 10 differences ]")
+        st.write("[ Top 10 differences ]")
         for stat in top_stats[:10]:
-            print(stat)
+            st.write(stat)
     #time.sleep(1)
 st.experimental_rerun()
