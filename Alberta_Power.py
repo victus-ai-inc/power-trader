@@ -416,7 +416,7 @@ def display_top(snapshot, key_type='lineno', limit=10):
     total = sum(stat.size for stat in top_stats)
     st.write("Total allocated size: %.1f KiB" % (total / 1024))
 
-tracemalloc.start()
+#tracemalloc.start()
 # App config
 st.set_page_config(layout='wide', initial_sidebar_state='collapsed', menu_items=None)
 
