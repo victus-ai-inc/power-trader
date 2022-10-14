@@ -20,6 +20,7 @@ from firebase_admin import credentials
 from firebase_admin import firestore
 import linecache
 import os
+from memory_profiler import profile
 
 import tracemalloc
 tracemalloc.start()
@@ -132,7 +133,7 @@ tracemalloc.start()
 #         realtime_df = get_data(streamIds, datetime.now(tz).date(), datetime.now(tz).date()+timedelta(days=1))
 #     last_update = datetime.now(tz)
 #     return realtime_df, last_update
-snapshot1 = tracemalloc.take_snapshot()
+
 def kpi(left_df, right_df, title):
     # Merging KPIs into one dataframe
     kpi_df = left_df.merge(right_df, how='left', on='fuelType', suffixes=('Previous','Current'))
@@ -156,7 +157,7 @@ def kpi(left_df, right_df, title):
     col11.metric(label=kpi_df.iloc[9,0], value=kpi_df.iloc[9,2], delta=kpi_df.iloc[9,3]) # Sask
     col12.metric(label=kpi_df.iloc[8,0], value=kpi_df.iloc[8,2], delta=kpi_df.iloc[8,3]) # Pool Price
     return kpi_df
-snapshot2 = tracemalloc.take_snapshot()
+
 def warning(type, lst):
     if type == 'warning':
         background_color = 'rgba(214, 39, 40, .1)'
@@ -393,6 +394,7 @@ def fblogin():
         firebase_admin.initialize_app(credential=credentials.Certificate(st.secrets["gcp_service_account"]))
     return firestore.client()
 
+
 def display_top(snapshot, key_type='lineno', limit=10):
     snapshot = snapshot.filter_traces((
         tracemalloc.Filter(False, "<frozen importlib._bootstrap>"),
@@ -529,10 +531,5 @@ for seconds in range(450):
             next7_outage_chart()
             monthly_outages_chart()
             monthly_outage_diff_chart()
-        top_stats = snapshot2.compare_to(snapshot1, 'lineno')
-
-        st.markdown("[ Top 10 differences ]")
-        for stat in top_stats[:10]:
-            st.markdown(stat)
     #time.sleep(1)
 st.experimental_rerun()
