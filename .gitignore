@@ -130,3 +130,10 @@ dmypy.json
 
 # Streamlit secrects
 .streamlit/secrets.toml
+
+alerts.py
+data_pull.py
+jupyter_testing.ipynb
+old_app.py
+pull_nrg_data.py
+ztemp.py
