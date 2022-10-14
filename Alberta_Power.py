@@ -10,6 +10,7 @@ import time
 import pytz
 import pickle
 import smtplib
+import sys
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from pandasql import sqldf
@@ -18,6 +19,7 @@ from email.mime.multipart import MIMEMultipart
 import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import firestore
+   
 
 def kpi(left_df, right_df, title):
     # Merging KPIs into one dataframe
@@ -78,6 +80,7 @@ def pull_grouped_hist():
 def daily_outages():
     dailyOutages_ref = db.collection(u'appData').document('dailyOutages')
     daily_outages = pd.DataFrame.from_dict(dailyOutages_ref.get().to_dict())
+    daily_outages['fuelType'] = daily_outages['fuelType'].astype('category')
     daily_outages['timeStamp'] = daily_outages['timeStamp'].dt.tz_convert('America/Edmonton')
     return daily_outages
 
@@ -86,6 +89,7 @@ def monthly_outages():
     monthlyOutages_ref = db.collection(u'appData').document('monthlyOutages')
     monthly_outages = pd.DataFrame.from_dict(monthlyOutages_ref.get().to_dict())
     monthly_outages['timeStamp'] = monthly_outages['timeStamp'].dt.tz_convert('America/Edmonton')
+    monthly_outages['fuelType'] = monthly_outages['fuelType'].astype('category')
     return monthly_outages
 
 def text_alert(alert_df, pickle_key):
@@ -115,14 +119,21 @@ def text_alert(alert_df, pickle_key):
             msg.attach(MIMEText(body, 'plain'))
             server.sendmail(email, gateway, msg.as_string())
 
+# MEMORY: Can diff_df be filtered to only where the diff_value >= 100??
 def diff_calc(pickle_key, old_df, new_df):
     diff_df = pd.merge(old_df, new_df, on=['timeStamp','fuelType'], suffixes=('_new','_old'))
     diff_df['diff_value'] = diff_df['value_old'] - diff_df['value_new']
     diff_df['date'] = diff_df['timeStamp'].dt.date
+    diff_df
+    mem(diff_df)
+    diff_df = diff_df[['date','fuelType','diff_value']]
+    diff_df
+    mem(diff_df)
+    st.stop()
     if pickle_key == 'daily_df':
-        diff_df = diff_df[diff_df['date'] < datetime.now(tz).date() + timedelta(days=90)]
+        diff_df = diff_df[diff_df['date'].dt.date < datetime.now(tz).date() + timedelta(days=90)]
     elif pickle_key == 'monthly_df':
-        diff_df = diff_df[diff_df['date'] > datetime.now(tz).date() + relativedelta(months=3, day=1, days=-1)]
+        diff_df = diff_df[diff_df['date'].dt.date > datetime.now(tz).date() + relativedelta(months=3, day=1, days=-1)]
     return diff_df
 
 def gather_outages(pickle_key, outage_func):
@@ -157,11 +168,8 @@ def gather_outages(pickle_key, outage_func):
 
 def outage_diffs(pickle_key):
     # Create df and alert list comparing outages a week ago to current outages
-    try:
-        with open(f'./{pickle_key}.pickle', 'rb') as outage:
-            outage_dfs = pickle.load(outage)
-    except:
-        st.experimental_rerun()
+    with open(f'./{pickle_key}.pickle', 'rb') as outage:
+        outage_dfs = pickle.load(outage)
     diff_df = diff_calc(pickle_key, outage_dfs[0][1], outage_dfs[4][1])
     alert_list = list(set(diff_df['fuelType'][abs(diff_df['diff_value'])>=cutoff]))
     diff_df = diff_df[diff_df['fuelType'].isin(alert_list)]
@@ -278,6 +286,9 @@ def fblogin():
         firebase_admin.initialize_app(credential=credentials.Certificate(st.secrets["gcp_service_account"]))
     return firestore.client()
 
+def mem(df):
+    print(df.info(memory_usage='deep'))
+
 # App config
 st.set_page_config(layout='wide', initial_sidebar_state='collapsed', menu_items=None)
 
@@ -307,16 +318,19 @@ currentData_ref = db.collection(u'appData').document(u'currentData')
 
 placeholder = st.empty()
 for seconds in range(450):
-        # Read current_df from Firestore
+    # Read current_df from Firestore
     realtime_df = pd.DataFrame.from_dict(currentData_ref.get().to_dict())
+    realtime_df['fuelType'] = realtime_df['fuelType'].astype('category')
     realtime_df['timeStamp'] = realtime_df['timeStamp'].dt.tz_convert('America/Edmonton')
     last_update = datetime.now()
-
+    
     daily_outage = gather_outages('daily_df', daily_outages())
     daily_outage = daily_outage[daily_outage['timeStamp'].dt.date < datetime.now(tz).date() + timedelta(days=90)]
     monthly_outage = gather_outages('monthly_df', monthly_outages())
 
     daily_diff, daily_alert_list = outage_diffs('daily_df')
+    sys.getsizeof(daily_alert_list)
+    st.stop()
     monthly_diff, monthly_alert_list = outage_diffs('monthly_df')
     alert_list = set(daily_alert_list + monthly_alert_list)
 
