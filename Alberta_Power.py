@@ -69,29 +69,6 @@ def warning(type, lst):
      text-align: center;
      padding: 15px 10px;">{lst}</p>''', unsafe_allow_html=True)
 
-@st.experimental_memo(suppress_st_warning=True, max_entries=1)
-def pull_grouped_hist():
-    historicalData_ref = db.collection(u'appData').document('historicalData')
-    history_df = pd.DataFrame.from_dict(historicalData_ref.get().to_dict())
-    history_df['timeStamp'] = history_df['timeStamp'].dt.tz_convert('America/Edmonton')
-    return history_df
-
-@st.experimental_memo(suppress_st_warning=True, ttl=180, max_entries=1)
-def daily_outages():
-    dailyOutages_ref = db.collection(u'appData').document('dailyOutages')
-    daily_outages = pd.DataFrame.from_dict(dailyOutages_ref.get().to_dict())
-    daily_outages['fuelType'] = daily_outages['fuelType'].astype('category')
-    daily_outages['timeStamp'] = daily_outages['timeStamp'].dt.tz_convert('America/Edmonton')
-    return daily_outages
-
-@st.experimental_memo(suppress_st_warning=True, ttl=300, max_entries=1)
-def monthly_outages():
-    monthlyOutages_ref = db.collection(u'appData').document('monthlyOutages')
-    monthly_outages = pd.DataFrame.from_dict(monthlyOutages_ref.get().to_dict())
-    monthly_outages['timeStamp'] = monthly_outages['timeStamp'].dt.tz_convert('America/Edmonton')
-    monthly_outages['fuelType'] = monthly_outages['fuelType'].astype('category')
-    return monthly_outages
-
 def text_alert(alert_df, pickle_key):
     email = st.secrets['email_address']
     pas = st.secrets['email_password']
@@ -123,13 +100,8 @@ def text_alert(alert_df, pickle_key):
 def diff_calc(pickle_key, old_df, new_df):
     diff_df = pd.merge(old_df, new_df, on=['timeStamp','fuelType'], suffixes=('_new','_old'))
     diff_df['diff_value'] = diff_df['value_old'] - diff_df['value_new']
-    diff_df['date'] = diff_df['timeStamp'].dt.date
-    diff_df
-    mem(diff_df)
+    diff_df['date'] = diff_df['timeStamp'].dt.date.astype('datetime64[ns]')
     diff_df = diff_df[['date','fuelType','diff_value']]
-    diff_df
-    mem(diff_df)
-    st.stop()
     if pickle_key == 'daily_df':
         diff_df = diff_df[diff_df['date'].dt.date < datetime.now(tz).date() + timedelta(days=90)]
     elif pickle_key == 'monthly_df':
@@ -315,6 +287,7 @@ tz = pytz.timezone('America/Edmonton')
 db = fblogin()
 # Set path to Firestore DB
 currentData_ref = db.collection(u'appData').document(u'currentData')
+history_df = read_firestore_data(db, 'historicalData')
 
 placeholder = st.empty()
 for seconds in range(450):
@@ -324,9 +297,9 @@ for seconds in range(450):
     realtime_df['timeStamp'] = realtime_df['timeStamp'].dt.tz_convert('America/Edmonton')
     last_update = datetime.now()
     
-    daily_outage = gather_outages('daily_df', daily_outages())
+    daily_outage = gather_outages('daily_df', read_firestore_data(db,'dailyOutages'))
     daily_outage = daily_outage[daily_outage['timeStamp'].dt.date < datetime.now(tz).date() + timedelta(days=90)]
-    monthly_outage = gather_outages('monthly_df', monthly_outages())
+    monthly_outage = gather_outages('monthly_df', read_firestore_data(db,'monthlyOutages'))
 
     daily_diff, daily_alert_list = outage_diffs('daily_df')
     sys.getsizeof(daily_alert_list)
@@ -393,7 +366,6 @@ for seconds in range(450):
         # Charts
         col1, col2 = st.columns(2)
         with col1:
-            history_df = pull_grouped_hist()
             current_supply_chart(history_df)
             next90_outage_chart()
             daily_outage_diff_chart()

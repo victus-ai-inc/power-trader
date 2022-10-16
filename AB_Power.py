@@ -2,92 +2,81 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import altair as alt
+import time
+from datetime import datetime, date, timedelta
+from dateutil.relativedelta import relativedelta
+import pytz
 import ssl
 import json
 import http.client
 import certifi
-import time
-import pytz
-import pickle
 import smtplib
-from st_aggrid import AgGrid
-from datetime import datetime, date, timedelta
-from dateutil.relativedelta import relativedelta
-from google.oauth2 import service_account
-from google.cloud import bigquery
-from google.cloud import firestore
-from pandasql import sqldf
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from google.oauth2 import service_account
+import firebase_admin
+from google.cloud import firestore
+from firebase_admin import credentials
+from firebase_admin import firestore
+from google.cloud import bigquery
+from pandasql import sqldf
 
 # **** Create alert if data-manager is not running ****
     # Give option to open data-manager url and allow it to run in background
+@st.experimental_singleton(suppress_st_warning=True)
+def firestore_db_instance():
+    try:
+        firebase_admin.get_app()
+    except:
+        firebase_admin.initialize_app(credential=credentials.Certificate(st.secrets["gcp_service_account"]))
+    return firestore.client()
 
-# CURRENT DATA
-    # current_df = AB-Power-data-manager.read_current_data()
+def read_firestore(db, document):
+    firestore_ref = db.collection(u'appData').document(document)
+    df = pd.DataFrame.from_dict(firestore_ref.get().to_dict())
+    df['fuelType'] = df['fuelType'].astype('category')
+    df['timeStamp'] = df['timeStamp'].dt.tz_convert('America/Edmonton')
+    return df
 
-# HISTORICAL DATA
 @st.experimental_memo(suppress_st_warning=True)
-def query_historical_data():
-    query = '''
-    SELECT
-        DATETIME(
-            EXTRACT (YEAR FROM timeStamp), 
-            EXTRACT (MONTH FROM timeStamp),
-            EXTRACT (DAY FROM timeStamp),
-            EXTRACT (HOUR FROM timeStamp), 0, 0) AS timeStamp,
-        fuelType,
-        EXTRACT (YEAR FROM timeStamp) AS year,
-        EXTRACT (MONTH FROM timeStamp) AS month,
-        EXTRACT (DAY FROM timeStamp) AS day,
-        EXTRACT (HOUR FROM timeStamp) AS hour,
-        AVG(value) AS value
-    FROM nrgdata.historical_data
-    WHERE timeStamp BETWEEN
-        DATE_SUB(TIMESTAMP(current_date(),'America/Edmonton'), INTERVAL 7 DAY) AND 
-        TIMESTAMP(current_date(),'America/Edmonton')
-    GROUP BY fuelType, year, month, day, hour, timeStamp
-    ORDER BY fuelType, year, month, day, hour, timeStamp
+def oldOutage_df(outageTable):
+    cred = service_account.Credentials.from_service_account_info(st.secrets["gcp_service_account"])
+    query = f'''
+    SELECT * FROM `{outageTable}`
+    WHERE loadDate = 
+        (SELECT MIN(loadDate) FROM 
+            (SELECT loadDate FROM `{outageTable}`
+            GROUP BY loadDate
+            ORDER BY loadDate DESC
+            LIMIT 5))
+    ORDER BY fuelType, timeStamp
     '''
-    history_df = bigquery.Client(credentials=credentials).query(query).to_dataframe()
-    history_df['timeStamp'] = history_df['timeStamp'].dt.tz_localize('utc', ambiguous=True, nonexistent='shift_forward')
-    history_df['timeStamp'] = history_df['timeStamp'].dt.tz_convert(tz)
-    return history_df
+    df = bigquery.Client(credentials=cred).query(query).to_dataframe()
+    df = df[['timeStamp','fuelType','value']]
+    df['timeStamp'] = df['timeStamp'].dt.tz_convert(tz)
+    df['fuelType'] = df['fuelType'].astype('category')
+    return df
 
-def read_historical_data():
-    # Check when historical data was last added to BigQuery
-    if 'last_history_update' not in st.session_state:
-        query = 'SELECT MAX(timeStamp) FROM nrgdata.historical_data'
-        last_history_update = bigquery.Client(credentials=credentials).query(query).to_dataframe().iloc[0][0]
-        last_history_update = last_history_update.tz_convert(tz)
-        st.session_state['last_history_update'] = last_history_update
-    # Insert data to BQ from when it was last updated to yesterday
-    if st.session_state['last_history_update'].date() < (datetime.now(tz).date()-timedelta(days=1)):
-        query_historical_data.clear()
-        history_df = query_historical_data()
-        st.session_state['last_history_update'] = max(history_df['timeStamp'])
-    else:
-        history_df = query_historical_data()
-    return history_df
+# MONTHLY OUTAGE DATA
 
 # Set global parameters
 tz = pytz.timezone('America/Edmonton')
-credentials = service_account.Credentials.from_service_account_info(st.secrets["gcp_service_account"])
+db = firestore_db_instance()
+
+history_df = read_firestore(db,'historicalData')
+current_df = read_firestore(db,'currentData')
+oldDailyOutage_df = oldOutage_df('outages.dailyOutages')
+oldMonthlyOutage_df = oldOutage_df('outages.monthlyOutages')
+# windSolar_df = ***pull from FS***
 
 placeholder = st.empty()
 for seconds in range(10):
-    history_df = read_historical_data()
-    history_df
+    
 
     # with placeholder.container():
 
     time.sleep(1)
-# DAILY OUTAGE DATA
-    # daily_outage_df = Pull today's version of current daily outages from BQ
-    # old_daily_outage_df = Pull a week ago's version of current daily outages from BQ
 
-# MONTHLY OUTAGE DATA
-    # monthly_outages = Pull today's version of monthly outages from BQ
 
 # KPIs
 
