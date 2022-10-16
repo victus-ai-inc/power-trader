@@ -1,25 +1,3 @@
 [server]
 headless = true
-
-[theme]
-
-# Primary accent for interactive elements
-#primaryColor = '#31333F'
-
-# Background color for the main content area
-#backgroundColor = '#273346'
-
-# Background color for sidebar and most interactive widgets
-#secondaryBackgroundColor = '#F0F2F6'
-
-# Color used for almost all text
-#textColor = '#31333F'
-
-# Font family for all text in the app, except code blocks
-# Accepted values (serif | sans serif | monospace) 
-# Default: "sans serif"
-font = "sans serif"
-
-# Core Design logo colors:
-# Background color = #4f738a'
-# Logo accent color (red) = '#b42b26'
+runOnSave = True
