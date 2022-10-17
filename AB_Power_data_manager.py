@@ -2,21 +2,26 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import altair as alt
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+import matplotlib.cbook as cbook
 import ssl
 import json
 import http.client
 import certifi
 import pytz
+import pickle
 from datetime import datetime, date, timedelta
 from dateutil.relativedelta import relativedelta
+from google.oauth2 import service_account
+from google.cloud import bigquery
 import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import firestore
-from google.cloud import bigquery
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from google.oauth2 import service_account
+from email.mime.image import MIMEImage
 
 @st.experimental_singleton(suppress_st_warning=True)
 def firestore_db_instance():
@@ -129,7 +134,6 @@ def get_data(streamIds, start_date, end_date):
 def update_historical_data():
     historicalData_ref = db.collection(u'appData').document('historicalData')
     if 'last_history_update' not in st.session_state:
-        st.write('not in ss')
         df = pd.DataFrame.from_dict(historicalData_ref.get().to_dict())
         df['timeStamp'] = df['timeStamp'].dt.tz_convert('America/Edmonton')
         st.session_state['last_history_update'] = min(df['timeStamp'])
@@ -160,6 +164,39 @@ def diff_calc(outageTable, old_df, new_df):
     diff_df = diff_df[diff_df['diff_value'] > 100]
     return diff_df
 
+def alertChart(diff_df):
+    #title = diff_df['fuelType'][0]
+
+    df = diff_df[['timeStamp','diff_value']]
+    df
+    df = df.set_index('timeStamp')
+    df
+    x = df.index.values
+    y = df['diff_value'].values
+    y
+    upper = np.ma.masked_where(y <= 0, y)
+    lower = np.ma.masked_where(y > 0, y)
+
+    fig, ax = plt.subplots()
+    ax.bar(x,y,width=1./24)
+    st.pyplot(fig)
+    st.stop()
+    return picture
+
+def text_alert(picture):
+    email = st.secrets['email_address']
+    pas = st.secrets['email_password']
+    sms_gateways = st.secrets['phone_numbers'].values()
+    server = smtplib.SMTP('smtp.gmail.com', 587)
+    server.starttls()
+    server.login(email, pas)
+    for gateway in sms_gateways:
+        msg = MIMEMultipart()
+        msg['To'] = gateway
+        body = picture
+        msg.attach(MIMEText(body, 'plain'))
+        server.sendmail(email, gateway, msg.as_string())
+
 @st.experimental_memo(suppress_st_warning=True, ttl=180)
 def update_daily_outages():
     # Pull last update from FS
@@ -178,24 +215,34 @@ def update_daily_outages():
     dailyOutages_ref.set(newOutages.to_dict('list'))
     # Calc diffs
     diff_df = diff_calc('dailyOutages', oldOutages, newOutages)
-    diff_df
-    diff_df.info()
-    st.stop()
 
 @st.experimental_memo(suppress_st_warning=True, ttl=300)
 def update_monthly_outages():
-    streamIds = [44648, 118361, 322689, 118362, 147262, 322675, 322682, 44651]
-    years = [datetime.now(tz).year, datetime.now(tz).year+1, datetime.now(tz).year+2]
-    monthly_outages = pd.DataFrame([])
-    for year in years:
-        df = get_data(streamIds, date(year,1,1), date(year+1,1,1))
-        monthly_outages = pd.concat([monthly_outages, df], axis=0)
-    monthly_outages = monthly_outages[monthly_outages['timeStamp'].dt.date>(datetime.now(tz).date())]
-    monthlyOutages_ref = db.collection(u'appData').document('monthlyOutages')
-    monthlyOutages_ref.set(monthly_outages.to_dict('list'))
+    # # Pull last update from FS
+    # oldOutages = read_firestore(db,'monthlyOutages')
+    # # Import new data
+    # streamIds = [44648, 118361, 322689, 118362, 147262, 322675, 322682, 44651]
+    # years = [datetime.now(tz).year, datetime.now(tz).year+1, datetime.now(tz).year+2]
+    # newOutages = pd.DataFrame([])
+    # for year in years:
+    #     df = get_data(streamIds, date(year,1,1), date(year+1,1,1))
+    #     newOutages = pd.concat([newOutages, df], axis=0)
+    # newOutages = newOutages[newOutages['timeStamp'].dt.date>(datetime.now(tz).date())]
+    # monthlyOutages_ref = db.collection(u'appData').document('monthlyOutages')
+    # monthlyOutages_ref.set(newOutages.to_dict('list'))
+    # diff_df = diff_calc('monthlyOutages', oldOutages, newOutages)
+    diff_df = pd.DataFrame({'timeStamp':[datetime.now(tz)+relativedelta(day=1,hour=10,minute=0,second=0,microsecond=0),
+                            datetime.now(tz)+relativedelta(day=1,hour=11,minute=0,second=0,microsecond=0),
+                            datetime.now(tz)+relativedelta(day=5,hour=12,minute=30,second=0,microsecond=0)],
+                            'fuelType':['Solar','Wind','Solar'],'diff_value':[1000,500,-1000]})
+    diff_df['fuelType'] = diff_df['fuelType'].astype('category')
+    diff_df
+    text_alert(alertChart(diff_df))
+    st.stop()
+    # **** MERGE NEW OUTAGE DATA INTO BQ ****
 
 # OUTAGES
-    # Schedule delete of dates that are older than the 5 latest dates
+    # Schedule delete of dates that are older than the 5 latest dates in BQ
 
 
 # OUTAGE DIFFS
@@ -224,11 +271,11 @@ placeholder = st.empty()
 for seconds in range(300000):
     with placeholder.container():
         # **** data will relaod every second but only rerun when the ttl is up ****
-        st.write('---')
-        st.header('DAILY OUTAGES')
-        with st.spinner('Updating daily outages...'):
-            update_daily_outages()
-        st.success(f"Daily data updated")
+        # st.write('---')
+        # st.header('DAILY OUTAGES')
+        # with st.spinner('Updating daily outages...'):
+        #     update_daily_outages()
+        # st.success(f"Daily data updated")
         
         st.write('---')
         st.header('MONTHLY OUTAGES')
@@ -236,9 +283,9 @@ for seconds in range(300000):
             update_monthly_outages()
         st.success(f"Monthly data updated")
         
-        st.write('---')
-        st.header('CURRENT DATA')
-        with st.spinner('Updating current data...'):
-            update_current_data()
-        st.success(f"Current data updated")
+        # st.write('---')
+        # st.header('CURRENT DATA')
+        # with st.spinner('Updating current data...'):
+        #     update_current_data()
+        # st.success(f"Current data updated")
 st.experimental_rerun()

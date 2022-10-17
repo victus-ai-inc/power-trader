@@ -1,0 +1,17 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega-lite@4.17.0"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+</head>
+<body>
+<div class="vega-visualization" id="vega-visualization-fc159535ce794219b4365c7398281261"></div>
+<script type="text/javascript">
+  const spec = {"config": {"view": {"continuousWidth": 400, "continuousHeight": 300}}, "data": {"name": "data-f625366a9c9dd2c2ac997bc54857a776"}, "mark": "bar", "encoding": {"color": {"condition": {"value": "green", "test": "(datum.diff_value > 0)"}, "value": "red"}, "row": {"field": "fuelType", "header": {"labelAngle": 0, "labelFontSize": 20}, "title": null, "type": "nominal"}, "tooltip": [{"field": "timeStamp", "timeUnit": "yearmonthdatehours", "type": "temporal"}, {"field": "diff_value", "type": "quantitative"}], "x": {"field": "diff_value", "title": "MW", "type": "quantitative"}, "y": {"field": "timeStamp", "timeUnit": "yearmonthdatehours", "title": null, "type": "ordinal"}}, "width": 300, "$schema": "https://vega.github.io/schema/vega-lite/v4.17.0.json", "datasets": {"data-f625366a9c9dd2c2ac997bc54857a776": [{"timeStamp": "2022-10-01T10:00:00-06:00", "fuelType": "Solar", "diff_value": 1000}, {"timeStamp": "2022-10-01T11:00:00-06:00", "fuelType": "Wind", "diff_value": 500}, {"timeStamp": "2022-10-05T12:30:00-06:00", "fuelType": "Solar", "diff_value": -1000}]}};
+  const embedOpt = {};
+  vegaEmbed('#vega-visualization-fc159535ce794219b4365c7398281261', spec, embedOpt).catch(console.error);
+</script>
+</body>
+</html>
