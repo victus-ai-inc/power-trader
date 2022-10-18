@@ -23,6 +23,8 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.image import MIMEImage
 
+import random
+
 @st.experimental_singleton(suppress_st_warning=True)
 def firestore_db_instance():
     firebase_admin.initialize_app(credential=credentials.Certificate(st.secrets["gcp_service_account"]))
@@ -165,24 +167,55 @@ def diff_calc(outageTable, old_df, new_df):
     return diff_df
 
 def alertChart(diff_df):
-    #title = diff_df['fuelType'][0]
+    
+    def baseChart(fuelType, df, split, color):
+        
+        layer1 = alt.Chart(df).mark_area(clip=True,interpolate='monotone', color=color).encode(
+            x=alt.X('timeStamp:T',
+                scale=alt.Scale(zero=False,nice=False),
+                title=None,
+                axis=alt.Axis(labelAngle=270)),
+            y=alt.Y('diff_value:Q',
+                scale=alt.Scale(domain=[0,split]),
+                title=None),
+            opacity=alt.value(0.6),
+            tooltip=['timeStamp','diff_value']
+        ).properties(width=600,height=150,title=f'{fuelType}')
+        layer2 = layer1.encode(
+            y=alt.Y('ny:Q',scale=alt.Scale(domain=[0,split]))
+        ).transform_calculate(
+            'ny', alt.datum.diff_value-split
+        )
+        layer3 = layer2.encode(
+            y=alt.Y('ny2:Q',scale=alt.Scale(domain=[0,split]))
+        ).transform_calculate(
+            'ny2', alt.datum.diff_value-split*2
+        )
+        return layer1+layer2+layer3
+    
+    def posnegChart(fuelType, df, split, txt, color):
+        if txt == 'pos':
+            df['pos'] = np.where(df['diff_value']>=0,df['diff_value'],0)
+        if txt == 'neg':
+            df['neg'] = np.where(df['diff_value']<0,df['diff_value'],0)
+        df = df[['timeStamp',txt]].resample('D',on='timeStamp').max()
+        df.rename(columns={txt:'diff_value'},inplace=True)
+        chart = baseChart(fuelType,df,split,color)
+        return chart
 
-    df = diff_df[['timeStamp','diff_value']]
-    df
-    df = df.set_index('timeStamp')
-    df
-    x = df.index.values
-    y = df['diff_value'].values
-    y
-    upper = np.ma.masked_where(y <= 0, y)
-    lower = np.ma.masked_where(y > 0, y)
-
-    fig, ax = plt.subplots()
-    ax.bar(x,y,width=1./24)
-    st.pyplot(fig)
-    st.stop()
-    return picture
-
+    def generateCharts(diff_df):
+        split = max(abs(diff_df['value'].values))/3
+        diff_df.rename(columns={'value':'diff_value'},inplace=True)
+        diff_df['diff_value'] = np.where((diff_df['diff_value']>=100)|(diff_df['diff_value']<=-100),diff_df['diff_value'],0)
+        for fuelType in diff_df['fuelType'].unique():
+            df = diff_df[diff_df['fuelType']==fuelType]
+            if sum(df['diff_value'])!=0:
+                posChart = posnegChart(fuelType, df, split, 'pos','green')
+                negChart = posnegChart(fuelType, df, split, 'neg','red')
+                st.altair_chart(posChart+negChart)
+    
+    generateCharts(diff_df)
+    
 def text_alert(picture):
     email = st.secrets['email_address']
     pas = st.secrets['email_password']
@@ -228,17 +261,16 @@ def update_monthly_outages():
     #     df = get_data(streamIds, date(year,1,1), date(year+1,1,1))
     #     newOutages = pd.concat([newOutages, df], axis=0)
     # newOutages = newOutages[newOutages['timeStamp'].dt.date>(datetime.now(tz).date())]
-    # monthlyOutages_ref = db.collection(u'appData').document('monthlyOutages')
+    # monthlyOutages_ref = db.collection('appData').document('monthlyOutages')
     # monthlyOutages_ref.set(newOutages.to_dict('list'))
     # diff_df = diff_calc('monthlyOutages', oldOutages, newOutages)
-    diff_df = pd.DataFrame({'timeStamp':[datetime.now(tz)+relativedelta(day=1,hour=10,minute=0,second=0,microsecond=0),
-                            datetime.now(tz)+relativedelta(day=1,hour=11,minute=0,second=0,microsecond=0),
-                            datetime.now(tz)+relativedelta(day=5,hour=12,minute=30,second=0,microsecond=0)],
-                            'fuelType':['Solar','Wind','Solar'],'diff_value':[1000,500,-1000]})
-    diff_df['fuelType'] = diff_df['fuelType'].astype('category')
-    diff_df
-    text_alert(alertChart(diff_df))
+    # diff_df['fuelType'] = diff_df['fuelType'].astype('category')
+    diff_df = read_firestore(db,'dailyOutages')
+
+    alertChart(diff_df)
     st.stop()
+    text_alert(alertChart(oldOutages))
+    
     # **** MERGE NEW OUTAGE DATA INTO BQ ****
 
 # OUTAGES
