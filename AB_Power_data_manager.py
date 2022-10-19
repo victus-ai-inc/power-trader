@@ -22,8 +22,8 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.image import MIMEImage
-
 import random
+alt.renderers.enable('altair_saver', fmts=['vega-lite', 'png'])
 
 @st.experimental_singleton(suppress_st_warning=True)
 def firestore_db_instance():
@@ -160,16 +160,36 @@ def diff_calc(outageTable, old_df, new_df):
     diff_df['diff_value'] = diff_df['value_old'] - diff_df['value_new']
     diff_df = diff_df[['timeStamp','fuelType','diff_value']]
     if outageTable == 'dailyOutages':
-        diff_df = diff_df[diff_df['timeStamp'].dt.date < datetime.now(tz).date() + timedelta(days=90)]
-    elif outageTable == 'monthlyOutages':
-        diff_df = diff_df[diff_df['timeStamp'].dt.date > datetime.now(tz).date() + relativedelta(months=3, day=1, days=-1)]
-    diff_df = diff_df[diff_df['diff_value'] > 100]
+        diff_df = diff_df.groupby('fuelType').resample('D',on='timeStamp').mean().reset_index()     
+        #diff_df = diff_df[diff_df['timeStamp'].dt.date < datetime.now(tz).date() + timedelta(days=90)]
+    # elif outageTable == 'monthlyOutages':
+    #     diff_df = diff_df[diff_df['timeStamp'].dt.date > datetime.now(tz).date() + relativedelta(months=3, day=1, days=-1)]
+    diff_df = diff_df[abs(diff_df['diff_value']) > 100]
+    diff_df['pos'] = np.where(diff_df['diff_value']>=0,diff_df['diff_value'],0)
+    diff_df['neg'] = np.where(diff_df['diff_value']<0,-diff_df['diff_value'],0)
     return diff_df
 
-def alertChart(diff_df):
+def alerts(diff_df):
     
-    def baseChart(fuelType, df, split, color):
+    def text_alert():
+        from_email = st.secrets['email_address']
+        from_pw = st.secrets['email_password']
+        sms_gateways = st.secrets['phone_numbers'].values()
         
+        msg = MIMEMultipart('alternative')
+        part = MIMEImage(open('outages.png', 'rb').read())
+        msg.attach(part)
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()
+        server.login(from_email, from_pw)
+
+        for recipient in sms_gateways:
+            server.sendmail(from_email, recipient, msg.as_string())
+        server.quit()
+
+    def baseChart(df, txt, color):
+        df = df[['timeStamp','fuelType',txt]].rename(columns={txt:'diff_value'})
+        split = 500
         layer1 = alt.Chart(df).mark_area(clip=True,interpolate='monotone', color=color).encode(
             x=alt.X('timeStamp:T',
                 scale=alt.Scale(zero=False,nice=False),
@@ -177,15 +197,18 @@ def alertChart(diff_df):
                 axis=alt.Axis(labelAngle=270)),
             y=alt.Y('diff_value:Q',
                 scale=alt.Scale(domain=[0,split]),
-                title=None),
+                title=None,
+                axis=alt.Axis(tickCount=5)),
             opacity=alt.value(0.6),
-            tooltip=['timeStamp','diff_value']
-        ).properties(width=600,height=150,title=f'{fuelType}')
+            tooltip=['timeStamp:T','diff_value:Q']
+        ).properties(
+            width=400,height=150,title=f"{df['fuelType'].unique()[0]}")
+        
         layer2 = layer1.encode(
             y=alt.Y('ny:Q',scale=alt.Scale(domain=[0,split]))
         ).transform_calculate(
-            'ny', alt.datum.diff_value-split
-        )
+            'ny', alt.datum.diff_value-split)
+
         layer3 = layer2.encode(
             y=alt.Y('ny2:Q',scale=alt.Scale(domain=[0,split]))
         ).transform_calculate(
@@ -193,64 +216,55 @@ def alertChart(diff_df):
         )
         return layer1+layer2+layer3
     
-    def posnegChart(fuelType, df, split, txt, color):
-        if txt == 'pos':
-            df['pos'] = np.where(df['diff_value']>=0,df['diff_value'],0)
-        if txt == 'neg':
-            df['neg'] = np.where(df['diff_value']<0,df['diff_value'],0)
-        df = df[['timeStamp',txt]].resample('D',on='timeStamp').max()
-        df.rename(columns={txt:'diff_value'},inplace=True)
-        chart = baseChart(fuelType,df,split,color)
-        return chart
-
-    def generateCharts(diff_df):
-        split = max(abs(diff_df['value'].values))/3
-        diff_df.rename(columns={'value':'diff_value'},inplace=True)
-        diff_df['diff_value'] = np.where((diff_df['diff_value']>=100)|(diff_df['diff_value']<=-100),diff_df['diff_value'],0)
+    def generateCharts(diff_df):     
         for fuelType in diff_df['fuelType'].unique():
             df = diff_df[diff_df['fuelType']==fuelType]
             if sum(df['diff_value'])!=0:
-                posChart = posnegChart(fuelType, df, split, 'pos','green')
-                negChart = posnegChart(fuelType, df, split, 'neg','red')
-                st.altair_chart(posChart+negChart)
+                posChart = baseChart(df, 'pos','green')
+                negChart = baseChart(df, 'neg','red')              
+                chart = alt.layer(posChart,negChart)
+                st.altair_chart(chart)
+                chart.save('outages.png')
+                text_alert()
+                st.stop()
     
     generateCharts(diff_df)
-    
-def text_alert(picture):
-    email = st.secrets['email_address']
-    pas = st.secrets['email_password']
-    sms_gateways = st.secrets['phone_numbers'].values()
-    server = smtplib.SMTP('smtp.gmail.com', 587)
-    server.starttls()
-    server.login(email, pas)
-    for gateway in sms_gateways:
-        msg = MIMEMultipart()
-        msg['To'] = gateway
-        body = picture
-        msg.attach(MIMEText(body, 'plain'))
-        server.sendmail(email, gateway, msg.as_string())
 
 @st.experimental_memo(suppress_st_warning=True, ttl=180)
 def update_daily_outages():
-    # Pull last update from FS
-    oldOutages = read_firestore(db,'dailyOutages')
-    # Import new data
-    streamIds = [124]
-    intertie_outages = get_data(streamIds, datetime.now(tz).date(), datetime.now(tz).date() + relativedelta(months=12, day=1, days=-1))
-    intertie_outages['value'] = max(intertie_outages['value']) - intertie_outages['value']
-    streamIds = [118366, 118363, 322685, 118365, 118364, 322667, 322678, 147263]
-    stream_outages = get_data(streamIds, datetime.now(tz).date(), datetime.now(tz).date() + relativedelta(months=4, day=1))
-    stream_outages = stream_outages.pivot(index='timeStamp',columns='fuelType',values='value').asfreq(freq='H', method='ffill').reset_index()
-    stream_outages = stream_outages.melt(id_vars='timeStamp',value_vars=['Biomass & Other','Coal','Dual Fuel','Energy Storage','Hydro','Natural Gas'])
-    newOutages = pd.concat([intertie_outages,stream_outages])
-    newOutages['fuelType'] = newOutages['fuelType'].astype('category')
-    dailyOutages_ref = db.collection(u'appData').document('dailyOutages')
-    dailyOutages_ref.set(newOutages.to_dict('list'))
-    # Calc diffs
-    diff_df = diff_calc('dailyOutages', oldOutages, newOutages)
+    # # Pull last update from FS
+    # oldOutages = read_firestore(db,'dailyOutages')
+    # # Import new data
+    # streamIds = [124]
+    # intertie_outages = get_data(streamIds, datetime.now(tz).date(), datetime.now(tz).date() + relativedelta(months=12, day=1, days=-1))
+    # intertie_outages['value'] = max(intertie_outages['value']) - intertie_outages['value']
+    # streamIds = [118366, 118363, 322685, 118365, 118364, 322667, 322678, 147263]
+    # stream_outages = get_data(streamIds, datetime.now(tz).date(), datetime.now(tz).date() + relativedelta(months=4, day=1))
+    # stream_outages = stream_outages.pivot(index='timeStamp',columns='fuelType',values='value').asfreq(freq='H', method='ffill').reset_index()
+    # stream_outages = stream_outages.melt(id_vars='timeStamp',value_vars=['Biomass & Other','Coal','Dual Fuel','Energy Storage','Hydro','Natural Gas'])
+    # newOutages = pd.concat([intertie_outages,stream_outages])
+    # newOutages['fuelType'] = newOutages['fuelType'].astype('category')
+    # dailyOutages_ref = db.collection(u'appData').document('dailyOutages')
+    # dailyOutages_ref.set(newOutages.to_dict('list'))
+    # # Calc diffs
+    # diff_df = diff_calc('dailyOutages', oldOutages, newOutages)
+    rng = 2500
+    old_df = pd.DataFrame({'timeStamp':[datetime.now(tz)+relativedelta(hours=x,minute=0,second=0,microsecond=0) for x in range(rng)],
+                            'fuelType':['Solar' for x in range(rng)],
+                            'value':[random.randint(0,1500) for x in range(rng)]})
+    
+    old_df['fuelType'] = old_df['fuelType'].astype('category')
+    new_df = pd.DataFrame({'timeStamp':[datetime.now(tz)+relativedelta(hours=x,minute=0,second=0,microsecond=0) for x in range(rng)],
+                            'fuelType':['Solar' for x in range(rng)],
+                            'value':[random.randint(0,1500) for x in range(rng)]})
+    new_df['fuelType'] = new_df['fuelType'].astype('category')
+    diff_df = diff_calc('dailyOutages', old_df, new_df)
+    alerts(diff_df)
+    return diff_df
 
 @st.experimental_memo(suppress_st_warning=True, ttl=300)
 def update_monthly_outages():
+    pass
     # # Pull last update from FS
     # oldOutages = read_firestore(db,'monthlyOutages')
     # # Import new data
@@ -265,11 +279,10 @@ def update_monthly_outages():
     # monthlyOutages_ref.set(newOutages.to_dict('list'))
     # diff_df = diff_calc('monthlyOutages', oldOutages, newOutages)
     # diff_df['fuelType'] = diff_df['fuelType'].astype('category')
-    diff_df = read_firestore(db,'dailyOutages')
+    
+    #diff_df = read_firestore(db,'dailyOutages')
 
-    alertChart(diff_df)
-    st.stop()
-    text_alert(alertChart(oldOutages))
+    
     
     # **** MERGE NEW OUTAGE DATA INTO BQ ****
 
@@ -303,17 +316,18 @@ placeholder = st.empty()
 for seconds in range(300000):
     with placeholder.container():
         # **** data will relaod every second but only rerun when the ttl is up ****
-        # st.write('---')
-        # st.header('DAILY OUTAGES')
-        # with st.spinner('Updating daily outages...'):
-        #     update_daily_outages()
-        # st.success(f"Daily data updated")
-        
         st.write('---')
-        st.header('MONTHLY OUTAGES')
-        with st.spinner('Updating monthly outages...'):
-            update_monthly_outages()
-        st.success(f"Monthly data updated")
+        st.header('DAILY OUTAGES')
+        with st.spinner('Updating daily outages...'):
+            update_daily_outages()
+            st.stop()
+        st.success(f"Daily data updated")
+        
+        # st.write('---')
+        # st.header('MONTHLY OUTAGES')
+        # with st.spinner('Updating monthly outages...'):
+        #     diff_df = update_monthly_outages()
+        # st.success(f"Monthly data updated")
         
         # st.write('---')
         # st.header('CURRENT DATA')
