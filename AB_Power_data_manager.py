@@ -2,9 +2,6 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import altair as alt
-import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
-import matplotlib.cbook as cbook
 import ssl
 import json
 import http.client
@@ -19,10 +16,8 @@ import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import firestore
 import smtplib
-from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.image import MIMEImage
-import random
 alt.renderers.enable('altair_saver', fmts=['vega-lite', 'png'])
 
 @st.experimental_singleton(suppress_st_warning=True)
@@ -151,7 +146,6 @@ def update_historical_data():
 def update_current_data():
     streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694, 120, 124947, 122, 1]
     current_df = get_data(streamIds, datetime.now(tz).date(), datetime.now(tz).date()+timedelta(days=1))
-    current_df.info()
     currentData_ref = db.collection(u'appData').document('currentData')
     currentData_ref.set(current_df.to_dict('list'))
     st.success(f"Current data updated: {datetime.now(tz).strftime('%b %d @ %H:%M:%S')}")
@@ -256,9 +250,7 @@ def update_monthly_outages():
         df = get_data(streamIds, date(year,1,1), date(year+1,1,1))
         newOutages = pd.concat([newOutages, df], axis=0, ignore_index=True)
     newOutages = newOutages[newOutages['timeStamp'].dt.date>(datetime.now(tz).date())]
-    newOutages.info()
     newOutages['fuelType'] = newOutages['fuelType'].astype('category')
-    newOutages.info()
     monthlyOutages_ref = db.collection('appData').document('monthlyOutages')
     monthlyOutages_ref.set(newOutages.to_dict('list'))
     diff_calc('monthlyOutages', oldOutages, newOutages)
