@@ -63,11 +63,13 @@ def oldOutage_df(outageTable):
 tz = pytz.timezone('America/Edmonton')
 db = firestore_db_instance()
 
-history_df = read_firestore(db,'historicalData')
-current_df = read_firestore(db,'currentData')
-oldDailyOutage_df = oldOutage_df('outages.dailyOutages')
-oldMonthlyOutage_df = oldOutage_df('outages.monthlyOutages')
-# windSolar_df = ***pull from FS***
+# history_df = read_firestore(db,'historicalData')
+# current_df = read_firestore(db,'currentData')
+# oldDailyOutage_df = oldOutage_df('outages.dailyOutages') # **** MIGHT NEED TO FILTER DATA TO >= TODAY*****
+# oldMonthlyOutage_df = oldOutage_df('outages.monthlyOutages') # **** MIGHT NEED TO FILTER DATA TO >= TODAY*****
+# currentDailyOutage_df = read_firestore(db,'dailyOutages')
+# currentMonthlyOutage_df = read_firestore(db,'monthlyOutages')
+# # windSolar_df = ***pull from FS***
 
 placeholder = st.empty()
 for seconds in range(10):
