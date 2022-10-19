@@ -152,8 +152,8 @@ def update_current_data():
     streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694, 120, 124947, 122, 1]
     current_df = get_data(streamIds, datetime.now(tz).date(), datetime.now(tz).date()+timedelta(days=1))
     current_df.info()
-    # currentData_ref = db.collection(u'appData').document('currentData')
-    # currentData_ref.set(current_df.to_dict('list'))
+    currentData_ref = db.collection(u'appData').document('currentData')
+    currentData_ref.set(current_df.to_dict('list'))
     st.success(f"Current data updated: {datetime.now(tz).strftime('%b %d @ %H:%M:%S')}")
 
 def alerts(diff_df):
@@ -287,7 +287,7 @@ with st.spinner('Updating historical data...'):
 st.success(f"Historical data has been updated from {st.session_state['last_history_update'].strftime('%a, %b %d')} to {(datetime.now(tz).date()-timedelta(days=1)).strftime('%a, %b %d')}.")
 
 placeholder = st.empty()
-for seconds in range(300000):
+for seconds in range(43200):
     with placeholder.container():
         st.write('---')
         st.header('DAILY OUTAGES')
@@ -309,15 +309,3 @@ for seconds in range(300000):
         with st.spinner('Updating current data...'):
             update_current_data()
 st.experimental_rerun()
-
-    # rng = 2500
-    # old_df = pd.DataFrame({'timeStamp':[datetime.now(tz)+relativedelta(hours=x,minute=0,second=0,microsecond=0) for x in range(rng)],
-    #                         'fuelType':['Solar' for x in range(rng)],
-    #                         'value':[random.randint(0,1500) for x in range(rng)]})
-    
-    # old_df['fuelType'] = old_df['fuelType'].astype('category')
-    # new_df = pd.DataFrame({'timeStamp':[datetime.now(tz)+relativedelta(hours=x,minute=0,second=0,microsecond=0) for x in range(rng)],
-    #                         'fuelType':['Solar' for x in range(rng)],
-    #                         'value':[random.randint(0,1500) for x in range(rng)]})
-    # new_df['fuelType'] = new_df['fuelType'].astype('category')
-    # diff_calc('dailyOutages', old_df, new_df)
