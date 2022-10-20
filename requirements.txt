@@ -1,10 +1,11 @@
 pandas
 altair
 streamlit
-pandasql
 db-dtypes
-psutil
 firebase-admin
 protobuf==3.19.6
 google-cloud-bigquery
 altair-saver
+
+#psutil
+#pandasql
