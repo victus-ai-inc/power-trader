@@ -43,7 +43,7 @@ def read_firestore_history(_db):
     df['timeStamp'] = df['timeStamp'].dt.tz_convert('America/Edmonton')
     return df
 
-@st.experimental_memo(suppress_st_warning=True, ttl=15)
+@st.experimental_memo(suppress_st_warning=True, ttl=20)
 def read_firestore(_db, document):
     firestore_ref = _db.collection('appData').document(document)
     df = pd.DataFrame.from_dict(firestore_ref.get().to_dict())
@@ -72,6 +72,7 @@ def oldOutage_df(outageTable):
 
 def sevenDayCurrentChart(sevenDay_df, theme):
     st.subheader('Current Supply (Previous 7-days)')
+    thm = {k:v for k,v in theme.items() if k not in ['Intertie','3-Day Solar Forecast','7-Day Wind Forecast']}
     combo_base = alt.Chart(sevenDay_df).encode(
         x=alt.X(
             'timeStamp:T', 
@@ -85,8 +86,8 @@ def sevenDayCurrentChart(sevenDay_df, theme):
         color=alt.Color(
             'fuelType:N',
             scale=alt.Scale(
-                domain=list(theme.keys()),
-                range=list(theme.values())),
+                domain=list(thm.keys()),
+                range=list(thm.values())),
                 legend=alt.Legend(orient='top')),
         tooltip=[
             alt.Tooltip('fuelType',title='Fuel Type'),
@@ -108,7 +109,7 @@ def sevenDayCurrentChart(sevenDay_df, theme):
 
 def sevenDayOutageChart(sevenDayOutage_df, windSolar_df, theme):
     st.subheader('Daily Outages (Next 7-days)')
-   
+    thm = {k:v for k,v in theme.items() if k not in ['BC','Saskatchewan','Montana','Pool Price']}
     sevenDayOutageBase = alt.Chart(sevenDayOutage_df).encode(
         x=alt.X(
             'timeStamp:T',
@@ -129,8 +130,8 @@ def sevenDayOutageChart(sevenDayOutage_df, windSolar_df, theme):
         color=alt.Color(
             'fuelType:N',
             scale=alt.Scale(
-                domain=list(theme.keys()),
-                range=list(theme.values())),
+                domain=list(thm.keys()),
+                range=list(thm.values())),
             legend=alt.Legend(orient='top')),
     ).transform_filter(
         {'not':alt.FieldOneOfPredicate(
@@ -151,7 +152,16 @@ def sevenDayOutageChart(sevenDayOutage_df, windSolar_df, theme):
     
     st.altair_chart(alt.layer(sevenDayOutagArea, sevenDayOutageLine).resolve_scale(y='independent'), use_container_width=True)
 
-
+def ninetyDayOutageChart(currentDailyOutage_df, theme):
+    st.subheader('Daily Outages (Next 90-days)')
+    thm = {k:v for k,v in theme.items() if k not in ['BC','Saskatchewan','Montana','Pool Price','7-Day Wind Forecast','3-Day Solar Forecast']}
+    daily_outage_area = alt.Chart(daily_outage).mark_area(opacity=0.8).encode(
+        x=alt.X('timeStamp:T', title='', axis=alt.Axis(labelAngle=270)),
+        y=alt.Y('value:Q', stack='zero', axis=alt.Axis(format=',f'), title='Outages (MW)'),
+        color=alt.Color('fuelType:N', scale=alt.Scale(domain=list(thm.keys()), range=list(thm.values())), legend=alt.Legend(orient='top')),
+        tooltip=['fuelType','value','timeStamp']
+    ).properties(height=400).configure_view(strokeWidth=0).configure_axis(grid=False)
+    st.altair_chart(daily_outage_area, use_container_width=True)
 
 # Set global parameters
 st.set_page_config(layout='wide', initial_sidebar_state='collapsed', menu_items=None)
@@ -180,6 +190,7 @@ for seconds in range(300):
     sevenDayOutage_df = currentDailyOutage_df[currentDailyOutage_df['timeStamp'].dt.date <= datetime.now(tz).date() + timedelta(days=7)]
     windSolar_df = read_firestore(db, 'windSolar')
     sevenDayOutage_df = pd.concat([sevenDayOutage_df, windSolar_df], axis=0)
+
     with placeholder.container():
         # Charts
         col1, col2 = st.columns(2)
