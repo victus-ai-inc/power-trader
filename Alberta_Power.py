@@ -69,33 +69,6 @@ def warning(type, lst):
      text-align: center;
      padding: 15px 10px;">{lst}</p>''', unsafe_allow_html=True)
 
-def text_alert(alert_df, pickle_key):
-    email = st.secrets['email_address']
-    pas = st.secrets['email_password']
-    sms_gateways = st.secrets['phone_numbers'].values()
-    server = smtplib.SMTP('smtp.gmail.com', 587)
-    server.starttls()
-    server.login(email, pas)
-      
-    for i in range(len(alert_df)):
-        if pickle_key == 'daily_df':
-            timeStamp = alert_df.iloc[i,0].strftime('%b %d, %Y')
-            timeUnit = 'Daily'
-        elif pickle_key == 'monthly_df':
-            timeStamp = alert_df.iloc[i,0].strftime('%b %Y')
-            timeUnit = 'Monthly'
-        fuelType = alert_df.iloc[i,1]
-        value = round(alert_df.iloc[i,2])
-        for gateway in sms_gateways:
-            msg = MIMEMultipart()
-            msg['To'] = gateway
-            if value >= 100:
-                body = f'\n{timeUnit} {fuelType} outage changed by +{value}MW for {timeStamp}'
-            elif value <= 100:
-                body = f'\n{timeUnit} {fuelType} outage has decreased by {value}MW for {timeStamp}'
-            msg.attach(MIMEText(body, 'plain'))
-            server.sendmail(email, gateway, msg.as_string())
-
 # MEMORY: Can diff_df be filtered to only where the diff_value >= 100??
 def diff_calc(pickle_key, old_df, new_df):
     diff_df = pd.merge(old_df, new_df, on=['timeStamp','fuelType'], suffixes=('_new','_old'))

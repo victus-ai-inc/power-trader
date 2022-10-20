@@ -142,7 +142,7 @@ def update_historical_data():
         historicalData_ref.set(history_df.to_dict('list'))
         st.session_state['last_history_update'] = min(history_df['timeStamp'])
 
-@st.experimental_memo(suppress_st_warning=True, ttl=15)
+@st.experimental_memo(suppress_st_warning=True, ttl=20)
 def update_current_data():
     streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694, 120, 124947, 122, 1]
     current_df = get_data(streamIds, datetime.now(tz).date(), datetime.now(tz).date()+timedelta(days=1))

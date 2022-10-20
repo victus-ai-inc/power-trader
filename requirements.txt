@@ -1,6 +1,6 @@
+streamlit
 pandas
 altair
-streamlit
 db-dtypes
 firebase-admin
 protobuf==3.19.6
