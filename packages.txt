@@ -1,5 +1,1 @@
-nodejs
-npm
-vega-lite
-vega-cli
-canvas
+chromium-chromedriver
