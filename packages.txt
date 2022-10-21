@@ -1,1 +1,3 @@
-npm install vega-lite vega-cli canvas
+vega-lite
+vega-cli
+canvas
