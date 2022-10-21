@@ -18,7 +18,7 @@ from firebase_admin import firestore
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.image import MIMEImage
-#alt.renderers.enable('altair_saver', fmts=['vega-lite', 'png'])
+alt.renderers.enable('altair_saver', fmts=['vega-lite', 'png'])
 import random
 
 @st.experimental_singleton(suppress_st_warning=True)
