@@ -20,6 +20,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.image import MIMEImage
 alt.renderers.enable('altair_saver', fmts=['vega-lite', 'png'])
 import random
+import matplotlib.pyplot as plt
 
 @st.experimental_singleton(suppress_st_warning=True)
 def firestore_db_instance():
@@ -236,10 +237,7 @@ def update_daily_outages():
     # dailyOutages_ref = db.collection('appData').document('dailyOutages')
     # dailyOutages_ref.set(newOutages.to_dict('list'))
 
-    oldOutages = pd.DataFrame({'timeStamp':[datetime.now(tz)+relativedelta(day=x,hour=10,minute=0,second=0,microsecond=0) for x in range(2500)],
-                            'fuelType':['Solar' for x in range(2500)],'value':[random.randint(0,1500) for x in range(2500)]})
-    newOutages = pd.DataFrame({'timeStamp':[datetime.now(tz)+relativedelta(day=x,hour=10,minute=0,second=0,microsecond=0) for x in range(2500)],
-                            'fuelType':['Solar' for x in range(2500)],'value':[random.randint(0,1500) for x in range(2500)]})
+    
     # Calc diffs
     diff_calc('dailyOutages', oldOutages, newOutages)
     st.success(f"Daily data updated: {datetime.now(tz).strftime('%b %d @ %H:%M:%S')}")
