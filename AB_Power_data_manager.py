@@ -187,7 +187,7 @@ def alerts(diff_df):
                 posChart = baseChart(df, 'pos','green')
                 negChart = baseChart(df, 'neg','red')            
                 chart = alt.layer(posChart,negChart)
-                chart.save('outages.png')
+                chart.save('outages.pdf')
                 st.altair_chart(chart)
                 text_alert()
                 st.stop()
