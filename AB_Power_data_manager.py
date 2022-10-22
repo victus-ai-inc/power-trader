@@ -20,7 +20,7 @@ from firebase_admin import firestore
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.image import MIMEImage
-import random
+#import random
 
 @st.experimental_singleton(suppress_st_warning=True)
 def firestore_db_instance():
@@ -231,47 +231,47 @@ def update_BigQuery_outages(outageTable, df):
 def update_daily_outages():
     # Pull last update from FS & update BQ if necessary
     oldOutages = read_firestore(db,'dailyOutages')
-    # update_BigQuery_outages('dailyOutages', oldOutages)
+    update_BigQuery_outages('dailyOutages', oldOutages)
     # Import new data
-    # streamIds = [124]
-    # intertie_outages = get_data(streamIds, datetime.now(tz).date(), datetime.now(tz).date() + relativedelta(months=12, day=1, days=-1))
-    # intertie_outages['value'] = max(intertie_outages['value']) - intertie_outages['value']
-    # streamIds = [118366, 118363, 322685, 118365, 118364, 322667, 322678, 147263]
-    # stream_outages = get_data(streamIds, datetime.now(tz).date(), datetime.now(tz).date() + relativedelta(months=4, day=1))
-    # stream_outages = stream_outages.pivot(index='timeStamp',columns='fuelType',values='value').asfreq(freq='H', method='ffill').reset_index()
-    # stream_outages = stream_outages.melt(id_vars='timeStamp',value_vars=['Biomass & Other','Coal','Dual Fuel','Energy Storage','Hydro','Natural Gas'])
-    # newOutages = pd.concat([intertie_outages,stream_outages],ignore_index=True)
-    # newOutages.drop_duplicates(['timeStamp','fuelType'],keep='last',inplace=True)
-    # newOutages['fuelType'] = newOutages['fuelType'].astype('category')
-    # dailyOutages_ref = db.collection('appData').document('dailyOutages')
-    # dailyOutages_ref.set(newOutages.to_dict('list'))
-    # Calc diffs
-    newOutages = oldOutages.copy()
-    newOutages['value'] = [random.randint(0,500) for x in range(len(newOutages))]
+    streamIds = [124]
+    intertie_outages = get_data(streamIds, datetime.now(tz).date(), datetime.now(tz).date() + relativedelta(months=12, day=1, days=-1))
+    intertie_outages['value'] = max(intertie_outages['value']) - intertie_outages['value']
+    streamIds = [118366, 118363, 322685, 118365, 118364, 322667, 322678, 147263]
+    stream_outages = get_data(streamIds, datetime.now(tz).date(), datetime.now(tz).date() + relativedelta(months=4, day=1))
+    stream_outages = stream_outages.pivot(index='timeStamp',columns='fuelType',values='value').asfreq(freq='H', method='ffill').reset_index()
+    stream_outages = stream_outages.melt(id_vars='timeStamp',value_vars=['Biomass & Other','Coal','Dual Fuel','Energy Storage','Hydro','Natural Gas'])
+    newOutages = pd.concat([intertie_outages,stream_outages],ignore_index=True)
+    newOutages.drop_duplicates(['timeStamp','fuelType'],keep='last',inplace=True)
+    newOutages['fuelType'] = newOutages['fuelType'].astype('category')
+    dailyOutages_ref = db.collection('appData').document('dailyOutages')
+    dailyOutages_ref.set(newOutages.to_dict('list'))
     diff_calc('dailyOutages', oldOutages, newOutages)
     st.success(f"Daily data updated: {datetime.now(tz).strftime('%b %d @ %H:%M:%S')}")
+    # newOutages = oldOutages.copy()
+    # newOutages['value'] = [random.randint(0,500) for x in range(len(newOutages))]
+    # diff_calc('dailyOutages', oldOutages, newOutages)
 
 @st.experimental_memo(suppress_st_warning=True, ttl=300)
 def update_monthly_outages():
     # Pull last update from FS
     oldOutages = read_firestore(db,'monthlyOutages')
-    # update_BigQuery_outages('monthlyOutages', oldOutages)
+    update_BigQuery_outages('monthlyOutages', oldOutages)
     # Import new data
-    # streamIds = [44648, 118361, 322689, 118362, 147262, 322675, 322682, 44651]
-    # years = [datetime.now(tz).year, datetime.now(tz).year+1, datetime.now(tz).year+2]
-    # newOutages = pd.DataFrame([])
-    # for year in years:
-    #     df = get_data(streamIds, date(year,1,1), date(year+1,1,1))
-    #     newOutages = pd.concat([newOutages, df], axis=0, ignore_index=True)
-    # newOutages = newOutages[newOutages['timeStamp'].dt.date>(datetime.now(tz).date())]
-    # newOutages['fuelType'] = newOutages['fuelType'].astype('category')
-    # monthlyOutages_ref = db.collection('appData').document('monthlyOutages')
-    # monthlyOutages_ref.set(newOutages.to_dict('list'))
-    # diff_calc('monthlyOutages', oldOutages, newOutages)
-    # st.success(f"Monthly data updated: {datetime.now(tz).strftime('%b %d @ %H:%M:%S')}")
-    newOutages = oldOutages.copy()
-    newOutages['value'] = [random.randint(0,100) for x in range(len(newOutages))]
+    streamIds = [44648, 118361, 322689, 118362, 147262, 322675, 322682, 44651]
+    years = [datetime.now(tz).year, datetime.now(tz).year+1, datetime.now(tz).year+2]
+    newOutages = pd.DataFrame([])
+    for year in years:
+        df = get_data(streamIds, date(year,1,1), date(year+1,1,1))
+        newOutages = pd.concat([newOutages, df], axis=0, ignore_index=True)
+    newOutages = newOutages[newOutages['timeStamp'].dt.date>(datetime.now(tz).date())]
+    newOutages['fuelType'] = newOutages['fuelType'].astype('category')
+    monthlyOutages_ref = db.collection('appData').document('monthlyOutages')
+    monthlyOutages_ref.set(newOutages.to_dict('list'))
     diff_calc('monthlyOutages', oldOutages, newOutages)
+    st.success(f"Monthly data updated: {datetime.now(tz).strftime('%b %d @ %H:%M:%S')}")
+    # newOutages = oldOutages.copy()
+    # newOutages['value'] = [random.randint(0,100) for x in range(len(newOutages))]
+    # diff_calc('monthlyOutages', oldOutages, newOutages)
 
 # OUTAGES
     # Schedule delete of dates that are older than the 5 latest dates in BQ
