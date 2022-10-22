@@ -58,14 +58,18 @@ def get_token():
             # Decode the token into an object
             jsonData = json.loads(res_data.decode('utf-8'))
             accessToken = jsonData['access_token']
-            #default_pickle['accessToken'] = accessToken
             with open('./accessToken.pickle', 'wb') as token:
                 pickle.dump(accessToken, token, protocol=pickle.HIGHEST_PROTOCOL)
+            if 'accessToken' not in st.session_state:
+                st.session_state['accessToken'] = accessToken
         elif res_code == 400:
             res_code
             res.read()
-            with open('./accessToken.pickle', 'rb') as token:
-                accessToken = pickle.load(token)
+            if 'accessToken' in st.session_state:
+                accessToken = st.session_state['accessToken']
+            else:
+                with open('./accessToken.pickle', 'rb') as token:
+                    accessToken = pickle.load(token)
             release_token(accessToken)
             get_token()
         else:
