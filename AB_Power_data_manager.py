@@ -20,6 +20,7 @@ from firebase_admin import firestore
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.image import MIMEImage
+import random
 
 @st.experimental_singleton(suppress_st_warning=True)
 def firestore_db_instance():
@@ -151,33 +152,33 @@ def update_current_data():
     currentData_ref.set(current_df.to_dict('list'))
     st.success(f"Current data updated: {datetime.now(tz).strftime('%b %d @ %H:%M:%S')}")
 
-def alerts(diff_df):
+def alerts(outageTable, diff_df):
     def baseChart(df):
-        # df = df[['timeStamp','fuelType',txt]].rename(columns={txt:'diff_value'})
-        # chart = alt.Chart(df).mark_bar(clip=True,color=color,opacity=0.6).encode(
-        #     x=alt.X('timeStamp:T',
-        #         scale=alt.Scale(zero=False,nice=False),
-        #         title=None,
-        #         axis=alt.Axis(labelAngle=270)),
-        #     y=alt.Y('diff_value:Q',
-        #         title='MW',
-        #         axis=alt.Axis(tickCount=5))
-        # ).properties(
-        #     width=400,height=200,title=f"{df['fuelType'].unique()[0]}")
         x = df['timeStamp']
         y = df['pos']
         y2 = df['neg']
+        fuelType = df['fuelType'].unique()[0]
         fig, ax = plt.subplots()
+        ax.set_axisbelow(True)
+        ax.grid(color='gray',alpha=0.2)
         locator = mdates.AutoDateLocator()
         formatter = mdates.ConciseDateFormatter(locator)
         ax.xaxis.set_major_locator(locator)
         ax.xaxis.set_major_formatter(formatter)
-        ax.bar(x,y, color='green', width=20, alpha=0.6)
-        ax.bar(x,y2, color='red', width=20, alpha=0.6)
-        ax.set_title(f"{df['fuelType'].unique()[0]}")
+        if outageTable == 'dailyOutages':
+            ax.bar(x,y, color='green', alpha=0.6, align='center')
+            ax.bar(x,y2, color='red', alpha=0.6, align='center')
+            if fuelType == 'Intertie':
+                ax.set_title(f"Daily {fuelType} Outages for the next year")
+            else:
+                ax.set_title(f"Daily {fuelType} Outages for the next 90 days")
+        elif outageTable == 'monthlyOutages':
+            ax.bar(x,y, color='green', width=20, alpha=0.6, align='center')
+            ax.bar(x,y2, color='red', width=20, alpha=0.6, align='center')
+            ax.set_title(f"Monthly {fuelType} Outages for the next year")
         ax.set_ylabel('MW')
-        plt.tight_layout()
         plt.savefig('outages.png',facecolor='white')
+        #st.pyplot(plt)
 
     def text_alert():
         from_email = st.secrets['email_address']
@@ -193,31 +194,26 @@ def alerts(diff_df):
             server.sendmail(from_email, recipient, msg.as_string())
         server.quit()
 
-    def generateCharts(diff_df):     
+    def generateCharts(diff_df):
         for fuelType in diff_df['fuelType'].unique():
             df = diff_df[diff_df['fuelType']==fuelType]
-            if sum(df['diff_value'])!=0:
+            if df[(df['diff_value']>=100) | (df['diff_value']<=-100)]['diff_value'].astype(bool).sum(axis=0) != 0:
                 baseChart(df)
-                # posChart = baseChart(df, 'pos','green')
-                # negChart = baseChart(df, 'neg','red')            
-                # chart = alt.layer(posChart,negChart)
-                # chart.save('outages.svg')
-                # st.altair_chart(chart)
                 text_alert()
-                st.stop()
-    
+
     generateCharts(diff_df)
 
 def diff_calc(outageTable, old_df, new_df):
-    diff_df = pd.merge(old_df, new_df, on=['timeStamp','fuelType'], suffixes=('_new','_old'))
-    diff_df['diff_value'] = diff_df['value_old'] - diff_df['value_new']
+    diff_df = pd.merge(new_df, old_df, on=['timeStamp','fuelType'], suffixes=('_new','_old'))
+    diff_df.loc[diff_df['value_old']==0,'value_new']=0
+    diff_df['diff_value'] = diff_df['value_new'] - diff_df['value_old']
     diff_df = diff_df[['timeStamp','fuelType','diff_value']]
     if diff_df[(diff_df['diff_value']>=100) | (diff_df['diff_value']<=-100)]['diff_value'].astype(bool).sum(axis=0) != 0:
         if outageTable == 'dailyOutages':
             diff_df = diff_df.groupby('fuelType').resample('D',on='timeStamp').mean().reset_index()
         diff_df['pos'] = np.where(diff_df['diff_value']>=0,diff_df['diff_value'],0)
         diff_df['neg'] = np.where(diff_df['diff_value']<0,-diff_df['diff_value'],0)
-        alerts(diff_df)
+        alerts(outageTable, diff_df)
 
 def update_BigQuery_outages(outageTable, df):
     cred = service_account.Credentials.from_service_account_info(st.secrets["gcp_service_account"])
@@ -235,21 +231,23 @@ def update_BigQuery_outages(outageTable, df):
 def update_daily_outages():
     # Pull last update from FS & update BQ if necessary
     oldOutages = read_firestore(db,'dailyOutages')
-    update_BigQuery_outages('dailyOutages', oldOutages)
+    # update_BigQuery_outages('dailyOutages', oldOutages)
     # Import new data
-    streamIds = [124]
-    intertie_outages = get_data(streamIds, datetime.now(tz).date(), datetime.now(tz).date() + relativedelta(months=12, day=1, days=-1))
-    intertie_outages['value'] = max(intertie_outages['value']) - intertie_outages['value']
-    streamIds = [118366, 118363, 322685, 118365, 118364, 322667, 322678, 147263]
-    stream_outages = get_data(streamIds, datetime.now(tz).date(), datetime.now(tz).date() + relativedelta(months=4, day=1))
-    stream_outages = stream_outages.pivot(index='timeStamp',columns='fuelType',values='value').asfreq(freq='H', method='ffill').reset_index()
-    stream_outages = stream_outages.melt(id_vars='timeStamp',value_vars=['Biomass & Other','Coal','Dual Fuel','Energy Storage','Hydro','Natural Gas'])
-    newOutages = pd.concat([intertie_outages,stream_outages],ignore_index=True)
-    newOutages.drop_duplicates(['timeStamp','fuelType'],keep='last',inplace=True)
-    newOutages['fuelType'] = newOutages['fuelType'].astype('category')
-    dailyOutages_ref = db.collection('appData').document('dailyOutages')
-    dailyOutages_ref.set(newOutages.to_dict('list'))
+    # streamIds = [124]
+    # intertie_outages = get_data(streamIds, datetime.now(tz).date(), datetime.now(tz).date() + relativedelta(months=12, day=1, days=-1))
+    # intertie_outages['value'] = max(intertie_outages['value']) - intertie_outages['value']
+    # streamIds = [118366, 118363, 322685, 118365, 118364, 322667, 322678, 147263]
+    # stream_outages = get_data(streamIds, datetime.now(tz).date(), datetime.now(tz).date() + relativedelta(months=4, day=1))
+    # stream_outages = stream_outages.pivot(index='timeStamp',columns='fuelType',values='value').asfreq(freq='H', method='ffill').reset_index()
+    # stream_outages = stream_outages.melt(id_vars='timeStamp',value_vars=['Biomass & Other','Coal','Dual Fuel','Energy Storage','Hydro','Natural Gas'])
+    # newOutages = pd.concat([intertie_outages,stream_outages],ignore_index=True)
+    # newOutages.drop_duplicates(['timeStamp','fuelType'],keep='last',inplace=True)
+    # newOutages['fuelType'] = newOutages['fuelType'].astype('category')
+    # dailyOutages_ref = db.collection('appData').document('dailyOutages')
+    # dailyOutages_ref.set(newOutages.to_dict('list'))
     # Calc diffs
+    newOutages = oldOutages.copy()
+    newOutages['value'] = [random.randint(0,500) for x in range(len(newOutages))]
     diff_calc('dailyOutages', oldOutages, newOutages)
     st.success(f"Daily data updated: {datetime.now(tz).strftime('%b %d @ %H:%M:%S')}")
 
@@ -257,20 +255,23 @@ def update_daily_outages():
 def update_monthly_outages():
     # Pull last update from FS
     oldOutages = read_firestore(db,'monthlyOutages')
-    update_BigQuery_outages('monthlyOutages', oldOutages)
+    # update_BigQuery_outages('monthlyOutages', oldOutages)
     # Import new data
-    streamIds = [44648, 118361, 322689, 118362, 147262, 322675, 322682, 44651]
-    years = [datetime.now(tz).year, datetime.now(tz).year+1, datetime.now(tz).year+2]
-    newOutages = pd.DataFrame([])
-    for year in years:
-        df = get_data(streamIds, date(year,1,1), date(year+1,1,1))
-        newOutages = pd.concat([newOutages, df], axis=0, ignore_index=True)
-    newOutages = newOutages[newOutages['timeStamp'].dt.date>(datetime.now(tz).date())]
-    newOutages['fuelType'] = newOutages['fuelType'].astype('category')
-    monthlyOutages_ref = db.collection('appData').document('monthlyOutages')
-    monthlyOutages_ref.set(newOutages.to_dict('list'))
+    # streamIds = [44648, 118361, 322689, 118362, 147262, 322675, 322682, 44651]
+    # years = [datetime.now(tz).year, datetime.now(tz).year+1, datetime.now(tz).year+2]
+    # newOutages = pd.DataFrame([])
+    # for year in years:
+    #     df = get_data(streamIds, date(year,1,1), date(year+1,1,1))
+    #     newOutages = pd.concat([newOutages, df], axis=0, ignore_index=True)
+    # newOutages = newOutages[newOutages['timeStamp'].dt.date>(datetime.now(tz).date())]
+    # newOutages['fuelType'] = newOutages['fuelType'].astype('category')
+    # monthlyOutages_ref = db.collection('appData').document('monthlyOutages')
+    # monthlyOutages_ref.set(newOutages.to_dict('list'))
+    # diff_calc('monthlyOutages', oldOutages, newOutages)
+    # st.success(f"Monthly data updated: {datetime.now(tz).strftime('%b %d @ %H:%M:%S')}")
+    newOutages = oldOutages.copy()
+    newOutages['value'] = [random.randint(0,100) for x in range(len(newOutages))]
     diff_calc('monthlyOutages', oldOutages, newOutages)
-    st.success(f"Monthly data updated: {datetime.now(tz).strftime('%b %d @ %H:%M:%S')}")
 
 # OUTAGES
     # Schedule delete of dates that are older than the 5 latest dates in BQ
