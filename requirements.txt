@@ -1,7 +1,7 @@
 streamlit
 pandas
 altair
-matplotlib.pyplot
+matplotlib
 db-dtypes
 firebase-admin
 protobuf==3.19.6
