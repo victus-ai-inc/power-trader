@@ -76,7 +76,13 @@ def get_token():
             res_data = res.read()
         conn.close()
     except:
-        pass
+        if 'accessToken' in st.session_state:
+            accessToken = st.session_state['accessToken']
+        else:
+            with open('./accessToken.pickle', 'rb') as token:
+                accessToken = pickle.load(token)
+        release_token(accessToken)
+        get_token()
     return accessToken
 
 def release_token(accessToken):
