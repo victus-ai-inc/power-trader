@@ -86,7 +86,7 @@ def get_token():
         get_token()
     return accessToken
 
-def release_token(accessToken):
+#def release_token(accessToken):
     path = '/api/ReleaseToken'
     server = 'api.nrgstream.com'
     headers = {'Authorization': f'Bearer {accessToken}'}
@@ -149,33 +149,50 @@ def get_data(streamIds, start_date, end_date):
     return df
 
 def getData(streamIds, fromDate, toDate):
-    df = pd.DataFrame({col:pd.Series(dtype=typ) for col, typ in {'timeStamp':'datetime64[ns, America/Edmonton]','value':'float','fuelType':'category'}.items()})
-    username = st.secrets["nrg_username"]
-    password = st.secrets["nrg_password"]
-    server = 'api.nrgstream.com'
-    context = ssl.create_default_context(cafile=certifi.where())
-    getTokenPayload = f'grant_type=password&username={username}&password={password}'
-    getTokenHeaders = {"Content-type": "application/x-www-form-urlencoded"}
-    for streamId in streamIds:
-        conn = http.client.HTTPSConnection(server, context=context)
+    
+    def getToken(conn):
+        NRGusername = st.secrets["nrg_username"]
+        NRGpassword = st.secrets["nrg_password"]
+        getTokenPayload = f'grant_type=password&username={NRGusername}&password={NRGpassword}'
+        getTokenHeaders = {"Content-type": "application/x-www-form-urlencoded"}
         conn.request('POST', '/api/security/token', getTokenPayload, getTokenHeaders)
         getTokenResponse = conn.getresponse()
         st.write(f'steamID:{streamId} token res:{getTokenResponse.status}')
         getTokenData = json.loads(getTokenResponse.read().decode('utf-8'))
         accessToken = getTokenData['access_token']
+        return accessToken
+
+    def releaseToken(conn, accessToken):
+        releaseTokenHeaders = {'Authorization': f'Bearer {accessToken}'}
+        conn.request('DELETE', '/api/ReleaseToken', None, releaseTokenHeaders)
+        conn.close()
+    
+    def getNRGdata(conn, accessToken, streamId, fromDate, toDate):
         NRGheaders = {'Accept': 'Application/json', 'Authorization': f'Bearer {accessToken}'}
         NRGpath = f'/api/StreamData/{streamId}?fromDate={fromDate}&toDate={toDate}'
         conn.request('GET', NRGpath, None, NRGheaders)
         NRGresponse = conn.getresponse()
-        if NRGresponse == 429:
+        while NRGresponse == 429:
             time.sleep(1)
             conn.request('GET', NRGpath, None, NRGheaders)
             NRGresponse = conn.getresponse()
+        if NRGresponse == 400:
+            releaseToken(conn, accessToken)
+            accessToken = getToken(conn)
+            getNRGdata(conn, accessToken, streamId, fromDate, toDate)
         st.write(f'steamID:{streamId} data res:{NRGresponse.status}')
         NRGdata = json.loads(NRGresponse.read().decode('utf-8'))
-        releaseTokenHeaders = {'Authorization': f'Bearer {accessToken}'}
-        conn.request('DELETE', '/api/ReleaseToken', None, releaseTokenHeaders)
-        conn.close()
+        return NRGdata
+
+    df = pd.DataFrame({col:pd.Series(dtype=typ) for col, typ in {'timeStamp':'datetime64[ns, America/Edmonton]','value':'float','fuelType':'category'}.items()})
+    
+    server = 'api.nrgstream.com'
+    context = ssl.create_default_context(cafile=certifi.where())
+    for streamId in streamIds:
+        conn = http.client.HTTPSConnection(server, context=context)
+        accessToken = getToken(conn)
+        NRGdata = getNRGdata(conn, accessToken, streamId, fromDate, toDate)
+        releaseToken(accessToken)
         streamInfo = get_streamInfo(streamId)
         fuelType = streamInfo.iloc[0,1]
         new_df = pd.json_normalize(NRGdata, record_path='data')
