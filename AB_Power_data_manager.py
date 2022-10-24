@@ -73,7 +73,7 @@ def getData(streamIds, fromDate, toDate):
             releaseToken(conn)
             st.experimental_rerun()
         else:
-            st.write(f'steamID:{streamId} data res:{NRGresponse.status}')
+            #st.write(f'steamID:{streamId} data res:{NRGresponse.status}')
             NRGdata = json.loads(NRGresponse.read().decode('utf-8'))
             return NRGdata
     
