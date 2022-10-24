@@ -275,8 +275,6 @@ for seconds in range(450):
     monthly_outage = gather_outages('monthly_df', read_firestore_data(db,'monthlyOutages'))
 
     daily_diff, daily_alert_list = outage_diffs('daily_df')
-    sys.getsizeof(daily_alert_list)
-    st.stop()
     monthly_diff, monthly_alert_list = outage_diffs('monthly_df')
     alert_list = set(daily_alert_list + monthly_alert_list)
 
