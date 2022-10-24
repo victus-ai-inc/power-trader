@@ -110,7 +110,7 @@ def pull_NRG_data(fromDate, toDate, streamId, accessToken):
     if response.status == 200:
         jsonData = json.loads(response.read().decode('utf-8'))
         conn.close()
-    elif response.status == 400:
+    elif response.status != 200:
         st.write(f'{response.status}: pull_data')
         response.read()
         conn.close()
