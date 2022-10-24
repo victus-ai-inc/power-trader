@@ -172,7 +172,7 @@ def getData(streamIds, fromDate, toDate):
         NRGpath = f'/api/StreamData/{streamId}?fromDate={fromDate}&toDate={toDate}'
         conn.request('GET', NRGpath, None, NRGheaders)
         NRGresponse = conn.getresponse()
-        while NRGresponse != 200:
+        if NRGresponse != 200:
             releaseToken(conn, accessToken)
             accessToken = getToken(conn)
             getNRGdata(conn, accessToken, streamId, fromDate, toDate)    
