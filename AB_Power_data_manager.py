@@ -167,8 +167,8 @@ def getData(streamIds, fromDate, toDate):
         NRGpath = f'/api/StreamData/{streamId}?fromDate={fromDate}&toDate={toDate}'
         conn.request('GET', NRGpath, None, NRGheaders)
         NRGresponse = conn.getresponse()
-        if NRGresponse != 429:
-            time.sleep()
+        if NRGresponse == 429:
+            time.sleep(1)
             conn.request('GET', NRGpath, None, NRGheaders)
             NRGresponse = conn.getresponse()
         st.write(f'steamID:{streamId} data res:{NRGresponse.status}')
