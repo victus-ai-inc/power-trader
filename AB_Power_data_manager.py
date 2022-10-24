@@ -192,7 +192,7 @@ def getData(streamIds, fromDate, toDate):
         conn = http.client.HTTPSConnection(server, context=context)
         accessToken = getToken(conn)
         NRGdata = getNRGdata(conn, accessToken, streamId, fromDate, toDate)
-        releaseToken(accessToken)
+        releaseToken(conn, accessToken)
         streamInfo = get_streamInfo(streamId)
         fuelType = streamInfo.iloc[0,1]
         new_df = pd.json_normalize(NRGdata, record_path='data')
