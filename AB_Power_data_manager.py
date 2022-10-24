@@ -10,7 +10,8 @@ import http.client
 import certifi
 import pytz
 import pickle
-from datetime import datetime, date, timedelta, time
+import time
+from datetime import datetime, date, timedelta
 from dateutil.relativedelta import relativedelta
 from google.oauth2 import service_account
 from google.cloud import bigquery
