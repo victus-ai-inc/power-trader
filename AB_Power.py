@@ -107,7 +107,7 @@ def sevenDayCurrentChart(sevenDay_df, theme):
 
     return st.altair_chart(alt.layer(combo_area,combo_line).resolve_scale(y='independent'), use_container_width=True)
 
-def sevenDayOutageChart(sevenDayOutage_df, windSolar_df, theme):
+def sevenDayOutageChart(sevenDayOutage_df, theme):
     st.subheader('Daily Outages (Next 7-days)')
     thm = {k:v for k,v in theme.items() if k not in ['BC','Saskatchewan','Montana','Pool Price']}
     sevenDayOutageBase = alt.Chart(sevenDayOutage_df).encode(
@@ -152,10 +152,10 @@ def sevenDayOutageChart(sevenDayOutage_df, windSolar_df, theme):
     
     st.altair_chart(alt.layer(sevenDayOutagArea, sevenDayOutageLine).resolve_scale(y='independent'), use_container_width=True)
 
-def ninetyDayOutageChart(currentDailyOutage_df, theme):
+def ninetyDayOutageChart(ninetyDayOutage_df, theme):
     st.subheader('Daily Outages (Next 90-days)')
     thm = {k:v for k,v in theme.items() if k not in ['BC','Saskatchewan','Montana','Pool Price','7-Day Wind Forecast','3-Day Solar Forecast']}
-    daily_outage_area = alt.Chart(daily_outage).mark_area(opacity=0.8).encode(
+    daily_outage_area = alt.Chart(ninetyDayOutage_df).mark_area(opacity=0.8).encode(
         x=alt.X('timeStamp:T', title='', axis=alt.Axis(labelAngle=270)),
         y=alt.Y('value:Q', stack='zero', axis=alt.Axis(format=',f'), title='Outages (MW)'),
         color=alt.Color('fuelType:N', scale=alt.Scale(domain=list(thm.keys()), range=list(thm.values())), legend=alt.Legend(orient='top')),
@@ -190,14 +190,16 @@ for seconds in range(300):
     sevenDayOutage_df = currentDailyOutage_df[currentDailyOutage_df['timeStamp'].dt.date <= datetime.now(tz).date() + timedelta(days=7)]
     windSolar_df = read_firestore(db, 'windSolar')
     sevenDayOutage_df = pd.concat([sevenDayOutage_df, windSolar_df], axis=0)
+    ninetyDayOutage_df = currentDailyOutage_df[currentDailyOutage_df['timeStamp'].dt.date <= datetime.now(tz).date() + timedelta(days=90)]
 
     with placeholder.container():
         # Charts
         col1, col2 = st.columns(2)
         with col1:
             sevenDayCurrentChart(sevenDayCurrent_df, theme)
+            ninetyDayOutageChart(ninetyDayOutage_df, theme)
         with col2:
-            sevenDayOutageChart(sevenDayOutage_df, windSolar_df, theme)
+            sevenDayOutageChart(sevenDayOutage_df, theme)
     time.sleep(1)
 st.experimental_rerun()
 

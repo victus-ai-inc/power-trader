@@ -148,6 +148,43 @@ def get_data(streamIds, start_date, end_date):
     df['fuelType'] = df['fuelType'].astype('category')
     return df
 
+def getData(streamIds, fromDate, toDate):
+    df = pd.DataFrame({col:pd.Series(dtype=typ) for col, typ in {'timeStamp':'datetime64[ns, America/Edmonton]','value':'float','fuelType':'category'}.items()})
+    username = st.secrets["nrg_username"]
+    password = st.secrets["nrg_password"]
+    server = 'api.nrgstream.com'
+    context = ssl.create_default_context(cafile=certifi.where())
+    getTokenPayload = f'grant_type=password&username={username}&password={password}'
+    getTokenHeaders = {"Content-type": "application/x-www-form-urlencoded"}
+    for streamId in streamIds:
+        conn = http.client.HTTPSConnection(server, context=context)
+        conn.request('POST', '/api/security/token', getTokenPayload, getTokenHeaders)
+        getTokenResponse = conn.getresponse()
+        st.write(f'steamID:{streamId} token res:{getTokenResponse.status}')
+        getTokenData = json.loads(getTokenResponse.read().decode('utf-8'))
+        accessToken = getTokenData['access_token']
+        NRGheaders = {'Accept': 'Application/json', 'Authorization': f'Bearer {accessToken}'}
+        NRGpath = f'/api/StreamData/{streamId}?fromDate={fromDate}&toDate={toDate}'
+        conn.request('GET', NRGpath, None, NRGheaders)
+        NRGresponse = conn.getresponse()
+        st.write(f'steamID:{streamId} data res:{NRGresponse.status}')
+        NRGdata = json.loads(NRGresponse.read().decode('utf-8'))
+        releaseTokenHeaders = {'Authorization': f'Bearer {accessToken}'}
+        conn.request('DELETE', '/api/ReleaseToken', None, releaseTokenHeaders)
+        conn.close()
+        streamInfo = get_streamInfo(streamId)
+        fuelType = streamInfo.iloc[0,1]
+        new_df = pd.json_normalize(NRGdata, record_path='data')
+        new_df = new_df.assign(fuelType=fuelType)
+        new_df.rename(columns={0:'timeStamp', 1:'value'}, inplace=True)
+        new_df['timeStamp'] = pd.to_datetime(new_df['timeStamp']).dt.tz_localize(tz, ambiguous=True, nonexistent='shift_forward')
+        new_df.replace(to_replace={'value':''}, value=0, inplace=True)
+        df = pd.concat([df, new_df], axis=0, ignore_index=True)
+    df['value'] = df['value'].astype('float')
+    df['fuelType'] = df['fuelType'].astype('category')  
+    df.fillna(method='ffill', inplace=True)
+    return df
+
 def update_historical_data():
     historicalData_ref = db.collection(u'appData').document('historicalData')
     if 'last_history_update' not in st.session_state:
@@ -159,14 +196,15 @@ def update_historical_data():
         streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694, 120, 124947, 122, 1]
         startDate = datetime.now(tz).date()-timedelta(days=7)
         endDate = datetime.now(tz).date()
-        history_df = get_data(streamIds, startDate, endDate)
+        history_df = getData(streamIds, startDate, endDate)
         historicalData_ref.set(history_df.to_dict('list'))
         st.session_state['last_history_update'] = min(history_df['timeStamp'])
 
 @st.experimental_memo(suppress_st_warning=True, ttl=20)
 def update_current_data():
     streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694, 120, 124947, 122, 1]
-    current_df = get_data(streamIds, datetime.now(tz).date(), datetime.now(tz).date()+timedelta(days=1))
+    #current_df = get_data(streamIds, datetime.now(tz).date(), datetime.now(tz).date()+timedelta(days=1))
+    current_df = getData(streamIds, datetime.now(tz).date(), datetime.now(tz).date()+timedelta(days=1))
     currentData_ref = db.collection(u'appData').document('currentData')
     currentData_ref.set(current_df.to_dict('list'))
     st.success(f"Current data updated: {datetime.now(tz).strftime('%b %d @ %H:%M:%S')}")
@@ -253,10 +291,10 @@ def update_daily_outages():
     update_BigQuery_outages('dailyOutages', oldOutages)
     # Import new data
     streamIds = [124]
-    intertie_outages = get_data(streamIds, datetime.now(tz).date(), datetime.now(tz).date() + relativedelta(months=12, day=1, days=-1))
+    intertie_outages = getData(streamIds, datetime.now(tz).date(), datetime.now(tz).date() + relativedelta(months=12, day=1, days=-1))
     intertie_outages['value'] = max(intertie_outages['value']) - intertie_outages['value']
     streamIds = [118366, 118363, 322685, 118365, 118364, 322667, 322678, 147263]
-    stream_outages = get_data(streamIds, datetime.now(tz).date(), datetime.now(tz).date() + relativedelta(months=4, day=1))
+    stream_outages = getData(streamIds, datetime.now(tz).date(), datetime.now(tz).date() + relativedelta(months=4, day=1))
     stream_outages = stream_outages.pivot(index='timeStamp',columns='fuelType',values='value').asfreq(freq='H', method='ffill').reset_index()
     stream_outages = stream_outages.melt(id_vars='timeStamp',value_vars=['Biomass & Other','Coal','Dual Fuel','Energy Storage','Hydro','Natural Gas'])
     newOutages = pd.concat([intertie_outages,stream_outages],ignore_index=True)
@@ -280,7 +318,7 @@ def update_monthly_outages():
     years = [datetime.now(tz).year, datetime.now(tz).year+1, datetime.now(tz).year+2]
     newOutages = pd.DataFrame([])
     for year in years:
-        df = get_data(streamIds, date(year,1,1), date(year+1,1,1))
+        df = getData(streamIds, date(year,1,1), date(year+1,1,1))
         newOutages = pd.concat([newOutages, df], axis=0, ignore_index=True)
     newOutages = newOutages[newOutages['timeStamp'].dt.date>(datetime.now(tz).date())]
     newOutages['fuelType'] = newOutages['fuelType'].astype('category')
@@ -299,7 +337,7 @@ def update_monthly_outages():
 @st.experimental_memo(suppress_st_warning=True, ttl=300)
 def update_wind_solar():
     streamIds = [102225, 293354]
-    wind_solar = get_data(streamIds, datetime.now(tz).date(), datetime.now(tz).date() + relativedelta(days=8))
+    wind_solar = getData(streamIds, datetime.now(tz).date(), datetime.now(tz).date() + relativedelta(days=8))
     windSolar_ref = db.collection('appData').document('windSolar')
     windSolar_ref.set(wind_solar.to_dict('list'))
     st.success(f"Wind & solar data updated: {datetime.now(tz).strftime('%b %d @ %H:%M:%S')}")
