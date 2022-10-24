@@ -10,7 +10,7 @@ import http.client
 import certifi
 import pytz
 import pickle
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, time
 from dateutil.relativedelta import relativedelta
 from google.oauth2 import service_account
 from google.cloud import bigquery
@@ -70,6 +70,7 @@ def get_token():
                 with open('./accessToken.pickle', 'rb') as token:
                     accessToken = pickle.load(token)
             release_token(accessToken)
+            time.sleep(1)
             get_token()
         else:
             res_data = response.read()
@@ -119,6 +120,7 @@ def pull_NRG_data(fromDate, toDate, streamId, accessToken):
             with open('./accessToken.pickle', 'rb') as token:
                 accessToken = pickle.load(token)
         release_token(accessToken)
+        time.sleep(1)
         accessToken = get_token()
         pull_NRG_data(fromDate, toDate, streamId, accessToken)
     df = pd.json_normalize(jsonData, record_path='data')
