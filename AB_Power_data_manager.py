@@ -167,6 +167,10 @@ def getData(streamIds, fromDate, toDate):
         NRGpath = f'/api/StreamData/{streamId}?fromDate={fromDate}&toDate={toDate}'
         conn.request('GET', NRGpath, None, NRGheaders)
         NRGresponse = conn.getresponse()
+        if NRGresponse != 429:
+            time.sleep()
+            conn.request('GET', NRGpath, None, NRGheaders)
+            NRGresponse = conn.getresponse()
         st.write(f'steamID:{streamId} data res:{NRGresponse.status}')
         NRGdata = json.loads(NRGresponse.read().decode('utf-8'))
         releaseTokenHeaders = {'Authorization': f'Bearer {accessToken}'}
