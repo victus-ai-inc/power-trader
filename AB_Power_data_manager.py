@@ -172,14 +172,10 @@ def getData(streamIds, fromDate, toDate):
         NRGpath = f'/api/StreamData/{streamId}?fromDate={fromDate}&toDate={toDate}'
         conn.request('GET', NRGpath, None, NRGheaders)
         NRGresponse = conn.getresponse()
-        while NRGresponse == 429:
-            time.sleep(1)
-            conn.request('GET', NRGpath, None, NRGheaders)
-            NRGresponse = conn.getresponse()
-        if NRGresponse == 400:
+        while NRGresponse != 200:
             releaseToken(conn, accessToken)
             accessToken = getToken(conn)
-            getNRGdata(conn, accessToken, streamId, fromDate, toDate)
+            getNRGdata(conn, accessToken, streamId, fromDate, toDate)    
         st.write(f'steamID:{streamId} data res:{NRGresponse.status}')
         NRGdata = json.loads(NRGresponse.read().decode('utf-8'))
         return NRGdata
