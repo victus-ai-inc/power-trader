@@ -176,6 +176,7 @@ def getData(streamIds, fromDate, toDate):
         conn.request('GET', NRGpath, None, NRGheaders)
         NRGresponse = conn.getresponse()
         if NRGresponse != 200:
+            NRGresponse
             if NRGresponse == 400:
                 time.sleep(61)
             try:
