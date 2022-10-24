@@ -150,6 +150,19 @@ def get_data(streamIds, start_date, end_date):
 
 def getData(streamIds, fromDate, toDate):
     
+    def retryToken(conn, response, accessToken):
+        st.write(f'{response.status} retrying')
+        if response.status == 400:
+            try:
+                while 'accessToken' in st.session_state:
+                    accessToken = st.session_state['accessToken']
+            except:
+                with open('./accessToken.pickle', 'rb') as token:
+                    accessToken = pickle.load(token)
+        releaseToken(conn, accessToken)
+        accessToken = getToken(conn)
+        return accessToken
+
     def getToken(conn):
         NRGusername = st.secrets["nrg_username"]
         NRGpassword = st.secrets["nrg_password"]
@@ -158,8 +171,11 @@ def getData(streamIds, fromDate, toDate):
         conn.request('POST', '/api/security/token', getTokenPayload, getTokenHeaders)
         getTokenResponse = conn.getresponse()
         st.write(f'steamID:{streamId} token res:{getTokenResponse.status}')
-        getTokenData = json.loads(getTokenResponse.read().decode('utf-8'))
-        accessToken = getTokenData['access_token']
+        if getTokenResponse.status != 200:
+            accessToken = retryToken(conn, getTokenResponse, accessToken)
+        else:
+            getTokenData = json.loads(getTokenResponse.read().decode('utf-8'))
+            accessToken = getTokenData['access_token']
         st.session_state['accessToken'] = accessToken
         with open('./accessToken.pickle', 'wb') as token:
             pickle.dump(accessToken, token, protocol=pickle.HIGHEST_PROTOCOL)
@@ -176,18 +192,7 @@ def getData(streamIds, fromDate, toDate):
         conn.request('GET', NRGpath, None, NRGheaders)
         NRGresponse = conn.getresponse()
         if NRGresponse.status != 200:
-            NRGresponse.status
-            if NRGresponse.status == 400:
-                time.sleep(61)
-            try:
-                while 'accessToken' in st.session_state:
-                    accessToken = st.session_state['accessToken']
-                    releaseToken(conn, accessToken)
-            except:
-                with open('./accessToken.pickle', 'rb') as token:
-                    accessToken = pickle.load(token)
-                releaseToken(conn, accessToken)
-            accessToken = getToken(conn)
+            retryToken(conn, NRGresponse, accessToken)
             getNRGdata(conn, accessToken, streamId, fromDate, toDate)
         st.write(f'steamID:{streamId} data res:{NRGresponse.status}')
         NRGdata = json.loads(NRGresponse.read().decode('utf-8'))
