@@ -160,6 +160,9 @@ def getData(streamIds, fromDate, toDate):
         st.write(f'steamID:{streamId} token res:{getTokenResponse.status}')
         getTokenData = json.loads(getTokenResponse.read().decode('utf-8'))
         accessToken = getTokenData['access_token']
+        st.session_state['accessToken'] = accessToken
+        with open('./accessToken.pickle', 'wb') as token:
+            pickle.dump(accessToken, token, protocol=pickle.HIGHEST_PROTOCOL)
         return accessToken
 
     def releaseToken(conn, accessToken):
@@ -173,9 +176,18 @@ def getData(streamIds, fromDate, toDate):
         conn.request('GET', NRGpath, None, NRGheaders)
         NRGresponse = conn.getresponse()
         if NRGresponse != 200:
-            releaseToken(conn, accessToken)
+            if NRGresponse == 400:
+                time.sleep(61)
+            try:
+                while 'accessToken' in st.session_state:
+                    accessToken = st.session_state['accessToken']
+                    releaseToken(conn, accessToken)
+            except:
+                with open('./accessToken.pickle', 'rb') as token:
+                    accessToken = pickle.load(token)
+                releaseToken(conn, accessToken)
             accessToken = getToken(conn)
-            getNRGdata(conn, accessToken, streamId, fromDate, toDate)    
+            getNRGdata(conn, accessToken, streamId, fromDate, toDate)
         st.write(f'steamID:{streamId} data res:{NRGresponse.status}')
         NRGdata = json.loads(NRGresponse.read().decode('utf-8'))
         return NRGdata
