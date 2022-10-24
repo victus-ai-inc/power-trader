@@ -175,9 +175,9 @@ def getData(streamIds, fromDate, toDate):
         NRGpath = f'/api/StreamData/{streamId}?fromDate={fromDate}&toDate={toDate}'
         conn.request('GET', NRGpath, None, NRGheaders)
         NRGresponse = conn.getresponse()
-        if NRGresponse != 200:
-            NRGresponse
-            if NRGresponse == 400:
+        if NRGresponse.status != 200:
+            NRGresponse.status
+            if NRGresponse.status == 400:
                 time.sleep(61)
             try:
                 while 'accessToken' in st.session_state:
