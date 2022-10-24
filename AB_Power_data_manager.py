@@ -39,114 +39,11 @@ def read_firestore(db, document):
     df['timeStamp'] = df['timeStamp'].dt.tz_convert('America/Edmonton')
     return df
 
-def get_token():
-    try:
-        username = st.secrets["nrg_username"]
-        password = st.secrets["nrg_password"]
-        server = 'api.nrgstream.com'
-        tokenPath = '/api/security/token'
-        tokenPayload = f'grant_type=password&username={username}&password={password}'
-        headers = {"Content-type": "application/x-www-form-urlencoded"}
-        # Connect to API server to get a token
-        context = ssl.create_default_context(cafile=certifi.where())
-        conn = http.client.HTTPSConnection(server,context=context)
-        conn.request('POST', tokenPath, tokenPayload, headers)
-        response = conn.getresponse()
-        # Check if the response is good
-        if response.status == 200:
-            res_data = response.read()
-            # Decode the token into an object
-            jsonData = json.loads(res_data.decode('utf-8'))
-            accessToken = jsonData['access_token']
-            with open('./accessToken.pickle', 'wb') as token:
-                pickle.dump(accessToken, token, protocol=pickle.HIGHEST_PROTOCOL)
-            if 'accessToken' not in st.session_state:
-                st.session_state['accessToken'] = accessToken
-        elif response.status == 400:
-            st.write(f'{response.status}: accessToken')
-            response.read()
-            if 'accessToken' in st.session_state:
-                accessToken = st.session_state['accessToken']
-            else:
-                with open('./accessToken.pickle', 'rb') as token:
-                    accessToken = pickle.load(token)
-            release_token(accessToken)
-            time.sleep(1)
-            get_token()
-        else:
-            res_data = response.read()
-        conn.close()
-    except:
-        if 'accessToken' in st.session_state:
-            accessToken = st.session_state['accessToken']
-        else:
-            with open('./accessToken.pickle', 'rb') as token:
-                accessToken = pickle.load(token)
-        release_token(accessToken)
-        get_token()
-    return accessToken
-
-#def release_token(accessToken):
-    path = '/api/ReleaseToken'
-    server = 'api.nrgstream.com'
-    headers = {'Authorization': f'Bearer {accessToken}'}
-    context = ssl.create_default_context(cafile=certifi.where())
-    conn = http.client.HTTPSConnection(server,context=context)
-    conn.request('DELETE', path, None, headers)
-
 @st.experimental_memo(suppress_st_warning=True)
 def get_streamInfo(streamId):
     streamInfo = pd.read_csv('stream_codes.csv', usecols=['streamId','fuelType'], dtype={'streamId':'Int64','fuelType':'category'})
     streamInfo = streamInfo[streamInfo['streamId']==streamId]
     return streamInfo
-
-def pull_NRG_data(fromDate, toDate, streamId, accessToken):
-    server = 'api.nrgstream.com'
-    context = ssl.create_default_context(cafile=certifi.where())
-    conn = http.client.HTTPSConnection(server, context=context)
-    path = f'/api/StreamData/{streamId}?fromDate={fromDate}&toDate={toDate}'
-    headers = {'Accept': 'Application/json', 'Authorization': f'Bearer {accessToken}'}
-    conn.request('GET', path, None, headers)
-    response = conn.getresponse()
-    if response.status == 200:
-        jsonData = json.loads(response.read().decode('utf-8'))
-        conn.close()
-    elif response.status != 200:
-        st.write(f'{response.status}: pull_data')
-        response.read()
-        conn.close()
-        if 'accessToken' in st.session_state:
-            accessToken = st.session_state['accessToken']
-        else:
-            with open('./accessToken.pickle', 'rb') as token:
-                accessToken = pickle.load(token)
-        release_token(accessToken)
-        time.sleep(1)
-        accessToken = get_token()
-        pull_NRG_data(fromDate, toDate, streamId, accessToken)
-    df = pd.json_normalize(jsonData, record_path='data')
-    # Rename df cols
-    df.rename(columns={0:'timeStamp', 1:'value'}, inplace=True)
-    df['timeStamp'] = pd.to_datetime(df['timeStamp']).dt.tz_localize(tz, ambiguous=True, nonexistent='shift_forward')
-    # Add streamInfo cols to df
-    streamInfo = get_streamInfo(streamId)
-    fuelType = streamInfo.iloc[0,1]
-    df = df.assign(fuelType=fuelType)
-    df.replace(to_replace={'value':''}, value=0, inplace=True)
-    df['value'] = df['value'].astype('float')
-    df['fuelType'] = df['fuelType'].astype('category')   
-    df.fillna(method='ffill', inplace=True)
-    return df
-
-def get_data(streamIds, start_date, end_date):
-    df = pd.DataFrame({col:pd.Series(dtype=typ) for col, typ in {'timeStamp':'datetime64[ns, America/Edmonton]','value':'float','fuelType':'category'}.items()})
-    for streamId in streamIds:
-        accessToken = get_token()
-        APIdata = pull_NRG_data(start_date.strftime('%m/%d/%Y'), end_date.strftime('%m/%d/%Y'), streamId, accessToken)
-        release_token(accessToken)
-        df = pd.concat([df, APIdata], axis=0, ignore_index=True)
-    df['fuelType'] = df['fuelType'].astype('category')
-    return df
 
 def getData(streamIds, fromDate, toDate):
 
@@ -204,7 +101,7 @@ def getData(streamIds, fromDate, toDate):
         new_df['timeStamp'] = pd.to_datetime(new_df['timeStamp']).dt.tz_localize(tz, ambiguous=True, nonexistent='shift_forward')
         new_df.replace(to_replace={'value':''}, value=0, inplace=True)
         df = pd.concat([df, new_df], axis=0, ignore_index=True)
-        time.sleep(0.5)
+        time.sleep(0.2)
     df['value'] = df['value'].astype('float')
     df['fuelType'] = df['fuelType'].astype('category')  
     df.fillna(method='ffill', inplace=True)
