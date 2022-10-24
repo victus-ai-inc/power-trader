@@ -112,6 +112,7 @@ def pull_NRG_data(fromDate, toDate, streamId, accessToken):
     elif response.status == 400:
         st.write(f'{response.status}: pull_data')
         response.read()
+        conn.close()
         if 'accessToken' in st.session_state:
             accessToken = st.session_state['accessToken']
         else:
@@ -120,7 +121,6 @@ def pull_NRG_data(fromDate, toDate, streamId, accessToken):
         release_token(accessToken)
         accessToken = get_token()
         pull_NRG_data(fromDate, toDate, streamId, accessToken)
-
     df = pd.json_normalize(jsonData, record_path='data')
     # Rename df cols
     df.rename(columns={0:'timeStamp', 1:'value'}, inplace=True)
