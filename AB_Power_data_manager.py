@@ -149,39 +149,35 @@ def get_data(streamIds, start_date, end_date):
     return df
 
 def getData(streamIds, fromDate, toDate):
-    
-    def retryToken(conn, response, accessToken):
-        st.write(f'{response.status} retrying')
-        if response.status == 400:
-            try:
-                while 'accessToken' in st.session_state:
-                    accessToken = st.session_state['accessToken']
-            except:
-                with open('./accessToken.pickle', 'rb') as token:
-                    accessToken = pickle.load(token)
-        releaseToken(conn, accessToken)
-        accessToken = getToken(conn)
-        return accessToken
 
-    def getToken(conn):
+    def getToken(conn, streamId):
         NRGusername = st.secrets["nrg_username"]
         NRGpassword = st.secrets["nrg_password"]
         getTokenPayload = f'grant_type=password&username={NRGusername}&password={NRGpassword}'
         getTokenHeaders = {"Content-type": "application/x-www-form-urlencoded"}
         conn.request('POST', '/api/security/token', getTokenPayload, getTokenHeaders)
-        getTokenResponse = conn.getresponse()
-        st.write(f'streamID:{streamId} token res:{getTokenResponse.status}')
-        if getTokenResponse.status != 200:
-            accessToken = retryToken(conn, getTokenResponse, accessToken)
-        else:
-            getTokenData = json.loads(getTokenResponse.read().decode('utf-8'))
-            accessToken = getTokenData['access_token']
+        getTokenResponse = conn.getresponse()     
+        if getTokenResponse.status == 400:
+            st.write(f'streamID:{streamId} TOKEN FAIL:{getTokenResponse.status}')
+            releaseToken(conn)
+            getToken(conn, streamId)
+        if getTokenResponse.status == 429:
+            time.sleep(1)
+            getToken(conn, streamId)
+        getTokenData = json.loads(getTokenResponse.read().decode('utf-8'))
+        accessToken = getTokenData['access_token']
         st.session_state['accessToken'] = accessToken
         with open('./accessToken.pickle', 'wb') as token:
             pickle.dump(accessToken, token, protocol=pickle.HIGHEST_PROTOCOL)
         return accessToken
 
-    def releaseToken(conn, accessToken):
+    def releaseToken(conn):
+        try:
+            while 'accessToken' in st.session_state:
+                accessToken = st.session_state['accessToken']
+        except:
+            with open('./accessToken.pickle', 'rb') as token:
+                accessToken = pickle.load(token)
         releaseTokenHeaders = {'Authorization': f'Bearer {accessToken}'}
         conn.request('DELETE', '/api/ReleaseToken', None, releaseTokenHeaders)
         conn.close()
@@ -191,8 +187,12 @@ def getData(streamIds, fromDate, toDate):
         NRGpath = f'/api/StreamData/{streamId}?fromDate={fromDate}&toDate={toDate}'
         conn.request('GET', NRGpath, None, NRGheaders)
         NRGresponse = conn.getresponse()
-        if NRGresponse.status != 200:
-            retryToken(conn, NRGresponse, accessToken)
+        if NRGresponse.status == 400:
+            st.write(f'streamID:{streamId} TOKEN FAIL:{NRGresponse.status}')
+            releaseToken(conn)
+            getNRGdata(conn, accessToken, streamId, fromDate, toDate)
+        if NRGresponse.status == 429:
+            time.sleep(1)
             getNRGdata(conn, accessToken, streamId, fromDate, toDate)
         st.write(f'steamID:{streamId} data res:{NRGresponse.status}')
         NRGdata = json.loads(NRGresponse.read().decode('utf-8'))
