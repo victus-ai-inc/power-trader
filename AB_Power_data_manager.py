@@ -170,7 +170,7 @@ def getData(streamIds, fromDate, toDate):
         getTokenHeaders = {"Content-type": "application/x-www-form-urlencoded"}
         conn.request('POST', '/api/security/token', getTokenPayload, getTokenHeaders)
         getTokenResponse = conn.getresponse()
-        st.write(f'steamID:{streamId} token res:{getTokenResponse.status}')
+        st.write(f'streamID:{streamId} token res:{getTokenResponse.status}')
         if getTokenResponse.status != 200:
             accessToken = retryToken(conn, getTokenResponse, accessToken)
         else:
@@ -215,6 +215,7 @@ def getData(streamIds, fromDate, toDate):
         new_df['timeStamp'] = pd.to_datetime(new_df['timeStamp']).dt.tz_localize(tz, ambiguous=True, nonexistent='shift_forward')
         new_df.replace(to_replace={'value':''}, value=0, inplace=True)
         df = pd.concat([df, new_df], axis=0, ignore_index=True)
+        time.sleep(1)
     df['value'] = df['value'].astype('float')
     df['fuelType'] = df['fuelType'].astype('category')  
     df.fillna(method='ffill', inplace=True)
