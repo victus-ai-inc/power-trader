@@ -50,11 +50,10 @@ def get_token():
         context = ssl.create_default_context(cafile=certifi.where())
         conn = http.client.HTTPSConnection(server,context=context)
         conn.request('POST', tokenPath, tokenPayload, headers)
-        res = conn.getresponse()
-        res_code = res.status
+        response = conn.getresponse()
         # Check if the response is good
-        if res_code == 200:
-            res_data = res.read()
+        if response.status == 200:
+            res_data = response.read()
             # Decode the token into an object
             jsonData = json.loads(res_data.decode('utf-8'))
             accessToken = jsonData['access_token']
@@ -62,9 +61,9 @@ def get_token():
                 pickle.dump(accessToken, token, protocol=pickle.HIGHEST_PROTOCOL)
             if 'accessToken' not in st.session_state:
                 st.session_state['accessToken'] = accessToken
-        elif res_code == 400:
-            res_code
-            res.read()
+        elif response.status == 400:
+            st.write(f'{response.status}: accessToken')
+            response.read()
             if 'accessToken' in st.session_state:
                 accessToken = st.session_state['accessToken']
             else:
@@ -73,7 +72,7 @@ def get_token():
             release_token(accessToken)
             get_token()
         else:
-            res_data = res.read()
+            res_data = response.read()
         conn.close()
     except:
         if 'accessToken' in st.session_state:
@@ -107,14 +106,21 @@ def pull_NRG_data(fromDate, toDate, streamId, accessToken):
     headers = {'Accept': 'Application/json', 'Authorization': f'Bearer {accessToken}'}
     conn.request('GET', path, None, headers)
     response = conn.getresponse()
-    if response.status != 200:
-        conn.close()
-        pull_NRG_data(fromDate, toDate, streamId, accessToken)
-    try:
+    if response.status == 200:
         jsonData = json.loads(response.read().decode('utf-8'))
-    except json.JSONDecodeError:
-        st.experimental_rerun()
-    conn.close()
+        conn.close()
+    elif response.status == 400:
+        st.write(f'{response.status}: pull_data')
+        response.read()
+        if 'accessToken' in st.session_state:
+            accessToken = st.session_state['accessToken']
+        else:
+            with open('./accessToken.pickle', 'rb') as token:
+                accessToken = pickle.load(token)
+        release_token(accessToken)
+        accessToken = get_token()
+        pull_NRG_data(fromDate, toDate, streamId, accessToken)
+
     df = pd.json_normalize(jsonData, record_path='data')
     # Rename df cols
     df.rename(columns={0:'timeStamp', 1:'value'}, inplace=True)
