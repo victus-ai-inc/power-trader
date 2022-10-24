@@ -150,53 +150,42 @@ def get_data(streamIds, start_date, end_date):
 
 def getData(streamIds, fromDate, toDate):
 
-    def getToken(conn, streamId):
+    def getToken(conn):
         NRGusername = st.secrets["nrg_username"]
         NRGpassword = st.secrets["nrg_password"]
         getTokenPayload = f'grant_type=password&username={NRGusername}&password={NRGpassword}'
         getTokenHeaders = {"Content-type": "application/x-www-form-urlencoded"}
         conn.request('POST', '/api/security/token', getTokenPayload, getTokenHeaders)
-        getTokenResponse = conn.getresponse()     
-        if getTokenResponse.status == 400:
-            st.write(f'streamID:{streamId} TOKEN FAIL:{getTokenResponse.status}')
+        getTokenResponse = conn.getresponse()
+        if getTokenResponse.status != 200:
             releaseToken(conn)
-            getToken(conn, streamId)
-        if getTokenResponse.status == 429:
-            time.sleep(1)
-            getToken(conn, streamId)
-        getTokenData = json.loads(getTokenResponse.read().decode('utf-8'))
-        accessToken = getTokenData['access_token']
-        st.session_state['accessToken'] = accessToken
-        with open('./accessToken.pickle', 'wb') as token:
-            pickle.dump(accessToken, token, protocol=pickle.HIGHEST_PROTOCOL)
-        return accessToken
-
-    def releaseToken(conn):
-        try:
-            while 'accessToken' in st.session_state:
-                accessToken = st.session_state['accessToken']
-        except:
-            with open('./accessToken.pickle', 'rb') as token:
-                accessToken = pickle.load(token)
-        releaseTokenHeaders = {'Authorization': f'Bearer {accessToken}'}
-        conn.request('DELETE', '/api/ReleaseToken', None, releaseTokenHeaders)
-        conn.close()
+            st.experimental_rerun()
+        else:
+            getTokenData = json.loads(getTokenResponse.read().decode('utf-8'))
+            accessToken = getTokenData['access_token']
+            with open('./accessToken.pickle', 'wb') as token:
+                pickle.dump(accessToken, token, protocol=pickle.HIGHEST_PROTOCOL)
+            return accessToken
     
     def getNRGdata(conn, accessToken, streamId, fromDate, toDate):
         NRGheaders = {'Accept': 'Application/json', 'Authorization': f'Bearer {accessToken}'}
         NRGpath = f'/api/StreamData/{streamId}?fromDate={fromDate}&toDate={toDate}'
         conn.request('GET', NRGpath, None, NRGheaders)
         NRGresponse = conn.getresponse()
-        if NRGresponse.status == 400:
-            st.write(f'streamID:{streamId} TOKEN FAIL:{NRGresponse.status}')
+        if NRGresponse.status != 200:
             releaseToken(conn)
-            getNRGdata(conn, accessToken, streamId, fromDate, toDate)
-        if NRGresponse.status == 429:
-            time.sleep(1)
-            getNRGdata(conn, accessToken, streamId, fromDate, toDate)
-        st.write(f'steamID:{streamId} data res:{NRGresponse.status}')
-        NRGdata = json.loads(NRGresponse.read().decode('utf-8'))
-        return NRGdata
+            st.experimental_rerun()
+        else:
+            st.write(f'steamID:{streamId} data res:{NRGresponse.status}')
+            NRGdata = json.loads(NRGresponse.read().decode('utf-8'))
+            return NRGdata
+    
+    def releaseToken(conn):
+        with open('./accessToken.pickle', 'rb') as token:
+            accessToken = pickle.load(token)
+        releaseTokenHeaders = {'Authorization': f'Bearer {accessToken}'}
+        conn.request('DELETE', '/api/ReleaseToken', None, releaseTokenHeaders)
+        conn.close()
 
     df = pd.DataFrame({col:pd.Series(dtype=typ) for col, typ in {'timeStamp':'datetime64[ns, America/Edmonton]','value':'float','fuelType':'category'}.items()})
     
@@ -206,7 +195,7 @@ def getData(streamIds, fromDate, toDate):
         conn = http.client.HTTPSConnection(server, context=context)
         accessToken = getToken(conn)
         NRGdata = getNRGdata(conn, accessToken, streamId, fromDate, toDate)
-        releaseToken(conn, accessToken)
+        releaseToken(conn)
         streamInfo = get_streamInfo(streamId)
         fuelType = streamInfo.iloc[0,1]
         new_df = pd.json_normalize(NRGdata, record_path='data')
@@ -215,7 +204,7 @@ def getData(streamIds, fromDate, toDate):
         new_df['timeStamp'] = pd.to_datetime(new_df['timeStamp']).dt.tz_localize(tz, ambiguous=True, nonexistent='shift_forward')
         new_df.replace(to_replace={'value':''}, value=0, inplace=True)
         df = pd.concat([df, new_df], axis=0, ignore_index=True)
-        time.sleep(1)
+        time.sleep(0.5)
     df['value'] = df['value'].astype('float')
     df['fuelType'] = df['fuelType'].astype('category')  
     df.fillna(method='ffill', inplace=True)
