@@ -1,3 +1,4 @@
+from matplotlib.pyplot import legend
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -133,7 +134,8 @@ def diff_calc(old_df, new_df):
     return diff_df
 
 def sevenDayCurrentChart(sevenDay_df, theme):
-    st.subheader('Current Supply (Previous 7-days)')
+    st.subheader('Current Supply')
+    st.markdown('**Previous 7-days**')
     thm = {k:v for k,v in theme.items() if k not in ['Intertie','3-Day Solar Forecast','7-Day Wind Forecast']}
     combo_base = alt.Chart(sevenDay_df).encode(
         x=alt.X(
@@ -150,11 +152,14 @@ def sevenDayCurrentChart(sevenDay_df, theme):
             scale=alt.Scale(
                 domain=list(thm.keys()),
                 range=list(thm.values())),
-                legend=alt.Legend(orient='top')),
+                legend=alt.Legend(
+                    orient='right',
+                    title='Fuel Type')),
         tooltip=[
             alt.Tooltip('fuelType',title='Fuel Type'),
             alt.Tooltip('value',title='Value'),
             alt.Tooltip('yearmonthdatehoursminutes(timeStamp)',title='Date/Time')],
+
     ).properties(height=400)
     
     combo_area = combo_base.mark_area(opacity=0.7).transform_filter(alt.datum.fuelType!='Pool Price')
@@ -170,7 +175,8 @@ def sevenDayCurrentChart(sevenDay_df, theme):
     return st.altair_chart(alt.layer(combo_area,combo_line).resolve_scale(y='independent'), use_container_width=True)
 
 def sevenDayOutageChart(sevenDayOutage_df, theme):
-    st.subheader('Daily Outages (Next 7-days)')
+    st.subheader('Daily Outages')
+    st.markdown('**Next 7-days**')
     thm = {k:v for k,v in theme.items() if k not in ['BC','Saskatchewan','Montana','Pool Price']}
     sevenDayOutageBase = alt.Chart(sevenDayOutage_df).encode(
         x=alt.X(
@@ -194,7 +200,9 @@ def sevenDayOutageChart(sevenDayOutage_df, theme):
             scale=alt.Scale(
                 domain=list(thm.keys()),
                 range=list(thm.values())),
-            legend=alt.Legend(orient='top')),
+            legend=alt.Legend(
+                orient='right',
+                title='Fuel Type')),
     ).transform_filter(
         {'not':alt.FieldOneOfPredicate(
             field='fuelType',
@@ -215,7 +223,8 @@ def sevenDayOutageChart(sevenDayOutage_df, theme):
     st.altair_chart(alt.layer(sevenDayOutagArea, sevenDayOutageLine).resolve_scale(y='independent'), use_container_width=True)
 
 def ninetyDayOutageChart(ninetyDayOutage_df, theme):
-    st.subheader('Daily Outages (Next 90-days)')
+    st.subheader('Daily Outages')
+    st.markdown('**Next 90-days**')
     thm = {k:v for k,v in theme.items() if k not in ['BC','Saskatchewan','Montana','Pool Price','7-Day Wind Forecast','3-Day Solar Forecast']}
     daily_outage_area = alt.Chart(ninetyDayOutage_df).mark_area(opacity=0.8).encode(
         x=alt.X(
@@ -232,13 +241,16 @@ def ninetyDayOutageChart(ninetyDayOutage_df, theme):
             scale=alt.Scale(
                 domain=list(thm.keys()),
                 range=list(thm.values())),
-            legend=alt.Legend(orient='top')),
+            legend=alt.Legend(
+                orient='right',
+                title='Fuel Type')),
         tooltip=['fuelType','value','timeStamp']
     ).properties(height=400).configure_view(strokeWidth=0).configure_axis(grid=False)
     st.altair_chart(daily_outage_area, use_container_width=True)
 
 def monthlyOutagesChart(currentMonthlyOutage_df, theme):
-    st.subheader('Monthly Outages (Next 2-years)')
+    st.subheader('Monthly Outages')
+    st.markdown('**Next 2-years**')
     thm = {k:v for k,v in theme.items() if k not in ['BC','Saskatchewan','Montana','Pool Price','Intertie','7-Day Wind Forecast','3-Day Solar Forecast']}
     monthly_outage_area = alt.Chart(currentMonthlyOutage_df).mark_bar(opacity=0.7).encode(
         x=alt.X(
@@ -255,7 +267,9 @@ def monthlyOutagesChart(currentMonthlyOutage_df, theme):
             scale=alt.Scale(
                 domain=list(thm.keys()),
                 range=list(thm.values())),
-            legend=alt.Legend(orient='top')),
+            legend=alt.Legend(
+                orient='right',
+                title='Fuel Type')),
         tooltip=['fuelType','value','timeStamp']
         ).properties(height=400).configure_view(strokeWidth=0).configure_axis(grid=False)
     st.altair_chart(monthly_outage_area, use_container_width=True)
@@ -283,7 +297,10 @@ def outageDiffChart(outageDiff_df, outageAlertList):
                     scale=alt.Scale(
                         domainMin=-max(abs(outageDiff_df['diff_value'])),
                         domainMax=max(abs(outageDiff_df['diff_value'])),
-                        scheme='redyellowgreen'))),
+                        scheme='redyellowgreen'),
+                    legend=alt.Legend(
+                        title='Value (MW)',
+                        columns=2))),
             tooltip=['fuelType','diff_value','timeStamp']
         ).properties(height=100 if len(outageAlertList)==1 else 60 * len(outageAlertList)
         ).configure_view(strokeWidth=0
@@ -359,12 +376,14 @@ for seconds in range(300):
         with col1:
             sevenDayCurrentChart(sevenDayCurrent_df, theme)
             ninetyDayOutageChart(ninetyDayOutage_df, theme)
-            st.subheader('Daily Intertie & Outage (+/- vs 7 days ago)')
+            st.subheader('Daily Intertie & Outage')
+            st.markdown('**+/- vs 7 days ago**')
             outageDiffChart(dailyOutageDiff_df, dailyOutageAlertList)
         with col2:
             sevenDayOutageChart(sevenDayOutage_df, theme)
             monthlyOutagesChart(currentMonthlyOutage_df, theme)
-            st.subheader('Monthly Outage (+/- vs 7 days ago)')
+            st.subheader('Monthly Outage')
+            st.markdown('**+/- vs 7 days ago**')
             outageDiffChart(monthlyOutageDiff_df, monthlyOutageAlertList)
     time.sleep(7)
 st.experimental_rerun()
