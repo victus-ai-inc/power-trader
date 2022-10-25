@@ -1,5 +1,3 @@
-from matplotlib.pyplot import legend
-from sqlalchemy import column
 import streamlit as st
 import pandas as pd
 import numpy as np
