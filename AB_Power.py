@@ -43,7 +43,7 @@ def read_firestore_history(_db):
     df['timeStamp'] = df['timeStamp'].dt.tz_convert('America/Edmonton')
     return df
 
-@st.experimental_memo(suppress_st_warning=True, ttl=20)
+@st.experimental_memo(suppress_st_warning=True, ttl=5)
 def read_firestore(_db, document):
     firestore_ref = _db.collection('appData').document(document)
     df = pd.DataFrame.from_dict(firestore_ref.get().to_dict())
@@ -359,12 +359,12 @@ for seconds in range(300):
         with col1:
             sevenDayCurrentChart(sevenDayCurrent_df, theme)
             ninetyDayOutageChart(ninetyDayOutage_df, theme)
-            st.subheader('Daily Intertie & Outage Net Increase/Decrease vs 7 days ago')
+            st.subheader('Daily Intertie & Outage (+/- vs 7 days ago)')
             outageDiffChart(dailyOutageDiff_df, dailyOutageAlertList)
         with col2:
             sevenDayOutageChart(sevenDayOutage_df, theme)
             monthlyOutagesChart(currentMonthlyOutage_df, theme)
-            st.subheader('Monthly Outage Net Increase/Decrease vs 7 days ago')
+            st.subheader('Monthly Outage (+/- vs 7 days ago)')
             outageDiffChart(monthlyOutageDiff_df, monthlyOutageAlertList)
-    time.sleep(1)
+    time.sleep(7)
 st.experimental_rerun()
