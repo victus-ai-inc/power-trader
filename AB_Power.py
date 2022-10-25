@@ -1,4 +1,5 @@
 from matplotlib.pyplot import legend
+from sqlalchemy import column
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -153,8 +154,9 @@ def sevenDayCurrentChart(sevenDay_df, theme):
                 domain=list(thm.keys()),
                 range=list(thm.values())),
                 legend=alt.Legend(
-                    orient='right',
-                    title='Fuel Type')),
+                    orient='bottom',
+                    title='Fuel Type',
+                    columns=4)),
         tooltip=[
             alt.Tooltip('fuelType',title='Fuel Type'),
             alt.Tooltip('value',title='Value'),
@@ -201,8 +203,9 @@ def sevenDayOutageChart(sevenDayOutage_df, theme):
                 domain=list(thm.keys()),
                 range=list(thm.values())),
             legend=alt.Legend(
-                orient='right',
-                title='Fuel Type')),
+                orient='bottom',
+                title='Fuel Type',
+                columns=3)),
     ).transform_filter(
         {'not':alt.FieldOneOfPredicate(
             field='fuelType',
@@ -242,8 +245,9 @@ def ninetyDayOutageChart(ninetyDayOutage_df, theme):
                 domain=list(thm.keys()),
                 range=list(thm.values())),
             legend=alt.Legend(
-                orient='right',
-                title='Fuel Type')),
+                orient='bottom',
+                title='Fuel Type',
+                columns=4)),
         tooltip=['fuelType','value','timeStamp']
     ).properties(height=400).configure_view(strokeWidth=0).configure_axis(grid=False)
     st.altair_chart(daily_outage_area, use_container_width=True)
@@ -268,8 +272,9 @@ def monthlyOutagesChart(currentMonthlyOutage_df, theme):
                 domain=list(thm.keys()),
                 range=list(thm.values())),
             legend=alt.Legend(
-                orient='right',
-                title='Fuel Type')),
+                orient='bottom',
+                title='Fuel Type',
+                columns=4)),
         tooltip=['fuelType','value','timeStamp']
         ).properties(height=400).configure_view(strokeWidth=0).configure_axis(grid=False)
     st.altair_chart(monthly_outage_area, use_container_width=True)
@@ -372,18 +377,19 @@ for seconds in range(300):
                     for fuelType in monthlyOutageAlertList:
                         warning('alert', fuelType)
         # Charts
-        col1, col2 = st.columns(2)
-        with col1:
+        col3, col4 = st.columns(2)
+        with col3:
             sevenDayCurrentChart(sevenDayCurrent_df, theme)
             ninetyDayOutageChart(ninetyDayOutage_df, theme)
             st.subheader('Daily Intertie & Outage')
             st.markdown('**+/- vs 7 days ago**')
             outageDiffChart(dailyOutageDiff_df, dailyOutageAlertList)
-        with col2:
+        with col4:
             sevenDayOutageChart(sevenDayOutage_df, theme)
             monthlyOutagesChart(currentMonthlyOutage_df, theme)
             st.subheader('Monthly Outage')
             st.markdown('**+/- vs 7 days ago**')
             outageDiffChart(monthlyOutageDiff_df, monthlyOutageAlertList)
+        
     time.sleep(7)
 st.experimental_rerun()
