@@ -27,6 +27,32 @@ def hideMenu():
             """
     st.markdown(hide_menu_style, unsafe_allow_html=True)
 
+def launchDataManager():
+    url = 'https://ab-power-data-manager.streamlitapp.com/'
+    st.markdown(f'''
+    <a href={url}>
+        <button style=
+            "background-color:#58D68D;
+            border-radius: 6px;
+            -webkit-border-radius: 6px;
+            background-position: 9px 0px;
+            background-repeat: no-repeat;
+            border: solid 1px Black;
+            border-radius: 6px;
+            line-height: 18px;
+            overflow: hidden;
+            font-size:24px;
+            font-weight: bold;
+            color: Black;
+            text-align: center;
+            padding: 15px 10px;"
+            >
+        LAUNCH DATA MANAGER
+        </button>
+    </a>
+    ''',
+    unsafe_allow_html=True)
+
 @st.experimental_singleton(suppress_st_warning=True)
 def firestore_db_instance():
     try:
@@ -347,6 +373,10 @@ theme = {'Biomass & Other':'#1f77b4',
         '7-Day Wind Forecast':'#3f3f3f'}
 cutoff = 100
 hideMenu()
+
+with st.sidebar:
+    st.caption('Click below to launch the Alberta Power Data Manager:')
+    launchDataManager()
 
 history_df = read_firestore_history(db)
 if max(history_df['timeStamp']) < datetime.now(tz)-relativedelta(days=1,hour=23,minute=55,second=0,microsecond=0):

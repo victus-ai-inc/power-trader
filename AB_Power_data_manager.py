@@ -148,16 +148,16 @@ def alerts(outageTable, diff_df):
             ax.bar(x,y, color='green', alpha=0.6, align='center')
             ax.bar(x,y2, color='red', alpha=0.6, align='center')
             if fuelType == 'Intertie':
-                ax.set_title(f"Daily {fuelType} Outages for the next year")
+                ax.set_title(f'Daily Outage Adjustments (next 12 months)\n{fuelType}')
             else:
-                ax.set_title(f"Daily {fuelType} Outages for the next 90 days")
+                ax.set_title(f'Daily Outage Adjustments (next 3 months)\n{fuelType}')
         elif outageTable == 'monthlyOutages':
             ax.bar(x,y, color='green', width=20, alpha=0.6, align='center')
             ax.bar(x,y2, color='red', width=20, alpha=0.6, align='center')
-            ax.set_title(f"Monthly {fuelType} Outages for the next year")
+            ax.set_title(f'Monthly Outage Adjustments (next 24 months)\n{fuelType}')
         ax.set_ylabel('MW')
+        ax.legend(labels=['Net Increase','Net Decrease'])
         plt.savefig('outages.png',facecolor='white')
-        #st.pyplot(plt)
 
     def text_alert():
         from_email = st.secrets['email_address']
