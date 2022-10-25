@@ -77,8 +77,8 @@ def displayKPI(left_df, right_df, title):
 
 def kpi(current_df):
     currentHour_df = current_df[['fuelType','value']][current_df['timeStamp']==max(current_df['timeStamp'])]
-    currentHourAvg_df = current_df[current_df['timeStamp'].dt.hour==datetime.now(tz).hour].groupby(['fuelType']).mean().reset_index()
-    previousHourAvg_df = current_df[current_df['timeStamp'].dt.hour==(datetime.now(tz)-timedelta(hours=1)).hour].groupby(['fuelType']).mean().reset_index()
+    currentHourAvg_df = current_df[current_df['timeStamp'].dt.hour==datetime.now(tz).hour].groupby(['fuelType']).mean(numeric_only=True).reset_index()
+    previousHourAvg_df = current_df[current_df['timeStamp'].dt.hour==(datetime.now(tz)-timedelta(hours=1)).hour].groupby(['fuelType']).mean(numeric_only=True).reset_index()
     displayKPI(previousHourAvg_df, currentHour_df, 'Real Time')
     displayKPI(previousHourAvg_df, currentHourAvg_df, 'Hourly Average')
 
