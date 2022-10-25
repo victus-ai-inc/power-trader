@@ -43,7 +43,7 @@ def read_firestore_history(_db):
     df['timeStamp'] = df['timeStamp'].dt.tz_convert('America/Edmonton')
     return df
 
-@st.experimental_memo(suppress_st_warning=True, ttl=5)
+@st.experimental_memo(suppress_st_warning=True, ttl=7)
 def read_firestore(_db, document):
     firestore_ref = _db.collection('appData').document(document)
     df = pd.DataFrame.from_dict(firestore_ref.get().to_dict())
@@ -130,6 +130,7 @@ def diff_calc(old_df, new_df):
     diff_df.loc[diff_df['value_old']==0,'value_new']=0
     diff_df['diff_value'] = diff_df['value_new'] - diff_df['value_old']
     diff_df = diff_df[['timeStamp','fuelType','diff_value']]
+    diff_df = diff_df.groupby('fuelType').filter(lambda x: x['diff_value'].mean() != 0)
     return diff_df
 
 def sevenDayCurrentChart(sevenDay_df, theme):
@@ -157,7 +158,7 @@ def sevenDayCurrentChart(sevenDay_df, theme):
                     columns=4)),
         tooltip=[
             alt.Tooltip('fuelType',title='Fuel Type'),
-            alt.Tooltip('value',title='Value'),
+            alt.Tooltip('value',title='Value (MW)'),
             alt.Tooltip('yearmonthdatehoursminutes(timeStamp)',title='Date/Time')],
 
     ).properties(height=400)
@@ -185,11 +186,11 @@ def sevenDayOutageChart(sevenDayOutage_df, theme):
             axis=alt.Axis(labelAngle=270)),
         tooltip=[
             alt.Tooltip('fuelType',title='Fuel Type'),
-            alt.Tooltip('value',title='Value'),
+            alt.Tooltip('value',title='Value (MW)'),
             alt.Tooltip('yearmonthdatehoursminutes(timeStamp)',title='Date/Time')],
     ).properties(height=400)
     
-    sevenDayOutagArea = sevenDayOutageBase.mark_area(opacity=0.7).encode(
+    sevenDayOutageArea = sevenDayOutageBase.mark_area(opacity=0.7).encode(
         y=alt.Y(
             'value:Q',
             stack='zero',
@@ -203,7 +204,7 @@ def sevenDayOutageChart(sevenDayOutage_df, theme):
             legend=alt.Legend(
                 orient='bottom',
                 title='Fuel Type',
-                columns=3)),
+                columns=4)),
     ).transform_filter(
         {'not':alt.FieldOneOfPredicate(
             field='fuelType',
@@ -221,7 +222,7 @@ def sevenDayOutageChart(sevenDayOutage_df, theme):
             oneOf=['7-Day Wind Forecast','3-Day Solar Forecast'])
     )
     
-    st.altair_chart(alt.layer(sevenDayOutagArea, sevenDayOutageLine).resolve_scale(y='independent'), use_container_width=True)
+    st.altair_chart(alt.layer(sevenDayOutageArea, sevenDayOutageLine).resolve_scale(y='independent'), use_container_width=True)
 
 def ninetyDayOutageChart(ninetyDayOutage_df, theme):
     st.subheader('Daily Outages')
@@ -235,7 +236,8 @@ def ninetyDayOutageChart(ninetyDayOutage_df, theme):
         y=alt.Y(
             'value:Q',
             stack='zero',
-            axis=alt.Axis(format=',f'),
+            axis=alt.Axis(
+                format=',f'),
             title='Outages (MW)'),
         color=alt.Color(
             'fuelType:N',
@@ -246,7 +248,10 @@ def ninetyDayOutageChart(ninetyDayOutage_df, theme):
                 orient='bottom',
                 title='Fuel Type',
                 columns=4)),
-        tooltip=['fuelType','value','timeStamp']
+        tooltip=[
+            alt.Tooltip('fuelType',title='Fuel Type'),
+            alt.Tooltip('value',title='Value (MW)'),
+            alt.Tooltip('yearmonthdatehoursminutes(timeStamp)',title='Date/Time')],
     ).properties(height=400).configure_view(strokeWidth=0).configure_axis(grid=False)
     st.altair_chart(daily_outage_area, use_container_width=True)
 
@@ -273,11 +278,14 @@ def monthlyOutagesChart(currentMonthlyOutage_df, theme):
                 orient='bottom',
                 title='Fuel Type',
                 columns=4)),
-        tooltip=['fuelType','value','timeStamp']
+        tooltip=[
+            alt.Tooltip('fuelType',title='Fuel Type'),
+            alt.Tooltip('value',title='Value (MW)'),
+            alt.Tooltip('yearmonth(timeStamp)',title='Date/Time')],
         ).properties(height=400).configure_view(strokeWidth=0).configure_axis(grid=False)
     st.altair_chart(monthly_outage_area, use_container_width=True)
 
-def outageDiffChart(outageDiff_df, outageAlertList):
+def outageDiffChart(dateFormat, outageDiff_df, outageAlertList):
     if len(outageAlertList)>0:
         outageHeatmapChart = alt.Chart(outageDiff_df
         ).mark_rect(
@@ -285,9 +293,11 @@ def outageDiffChart(outageDiff_df, outageAlertList):
             stroke='grey',strokeWidth=0
         ).encode(
             x=alt.X(
-                'monthdate(timeStamp):O',
+                f'{dateFormat}(timeStamp):O',
                 title=None,
-                axis=alt.Axis(ticks=False, labelAngle=270)),
+                axis=alt.Axis(
+                    ticks=False,
+                    labelAngle=270)),
             y=alt.Y(
                 'fuelType:N',
                 title=None,
@@ -304,8 +314,11 @@ def outageDiffChart(outageDiff_df, outageAlertList):
                     legend=alt.Legend(
                         title='Value (MW)',
                         columns=2))),
-            tooltip=['fuelType','diff_value','timeStamp']
-        ).properties(height=100 if len(outageAlertList)==1 else 60 * len(outageAlertList)
+            tooltip=[
+                alt.Tooltip('fuelType',title='Fuel Type'),
+                alt.Tooltip('diff_value',title='Value (MW)'),
+                alt.Tooltip(f'{dateFormat}(timeStamp)',title='Date/Time')],
+        ).properties(height=105 if len(outageAlertList)==1 else 60 * len(outageAlertList)
         ).configure_view(strokeWidth=0
         ).configure_axis(grid=False)
         st.altair_chart(outageHeatmapChart, use_container_width=True)
@@ -333,9 +346,14 @@ cutoff = 100
 hideMenu()
 
 history_df = read_firestore_history(db)
+if max(history_df['timeStamp']) < datetime.now(tz)-relativedelta(days=1,hour=23,minute=55,second=0,microsecond=0):
+    st.alert('Updating history')
+    read_firestore_history.clear()
+    history_df = read_firestore_history(db)
 
 placeholder = st.empty()
-for seconds in range(300):
+for seconds in range(85): # 85 iterations x 7 second wait time/iteration = Reset after 600 seconds
+
 # Current supply
     current_df = read_firestore(db,'currentData')
     sevenDayCurrent_df = pd.concat([history_df, current_df], axis=0)
@@ -344,7 +362,6 @@ for seconds in range(300):
     oldDailyOutage_df = oldOutage_df('outages.dailyOutages')
     currentDailyOutage_df = read_firestore(db,'dailyOutages')
     dailyOutageDiff_df = diff_calc(oldDailyOutage_df, currentDailyOutage_df)
-    dailyOutageDiff_df = dailyOutageDiff_df[dailyOutageDiff_df['diff_value'] > 0]
     dailyOutageAlertList = dailyOutageDiff_df['fuelType'].unique()
 
     sevenDayOutage_df = currentDailyOutage_df[currentDailyOutage_df['timeStamp'].dt.date <= datetime.now(tz).date() + timedelta(days=7)]
@@ -356,7 +373,6 @@ for seconds in range(300):
     oldMonthlyOutage_df = oldOutage_df('outages.monthlyOutages')
     currentMonthlyOutage_df = read_firestore(db,'monthlyOutages')
     monthlyOutageDiff_df = diff_calc(oldMonthlyOutage_df, currentMonthlyOutage_df)
-    monthlyOutageDiff_df = monthlyOutageDiff_df[monthlyOutageDiff_df['diff_value'] > 0]
     monthlyOutageAlertList = monthlyOutageDiff_df['fuelType'].unique()
 
     with placeholder.container():
@@ -381,13 +397,12 @@ for seconds in range(300):
             ninetyDayOutageChart(ninetyDayOutage_df, theme)
             st.subheader('Daily Intertie & Outage')
             st.markdown('**+/- vs 7 days ago**')
-            outageDiffChart(dailyOutageDiff_df, dailyOutageAlertList)
+            outageDiffChart('yearmonthdate', dailyOutageDiff_df, dailyOutageAlertList)
         with col4:
             sevenDayOutageChart(sevenDayOutage_df, theme)
             monthlyOutagesChart(currentMonthlyOutage_df, theme)
             st.subheader('Monthly Outage')
             st.markdown('**+/- vs 7 days ago**')
-            outageDiffChart(monthlyOutageDiff_df, monthlyOutageAlertList)
-        
+            outageDiffChart('yearmonth', monthlyOutageDiff_df, monthlyOutageAlertList)
     time.sleep(7)
 st.experimental_rerun()

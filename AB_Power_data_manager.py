@@ -276,6 +276,12 @@ st.success(f"Historical data has been updated from {st.session_state['last_histo
 
 placeholder = st.empty()
 for seconds in range(43200):
+    # If time is midnight then len(getData())=0, wait until first data comes in at 00:05 to proceed
+    twelveOhFiveAM = datetime.now(tz)+relativedelta(hour=0,minute=6,second=0,microsecond=0)
+    if datetime.now(tz) <= twelveOhFiveAM:
+        st.warning(f'Waiting until 12:05 to load first data of the day')
+        time.sleep(twelveOhFiveAM-datetime.now(tz))
+        
     with placeholder.container():
         st.write('---')
         st.header('DAILY OUTAGES')
