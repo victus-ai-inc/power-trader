@@ -81,6 +81,9 @@ def kpi(current_df):
     previousHourAvg_df = current_df[current_df['timeStamp'].dt.hour==(datetime.now(tz)-timedelta(hours=1)).hour].groupby(['fuelType']).mean(numeric_only=True).reset_index()
     displayKPI(previousHourAvg_df, currentHour_df, 'Real Time')
     displayKPI(previousHourAvg_df, currentHourAvg_df, 'Hourly Average')
+    currentAlerts = currentHour_df.set_index('fuelType') - previousHourAvg_df.set_index('fuelType')
+    currentAlerts = currentAlerts[abs(currentAlerts['value'])>=100].reset_index()
+    return currentAlerts
 
 def warning(type, lst):
     if type == 'warning':
@@ -374,21 +377,23 @@ for seconds in range(85): # 85 iterations x 7 second wait time/iteration = Reset
     currentMonthlyOutage_df = read_firestore(db,'monthlyOutages')
     monthlyOutageDiff_df = diff_calc(oldMonthlyOutage_df, currentMonthlyOutage_df)
     monthlyOutageAlertList = monthlyOutageDiff_df['fuelType'].unique()
+# Outage alerts
+    outageAlertList = set(list(dailyOutageAlertList)+list(monthlyOutageAlertList))
 
     with placeholder.container():
         # KPIs
         with st.expander('*Click here to expand/collapse KPIs',expanded=True):
-            kpi(current_df)
+            currentAlerts = kpi(current_df)
             st.write(f"Last update: {datetime.now(tz).strftime('%a, %b %d @ %X')}")
         # KPI warning & alert boxes
             col1, col2 = st.columns(2)
             with col1:
-                if len(dailyOutageAlertList) > 0:
-                    for fuelType in dailyOutageAlertList:
+                if len(currentAlerts) > 0:
+                    for fuelType in currentAlerts['fuelType']:
                         warning('warning', fuelType)
             with col2:
-                if len(monthlyOutageAlertList) > 0:
-                    for fuelType in monthlyOutageAlertList:
+                if len(outageAlertList) > 0:
+                    for fuelType in outageAlertList:
                         warning('alert', fuelType)
         # Charts
         col3, col4 = st.columns(2)
