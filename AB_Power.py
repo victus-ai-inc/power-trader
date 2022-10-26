@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import altair as alt
 import time
+import gc
 from datetime import datetime, date, timedelta
 from dateutil.relativedelta import relativedelta
 import pytz
@@ -12,6 +13,7 @@ from google.cloud import firestore
 from firebase_admin import credentials
 from firebase_admin import firestore
 from google.cloud import bigquery
+from memory_profiler import profile
 
 # **** Create alert if data-manager is not running ****
     # Give option to open data-manager url and allow it to run in background
@@ -26,6 +28,7 @@ def hideMenu():
             </style>
             """
     st.markdown(hide_menu_style, unsafe_allow_html=True)
+    del hide_menu_style
 
 def launchDataManager():
     url = 'https://ab-power-data-manager.streamlitapp.com/'
@@ -61,20 +64,22 @@ def firestore_db_instance():
         firebase_admin.initialize_app(credential=credentials.Certificate(st.secrets["gcp_service_account"]))
     return firestore.client()
 
-@st.experimental_memo(suppress_st_warning=True)
+#@st.experimental_memo(suppress_st_warning=True)
 def read_firestore_history(_db):
     firestore_ref = _db.collection('appData').document('historicalData')
     df = pd.DataFrame.from_dict(firestore_ref.get().to_dict())
     df['fuelType'] = df['fuelType'].astype('category')
     df['timeStamp'] = df['timeStamp'].dt.tz_convert('America/Edmonton')
+    del firestore_ref
     return df
 
-@st.experimental_memo(suppress_st_warning=True, ttl=7)
+#@st.experimental_memo(suppress_st_warning=True, ttl=7)
 def read_firestore(_db, document):
     firestore_ref = _db.collection('appData').document(document)
     df = pd.DataFrame.from_dict(firestore_ref.get().to_dict())
     df['fuelType'] = df['fuelType'].astype('category')
     df['timeStamp'] = df['timeStamp'].dt.tz_convert('America/Edmonton')
+    del firestore_ref
     return df
 
 def displayKPI(left_df, right_df, title):
@@ -99,6 +104,7 @@ def displayKPI(left_df, right_df, title):
     col10.metric(label=kpi_df.iloc[6,0], value=kpi_df.iloc[6,2], delta=kpi_df.iloc[6,3]) # Montanta
     col11.metric(label=kpi_df.iloc[9,0], value=kpi_df.iloc[9,2], delta=kpi_df.iloc[9,3]) # Sask
     col12.metric(label=kpi_df.iloc[8,0], value=kpi_df.iloc[8,2], delta=kpi_df.iloc[8,3]) # Pool Price
+    del col1, col2, col3, col4, col5, col6, col7, col8, col9, col10, col11, col12
     return kpi_df
 
 def kpi(current_df):
@@ -109,6 +115,7 @@ def kpi(current_df):
     displayKPI(previousHourAvg_df, currentHourAvg_df, 'Hourly Average')
     currentAlerts = currentHour_df.set_index('fuelType') - previousHourAvg_df.set_index('fuelType')
     currentAlerts = currentAlerts[abs(currentAlerts['value'])>=100].reset_index()
+    del currentHour_df, currentHourAvg_df, previousHourAvg_df
     return currentAlerts
 
 def warning(type, lst):
@@ -135,7 +142,7 @@ def warning(type, lst):
                 text-align: center;
                 padding: 15px 10px;">{lst}</p>''', unsafe_allow_html=True)
 
-@st.experimental_memo(suppress_st_warning=True)
+#@st.experimental_memo(suppress_st_warning=True)
 def oldOutage_df(outageTable):
     cred = service_account.Credentials.from_service_account_info(st.secrets["gcp_service_account"])
     query = f'''
@@ -152,6 +159,7 @@ def oldOutage_df(outageTable):
     df = df[['timeStamp','fuelType','value']]
     df['timeStamp'] = df['timeStamp'].dt.tz_convert(tz)
     df['fuelType'] = df['fuelType'].astype('category')
+    del cred, query
     return df
 
 def diff_calc(old_df, new_df):
@@ -202,6 +210,7 @@ def sevenDayCurrentChart(sevenDay_df, theme):
         color=alt.Color('fuelType:N')
     ).transform_filter(alt.datum.fuelType=='Pool Price')
 
+    del thm
     return st.altair_chart(alt.layer(combo_area,combo_line).resolve_scale(y='independent'), use_container_width=True)
 
 def sevenDayOutageChart(sevenDayOutage_df, theme):
@@ -251,6 +260,7 @@ def sevenDayOutageChart(sevenDayOutage_df, theme):
             oneOf=['7-Day Wind Forecast','3-Day Solar Forecast'])
     )
     
+    del thm
     st.altair_chart(alt.layer(sevenDayOutageArea, sevenDayOutageLine).resolve_scale(y='independent'), use_container_width=True)
 
 def ninetyDayOutageChart(ninetyDayOutage_df, theme):
@@ -282,6 +292,8 @@ def ninetyDayOutageChart(ninetyDayOutage_df, theme):
             alt.Tooltip('value',title='Value (MW)'),
             alt.Tooltip('yearmonthdatehoursminutes(timeStamp)',title='Date/Time')],
     ).properties(height=400).configure_view(strokeWidth=0).configure_axis(grid=False)
+
+    del thm
     st.altair_chart(daily_outage_area, use_container_width=True)
 
 def monthlyOutagesChart(currentMonthlyOutage_df, theme):
@@ -312,6 +324,8 @@ def monthlyOutagesChart(currentMonthlyOutage_df, theme):
             alt.Tooltip('value',title='Value (MW)'),
             alt.Tooltip('yearmonth(timeStamp)',title='Date/Time')],
         ).properties(height=400).configure_view(strokeWidth=0).configure_axis(grid=False)
+    
+    del thm
     st.altair_chart(monthly_outage_area, use_container_width=True)
 
 def outageDiffChart(dateFormat, outageDiff_df, outageAlertList):
@@ -385,7 +399,7 @@ if max(history_df['timeStamp']) < datetime.now(tz)-relativedelta(days=1,hour=23,
     history_df = read_firestore_history(db)
 
 placeholder = st.empty()
-for seconds in range(85): # 85 iterations x 7 second wait time/iteration = Reset after 600 seconds
+for seconds in range(30): # 85 iterations x 7 second wait time/iteration = Reset after 600 seconds
 
 # Current supply
     current_df = read_firestore(db,'currentData')
@@ -398,7 +412,7 @@ for seconds in range(85): # 85 iterations x 7 second wait time/iteration = Reset
     dailyOutageAlertList = dailyOutageDiff_df['fuelType'].unique()
 
     sevenDayOutage_df = currentDailyOutage_df[currentDailyOutage_df['timeStamp'].dt.date <= datetime.now(tz).date() + timedelta(days=7)]
-    windSolar_df = read_firestore(db, 'windSolar')
+    windSolar_df = read_firestore(db,'windSolar')
     sevenDayOutage_df = pd.concat([sevenDayOutage_df, windSolar_df], axis=0)
     
     ninetyDayOutage_df = currentDailyOutage_df[currentDailyOutage_df['timeStamp'].dt.date <= datetime.now(tz).date() + timedelta(days=90)]
@@ -439,5 +453,11 @@ for seconds in range(85): # 85 iterations x 7 second wait time/iteration = Reset
             st.subheader('Monthly Outage')
             st.markdown('**+/- vs 7 days ago**')
             outageDiffChart('yearmonth', monthlyOutageDiff_df, monthlyOutageAlertList)
-    time.sleep(7)
+    
+    #time.sleep(7)
+    del current_df, sevenDayCurrent_df, dailyOutageDiff_df, dailyOutageAlertList, sevenDayOutage_df, windSolar_df, ninetyDayOutage_df,\
+        oldMonthlyOutage_df, currentMonthlyOutage_df, monthlyOutageDiff_df, monthlyOutageAlertList, outageAlertList, col1, col2, col3, col4
+    gc.collect()
+del placeholder, history_df, db, tz, theme, cutoff
+gc.collect()
 st.experimental_rerun()
