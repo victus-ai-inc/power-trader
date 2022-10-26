@@ -13,7 +13,7 @@ from google.cloud import firestore
 from firebase_admin import credentials
 from firebase_admin import firestore
 from google.cloud import bigquery
-from memory_profiler import profile
+#from memory_profiler import profile
 
 # **** Create alert if data-manager is not running ****
     # Give option to open data-manager url and allow it to run in background
