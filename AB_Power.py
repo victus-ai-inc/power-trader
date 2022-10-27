@@ -4,6 +4,8 @@ import numpy as np
 import altair as alt
 import time
 import gc
+import json
+import objgraph
 from datetime import datetime, date, timedelta
 from dateutil.relativedelta import relativedelta
 import pytz
@@ -13,7 +15,97 @@ from google.cloud import firestore
 from firebase_admin import credentials
 from firebase_admin import firestore
 from google.cloud import bigquery
-#from memory_profiler import profile
+from memory_profiler import profile
+import tracemalloc
+
+st.set_page_config(layout='wide', initial_sidebar_state='collapsed', menu_items=None)
+tracemalloc.start()
+snapshot1 = tracemalloc.take_snapshot()
+
+@st.experimental_singleton
+def init_tracking_object():
+  tracemalloc.start(10)
+
+  return {
+    "runs": 0,
+    "tracebacks": {}
+  }
+_TRACES = init_tracking_object()
+
+def traceback_exclude_filter(patterns, tracebackList):
+    """
+    Returns False if any provided pattern exists in the filename of the traceback,
+    Returns True otherwise.
+    """
+    for t in tracebackList:
+        for p in patterns:
+            if p in t.filename:
+                return False
+        return True
+
+def traceback_include_filter(patterns, tracebackList):
+    """
+    Returns True if any provided pattern exists in the filename of the traceback,
+    Returns False otherwise.
+    """
+    for t in tracebackList:
+        for p in patterns:
+            if p in t.filename:
+                return True
+    return False
+
+def check_for_leaks(diff):
+    """
+    Checks if the same traceback appears consistently after multiple runs.
+
+    diff - The object returned by tracemalloc#snapshot.compare_to
+    """
+    _TRACES["runs"] = _TRACES["runs"] + 1
+    tracebacks = set()
+
+    for sd in diff:
+        for t in sd.traceback:
+            tracebacks.add(t)
+
+    if "tracebacks" not in _TRACES or len(_TRACES["tracebacks"]) == 0:
+        for t in tracebacks:
+            _TRACES["tracebacks"][t] = 1
+    else:
+        oldTracebacks = _TRACES["tracebacks"].keys()
+        intersection = tracebacks.intersection(oldTracebacks)
+        evictions = set()
+        for t in _TRACES["tracebacks"]:
+            if t not in intersection:
+                evictions.add(t)
+            else:
+                _TRACES["tracebacks"][t] = _TRACES["tracebacks"][t] + 1
+
+        for t in evictions:
+            del _TRACES["tracebacks"][t]
+
+    if _TRACES["runs"] > 1:
+        st.write(f'After {_TRACES["runs"]} runs the following traces were collected.')
+        prettyPrint = {}
+        for t in _TRACES["tracebacks"]:
+            prettyPrint[str(t)] = _TRACES["tracebacks"][t]
+        st.write(json.dumps(prettyPrint, sort_keys=True, indent=4))
+
+def compare_snapshots():
+    """
+    Compares two consecutive snapshots and tracks if the same traceback can be found
+    in the diff. If a traceback consistently appears during runs, it's a good indicator
+    for a memory leak.
+    """
+    snapshot = tracemalloc.take_snapshot()
+    if "snapshot" in _TRACES:
+        diff = snapshot.compare_to(_TRACES["snapshot"], "lineno")
+        diff = [d for d in diff if
+                d.count_diff > 0 and traceback_exclude_filter(["tornado"], d.traceback)
+                and traceback_include_filter(["streamlit"], d.traceback)
+                ]
+        check_for_leaks(diff)
+
+    _TRACES["snapshot"] = snapshot
 
 # **** Create alert if data-manager is not running ****
     # Give option to open data-manager url and allow it to run in background
@@ -70,7 +162,6 @@ def read_firestore_history(_db):
     df = pd.DataFrame.from_dict(firestore_ref.get().to_dict())
     df['fuelType'] = df['fuelType'].astype('category')
     df['timeStamp'] = df['timeStamp'].dt.tz_convert('America/Edmonton')
-    del firestore_ref
     return df
 
 #@st.experimental_memo(suppress_st_warning=True, ttl=7)
@@ -367,7 +458,7 @@ def outageDiffChart(dateFormat, outageDiff_df, outageAlertList):
         st.altair_chart(outageHeatmapChart, use_container_width=True)
 
 # Set global parameters
-st.set_page_config(layout='wide', initial_sidebar_state='collapsed', menu_items=None)
+
 tz = pytz.timezone('America/Edmonton')
 db = firestore_db_instance()
 theme = {'Biomass & Other':'#1f77b4',
@@ -386,7 +477,7 @@ theme = {'Biomass & Other':'#1f77b4',
         '3-Day Solar Forecast':'#d62728',
         '7-Day Wind Forecast':'#3f3f3f'}
 cutoff = 100
-hideMenu()
+#hideMenu()
 
 with st.sidebar:
     st.caption('Click below to launch the Alberta Power Data Manager:')
@@ -394,12 +485,12 @@ with st.sidebar:
 
 history_df = read_firestore_history(db)
 if max(history_df['timeStamp']) < datetime.now(tz)-relativedelta(days=1,hour=23,minute=55,second=0,microsecond=0):
-    st.alert('Updating history')
-    read_firestore_history.clear()
+    st.warning('Updating history')
+    #read_firestore_history.clear()
     history_df = read_firestore_history(db)
 
 placeholder = st.empty()
-for seconds in range(30): # 85 iterations x 7 second wait time/iteration = Reset after 600 seconds
+for seconds in range(100): # 85 iterations x 7 second wait time/iteration = Reset after 600 seconds
 
 # Current supply
     current_df = read_firestore(db,'currentData')
@@ -414,7 +505,7 @@ for seconds in range(30): # 85 iterations x 7 second wait time/iteration = Reset
     sevenDayOutage_df = currentDailyOutage_df[currentDailyOutage_df['timeStamp'].dt.date <= datetime.now(tz).date() + timedelta(days=7)]
     windSolar_df = read_firestore(db,'windSolar')
     sevenDayOutage_df = pd.concat([sevenDayOutage_df, windSolar_df], axis=0)
-    
+
     ninetyDayOutage_df = currentDailyOutage_df[currentDailyOutage_df['timeStamp'].dt.date <= datetime.now(tz).date() + timedelta(days=90)]
 # Monthly Outages
     oldMonthlyOutage_df = oldOutage_df('outages.monthlyOutages')
@@ -453,11 +544,14 @@ for seconds in range(30): # 85 iterations x 7 second wait time/iteration = Reset
             st.subheader('Monthly Outage')
             st.markdown('**+/- vs 7 days ago**')
             outageDiffChart('yearmonth', monthlyOutageDiff_df, monthlyOutageAlertList)
-    
+    snapshot2 = tracemalloc.take_snapshot()
+    top_stats = snapshot2.compare_to(snapshot1, 'lineno')
+    print("[ Top 10 differences ]")
+    for stat in top_stats[:10]:
+        print(stat)
     #time.sleep(7)
-    del current_df, sevenDayCurrent_df, dailyOutageDiff_df, dailyOutageAlertList, sevenDayOutage_df, windSolar_df, ninetyDayOutage_df,\
-        oldMonthlyOutage_df, currentMonthlyOutage_df, monthlyOutageDiff_df, monthlyOutageAlertList, outageAlertList, col1, col2, col3, col4
-    gc.collect()
-del placeholder, history_df, db, tz, theme, cutoff
-gc.collect()
-st.experimental_rerun()
+#     del current_df, sevenDayCurrent_df, dailyOutageDiff_df, dailyOutageAlertList, sevenDayOutage_df, windSolar_df, ninetyDayOutage_df,\
+#         oldMonthlyOutage_df, currentMonthlyOutage_df, monthlyOutageDiff_df, monthlyOutageAlertList, outageAlertList, col1, col2, col3, col4
+#     gc.collect()
+# del placeholder, history_df, db, tz, theme, cutoff
+#st.experimental_rerun()
