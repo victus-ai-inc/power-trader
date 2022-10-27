@@ -477,7 +477,7 @@ theme = {'Biomass & Other':'#1f77b4',
         '3-Day Solar Forecast':'#d62728',
         '7-Day Wind Forecast':'#3f3f3f'}
 cutoff = 100
-#hideMenu()
+hideMenu()
 
 with st.sidebar:
     st.caption('Click below to launch the Alberta Power Data Manager:')
