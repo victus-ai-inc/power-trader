@@ -15,7 +15,7 @@ from google.cloud import firestore
 from firebase_admin import credentials
 from firebase_admin import firestore
 from google.cloud import bigquery
-from memory_profiler import profile
+#from memory_profiler import profile
 #import tracemalloc
 
 st.set_page_config(layout='wide', initial_sidebar_state='collapsed', menu_items=None)
