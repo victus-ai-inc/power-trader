@@ -258,7 +258,7 @@ def diff_calc(old_df, new_df):
     diff_df.loc[diff_df['value_old']==0,'value_new']=0
     diff_df['diff_value'] = diff_df['value_new'] - diff_df['value_old']
     diff_df = diff_df[['timeStamp','fuelType','diff_value']]
-    diff_df = diff_df.groupby('fuelType').filter(lambda x: x['diff_value'].mean() != 0)
+    diff_df = diff_df.groupby('fuelType').filter(lambda x: x['diff_value'].mean(numeric_only=True) != 0)
     return diff_df
 
 def sevenDayCurrentChart(sevenDay_df, theme):
