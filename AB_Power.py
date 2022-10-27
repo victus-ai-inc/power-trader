@@ -484,10 +484,10 @@ with st.sidebar:
     launchDataManager()
 
 history_df = read_firestore_history(db)
-if max(history_df['timeStamp']) < datetime.now(tz)-relativedelta(days=1,hour=23,minute=55,second=0,microsecond=0):
-    st.warning('Updating history')
-    #read_firestore_history.clear()
-    history_df = read_firestore_history(db)
+# if max(history_df['timeStamp']) < datetime.now(tz)-relativedelta(days=1,hour=23,minute=55,second=0,microsecond=0):
+#     #st.warning('Updating history')
+#     #read_firestore_history.clear()
+#     history_df = read_firestore_history(db)
 
 placeholder = st.empty()
 for seconds in range(100): # 85 iterations x 7 second wait time/iteration = Reset after 600 seconds
