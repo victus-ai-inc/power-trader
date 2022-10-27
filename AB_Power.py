@@ -5,7 +5,7 @@ import altair as alt
 import time
 import gc
 import json
-import objgraph
+#import objgraph
 from datetime import datetime, date, timedelta
 from dateutil.relativedelta import relativedelta
 import pytz
@@ -16,7 +16,7 @@ from firebase_admin import credentials
 from firebase_admin import firestore
 from google.cloud import bigquery
 from memory_profiler import profile
-import tracemalloc
+#import tracemalloc
 
 st.set_page_config(layout='wide', initial_sidebar_state='collapsed', menu_items=None)
 tracemalloc.start()
@@ -486,7 +486,7 @@ with st.sidebar:
 history_df = read_firestore_history(db)
 if max(history_df['timeStamp']) < datetime.now(tz)-relativedelta(days=1,hour=23,minute=55,second=0,microsecond=0):
     st.warning('Updating history')
-    #read_firestore_history.clear()
+    read_firestore_history.clear()
     history_df = read_firestore_history(db)
 
 placeholder = st.empty()
@@ -544,14 +544,14 @@ for seconds in range(100): # 85 iterations x 7 second wait time/iteration = Rese
             st.subheader('Monthly Outage')
             st.markdown('**+/- vs 7 days ago**')
             outageDiffChart('yearmonth', monthlyOutageDiff_df, monthlyOutageAlertList)
-    snapshot2 = tracemalloc.take_snapshot()
-    top_stats = snapshot2.compare_to(snapshot1, 'lineno')
-    print("[ Top 10 differences ]")
-    for stat in top_stats[:10]:
-        print(stat)
-    #time.sleep(7)
-#     del current_df, sevenDayCurrent_df, dailyOutageDiff_df, dailyOutageAlertList, sevenDayOutage_df, windSolar_df, ninetyDayOutage_df,\
-#         oldMonthlyOutage_df, currentMonthlyOutage_df, monthlyOutageDiff_df, monthlyOutageAlertList, outageAlertList, col1, col2, col3, col4
-#     gc.collect()
-# del placeholder, history_df, db, tz, theme, cutoff
-#st.experimental_rerun()
+    # snapshot2 = tracemalloc.take_snapshot()
+    # top_stats = snapshot2.compare_to(snapshot1, 'lineno')
+    # print("[ Top 10 differences ]")
+    # for stat in top_stats[:10]:
+    #     print(stat)
+    time.sleep(7)
+    del current_df, sevenDayCurrent_df, dailyOutageDiff_df, dailyOutageAlertList, sevenDayOutage_df, windSolar_df, ninetyDayOutage_df,\
+        oldMonthlyOutage_df, currentMonthlyOutage_df, monthlyOutageDiff_df, monthlyOutageAlertList, outageAlertList, col1, col2, col3, col4
+    gc.collect()
+del placeholder, history_df, db, tz, theme, cutoff
+st.experimental_rerun()
