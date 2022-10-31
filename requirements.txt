@@ -6,3 +6,5 @@ db-dtypes
 firebase-admin
 protobuf==3.19.6
 google-cloud-bigquery
+google-cloud-firestore
+google-cloud-storage

@@ -150,10 +150,8 @@ def launchDataManager():
 
 @st.experimental_singleton(suppress_st_warning=True)
 def firestore_db_instance():
-    try:
-        firebase_admin.get_app()
-    except:
-        firebase_admin.initialize_app(credential=credentials.Certificate(st.secrets["gcp_service_account"]))
+    firebase_admin.initialize_app(credential=credentials.Certificate(dict(st.secrets["gcp_service_account"])))
+    firebase_admin.get_app()
     return firestore.client()
 
 #@st.experimental_memo(suppress_st_warning=True)
@@ -258,7 +256,7 @@ def diff_calc(old_df, new_df):
     diff_df.loc[diff_df['value_old']==0,'value_new']=0
     diff_df['diff_value'] = diff_df['value_new'] - diff_df['value_old']
     diff_df = diff_df[['timeStamp','fuelType','diff_value']]
-    diff_df = diff_df.groupby('fuelType').filter(lambda x: x['diff_value'].mean(numeric_only=True) != 0)
+    diff_df = diff_df.groupby('fuelType').filter(lambda x: x['diff_value'].mean() != 0)
     return diff_df
 
 def sevenDayCurrentChart(sevenDay_df, theme):
