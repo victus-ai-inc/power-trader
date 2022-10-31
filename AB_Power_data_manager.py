@@ -155,7 +155,7 @@ def alerts(outageTable, diff_df):
             ax.set_title(f'Monthly Outage Adjustments (next 24 months)\n{fuelType}')
         ax.set_ylabel('MW')
         ax.legend(labels=['Net Increase','Net Decrease'])
-        plt.savefig('outages.png',facecolor='white')S
+        plt.savefig('outages.png',facecolor='white')
 
     def text_alert():
         from_email = st.secrets['email_address']
