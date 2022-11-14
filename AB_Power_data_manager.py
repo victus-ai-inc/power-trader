@@ -21,7 +21,6 @@ from firebase_admin import firestore
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.image import MIMEImage
-#import random
 
 @st.experimental_singleton(suppress_st_warning=True)
 def firestore_db_instance():
@@ -224,9 +223,6 @@ def update_daily_outages():
     dailyOutages_ref.set(newOutages.to_dict('list'))
     diff_calc('dailyOutages', oldOutages, newOutages)
     st.success(f"Daily data updated: {datetime.now(tz).strftime('%b %d @ %H:%M:%S')}")
-    # newOutages = oldOutages.copy()
-    # newOutages['value'] = [random.randint(0,500) for x in range(len(newOutages))]
-    # diff_calc('dailyOutages', oldOutages, newOutages)
 
 @st.experimental_memo(suppress_st_warning=True, ttl=300)
 def update_monthly_outages():
@@ -246,12 +242,6 @@ def update_monthly_outages():
     monthlyOutages_ref.set(newOutages.to_dict('list'))
     diff_calc('monthlyOutages', oldOutages, newOutages)
     st.success(f"Monthly data updated: {datetime.now(tz).strftime('%b %d @ %H:%M:%S')}")
-    # newOutages = oldOutages.copy()
-    # newOutages['value'] = [random.randint(0,100) for x in range(len(newOutages))]
-    # diff_calc('monthlyOutages', oldOutages, newOutages)
-
-# OUTAGES
-    # Schedule delete of dates that are older than the 5 latest dates in BQ
 
 # WIND SOLAR FORECAST TO FS
 @st.experimental_memo(suppress_st_warning=True, ttl=300)
