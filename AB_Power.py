@@ -324,7 +324,46 @@ def monthlyOutagesChart(_currentMonthlyOutage_df, _theme):
     st.altair_chart(monthly_outage_area, use_container_width=True)
 
 @st.experimental_singleton(suppress_st_warning=True)
-def outageDiffChart(_dateFormat, _outageDiff_df, _outageAlertList):
+def dailyOutageDiffChart(_dateFormat, _outageDiff_df, _outageAlertList):
+    if len(outageAlertList)>0:
+        outageHeatmapChart = alt.Chart(_outageDiff_df
+        ).mark_rect(
+            opacity=0.9,
+            stroke='grey',strokeWidth=0
+        ).encode(
+            x=alt.X(
+                f'{_dateFormat}(timeStamp):O',
+                title=None,
+                axis=alt.Axis(
+                    ticks=False,
+                    labelAngle=270)),
+            y=alt.Y(
+                'fuelType:N',
+                title=None,
+                axis=alt.Axis(labelFontSize=15)),
+            color=alt.condition(
+                alt.datum.diff_value==0,
+                alt.value('white'),
+                alt.Color(
+                    'diff_value:Q',
+                    scale=alt.Scale(
+                        domainMin=-max(abs(_outageDiff_df['diff_value'])),
+                        domainMax=max(abs(_outageDiff_df['diff_value'])),
+                        scheme='redyellowgreen'),
+                    legend=alt.Legend(
+                        title='Value (MW)',
+                        columns=2))),
+            tooltip=[
+                alt.Tooltip('fuelType',title='Fuel Type'),
+                alt.Tooltip('diff_value',title='Value (MW)'),
+                alt.Tooltip(f'{_dateFormat}(timeStamp)',title='Date/Time')],
+        ).properties(height=105 if len(_outageAlertList)==1 else 60 * len(_outageAlertList)
+        ).configure_view(strokeWidth=0
+        ).configure_axis(grid=False)
+        st.altair_chart(outageHeatmapChart, use_container_width=True)
+
+@st.experimental_singleton(suppress_st_warning=True)
+def monthlyOutageDiffChart(_dateFormat, _outageDiff_df, _outageAlertList):
     if len(outageAlertList)>0:
         outageHeatmapChart = alt.Chart(_outageDiff_df
         ).mark_rect(
@@ -439,18 +478,19 @@ for seconds in range(300):
             ninetyDayOutageChart(ninetyDayOutage_df, theme)
             st.subheader('Daily Intertie & Outage')
             st.markdown('**+/- vs 7 days ago**')
-            outageDiffChart('yearmonthdate', dailyOutageDiff_df, dailyOutageAlertList)
+            dailyOutageDiffChart('yearmonthdate', dailyOutageDiff_df, dailyOutageAlertList)
         with col4:
             sevenDayOutageChart(sevenDayOutage_df, theme)
             monthlyOutagesChart(currentMonthlyOutage_df, theme)
             st.subheader('Monthly Outage')
             st.markdown('**+/- vs 7 days ago**')
-            outageDiffChart('yearmonth', monthlyOutageDiff_df, monthlyOutageAlertList)
+            monthlyOutageDiffChart('yearmonth', monthlyOutageDiff_df, monthlyOutageAlertList)
         sevenDayCurrentChart.clear()
         sevenDayOutageChart.clear()
         ninetyDayOutageChart.clear()
         monthlyOutagesChart.clear()
-        outageDiffChart.clear()
+        dailyOutageDiffChart.clear()
+        monthlyOutageDiffChart.clear()
 
         del current_df, sevenDayCurrent_df, dailyOutageDiff_df, dailyOutageAlertList, sevenDayOutage_df, windSolar_df, ninetyDayOutage_df,\
          oldMonthlyOutage_df, currentMonthlyOutage_df, monthlyOutageDiff_df, monthlyOutageAlertList, outageAlertList, col1, col2, col3, col4
