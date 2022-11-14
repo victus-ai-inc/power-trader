@@ -261,6 +261,9 @@ db = fblogin()
 # Set path to Firestore DB
 currentData_ref = db.collection(u'appData').document(u'currentData')
 history_df = read_firestore_data(db, 'historicalData')
+history_df
+st.stop()
+
 
 placeholder = st.empty()
 for seconds in range(450):

@@ -1,13 +1,9 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 import altair as alt
 import time
 import gc
-import json
-#import objgraph
-from datetime import datetime, date, timedelta
-from dateutil.relativedelta import relativedelta
+from datetime import datetime, timedelta
 import pytz
 from google.oauth2 import service_account
 import firebase_admin
@@ -15,100 +11,8 @@ from google.cloud import firestore
 from firebase_admin import credentials
 from firebase_admin import firestore
 from google.cloud import bigquery
-#from memory_profiler import profile
-#import tracemalloc
 
 st.set_page_config(layout='wide', initial_sidebar_state='collapsed', menu_items=None)
-# tracemalloc.start()
-# snapshot1 = tracemalloc.take_snapshot()
-
-# @st.experimental_singleton
-# def init_tracking_object():
-#   tracemalloc.start(10)
-
-#   return {
-#     "runs": 0,
-#     "tracebacks": {}
-#   }
-# _TRACES = init_tracking_object()
-
-# def traceback_exclude_filter(patterns, tracebackList):
-#     """
-#     Returns False if any provided pattern exists in the filename of the traceback,
-#     Returns True otherwise.
-#     """
-#     for t in tracebackList:
-#         for p in patterns:
-#             if p in t.filename:
-#                 return False
-#         return True
-
-# def traceback_include_filter(patterns, tracebackList):
-#     """
-#     Returns True if any provided pattern exists in the filename of the traceback,
-#     Returns False otherwise.
-#     """
-#     for t in tracebackList:
-#         for p in patterns:
-#             if p in t.filename:
-#                 return True
-#     return False
-
-# def check_for_leaks(diff):
-#     """
-#     Checks if the same traceback appears consistently after multiple runs.
-
-#     diff - The object returned by tracemalloc#snapshot.compare_to
-#     """
-#     _TRACES["runs"] = _TRACES["runs"] + 1
-#     tracebacks = set()
-
-#     for sd in diff:
-#         for t in sd.traceback:
-#             tracebacks.add(t)
-
-#     if "tracebacks" not in _TRACES or len(_TRACES["tracebacks"]) == 0:
-#         for t in tracebacks:
-#             _TRACES["tracebacks"][t] = 1
-#     else:
-#         oldTracebacks = _TRACES["tracebacks"].keys()
-#         intersection = tracebacks.intersection(oldTracebacks)
-#         evictions = set()
-#         for t in _TRACES["tracebacks"]:
-#             if t not in intersection:
-#                 evictions.add(t)
-#             else:
-#                 _TRACES["tracebacks"][t] = _TRACES["tracebacks"][t] + 1
-
-#         for t in evictions:
-#             del _TRACES["tracebacks"][t]
-
-#     if _TRACES["runs"] > 1:
-#         st.write(f'After {_TRACES["runs"]} runs the following traces were collected.')
-#         prettyPrint = {}
-#         for t in _TRACES["tracebacks"]:
-#             prettyPrint[str(t)] = _TRACES["tracebacks"][t]
-#         st.write(json.dumps(prettyPrint, sort_keys=True, indent=4))
-
-# def compare_snapshots():
-#     """
-#     Compares two consecutive snapshots and tracks if the same traceback can be found
-#     in the diff. If a traceback consistently appears during runs, it's a good indicator
-#     for a memory leak.
-#     """
-#     snapshot = tracemalloc.take_snapshot()
-#     if "snapshot" in _TRACES:
-#         diff = snapshot.compare_to(_TRACES["snapshot"], "lineno")
-#         diff = [d for d in diff if
-#                 d.count_diff > 0 and traceback_exclude_filter(["tornado"], d.traceback)
-#                 and traceback_include_filter(["streamlit"], d.traceback)
-#                 ]
-#         check_for_leaks(diff)
-
-#     _TRACES["snapshot"] = snapshot
-
-# **** Create alert if data-manager is not running ****
-    # Give option to open data-manager url and allow it to run in background
 
 def hideMenu():
     hide_menu_style = """
@@ -154,7 +58,7 @@ def firestore_db_instance():
     firebase_admin.get_app()
     return firestore.client()
 
-#@st.experimental_memo(suppress_st_warning=True)
+@st.experimental_memo(suppress_st_warning=True)
 def read_firestore_history(_db):
     firestore_ref = _db.collection('appData').document('historicalData')
     df = pd.DataFrame.from_dict(firestore_ref.get().to_dict())
@@ -162,7 +66,6 @@ def read_firestore_history(_db):
     df['timeStamp'] = df['timeStamp'].dt.tz_convert('America/Edmonton')
     return df
 
-#@st.experimental_memo(suppress_st_warning=True, ttl=7)
 def read_firestore(_db, document):
     firestore_ref = _db.collection('appData').document(document)
     df = pd.DataFrame.from_dict(firestore_ref.get().to_dict())
@@ -231,7 +134,7 @@ def warning(type, lst):
                 text-align: center;
                 padding: 15px 10px;">{lst}</p>''', unsafe_allow_html=True)
 
-#@st.experimental_memo(suppress_st_warning=True)
+@st.experimental_memo(suppress_st_warning=True)
 def oldOutage_df(outageTable):
     cred = service_account.Credentials.from_service_account_info(st.secrets["gcp_service_account"])
     query = f'''
@@ -259,11 +162,12 @@ def diff_calc(old_df, new_df):
     diff_df = diff_df.groupby('fuelType').filter(lambda x: x['diff_value'].mean() != 0)
     return diff_df
 
-def sevenDayCurrentChart(sevenDay_df, theme):
+@st.experimental_singleton(suppress_st_warning=True)
+def sevenDayCurrentChart(_sevenDay_df, _theme):
     st.subheader('Current Supply')
     st.markdown('**Previous 7-days**')
-    thm = {k:v for k,v in theme.items() if k not in ['Intertie','3-Day Solar Forecast','7-Day Wind Forecast']}
-    combo_base = alt.Chart(sevenDay_df).encode(
+    thm = {k:v for k,v in _theme.items() if k not in ['Intertie','3-Day Solar Forecast','7-Day Wind Forecast']}
+    combo_base = alt.Chart(_sevenDay_df).encode(
         x=alt.X(
             'timeStamp:T', 
             title='',
@@ -302,11 +206,12 @@ def sevenDayCurrentChart(sevenDay_df, theme):
     del thm
     return st.altair_chart(alt.layer(combo_area,combo_line).resolve_scale(y='independent'), use_container_width=True)
 
-def sevenDayOutageChart(sevenDayOutage_df, theme):
+@st.experimental_singleton(suppress_st_warning=True)
+def sevenDayOutageChart(_sevenDayOutage_df, _theme):
     st.subheader('Daily Outages')
     st.markdown('**Next 7-days**')
-    thm = {k:v for k,v in theme.items() if k not in ['BC','Saskatchewan','Montana','Pool Price']}
-    sevenDayOutageBase = alt.Chart(sevenDayOutage_df).encode(
+    thm = {k:v for k,v in _theme.items() if k not in ['BC','Saskatchewan','Montana','Pool Price']}
+    sevenDayOutageBase = alt.Chart(_sevenDayOutage_df).encode(
         x=alt.X(
             'timeStamp:T',
             title=None,
@@ -348,15 +253,15 @@ def sevenDayOutageChart(sevenDayOutage_df, theme):
             field='fuelType',
             oneOf=['7-Day Wind Forecast','3-Day Solar Forecast'])
     )
-    
     del thm
     st.altair_chart(alt.layer(sevenDayOutageArea, sevenDayOutageLine).resolve_scale(y='independent'), use_container_width=True)
 
-def ninetyDayOutageChart(ninetyDayOutage_df, theme):
+@st.experimental_singleton(suppress_st_warning=True)
+def ninetyDayOutageChart(_ninetyDayOutage_df, _theme):
     st.subheader('Daily Outages')
     st.markdown('**Next 90-days**')
-    thm = {k:v for k,v in theme.items() if k not in ['BC','Saskatchewan','Montana','Pool Price','7-Day Wind Forecast','3-Day Solar Forecast']}
-    daily_outage_area = alt.Chart(ninetyDayOutage_df).mark_area(opacity=0.8).encode(
+    thm = {k:v for k,v in _theme.items() if k not in ['BC','Saskatchewan','Montana','Pool Price','7-Day Wind Forecast','3-Day Solar Forecast']}
+    daily_outage_area = alt.Chart(_ninetyDayOutage_df).mark_area(opacity=0.8).encode(
         x=alt.X(
             'timeStamp:T',
             title=None,
@@ -385,11 +290,12 @@ def ninetyDayOutageChart(ninetyDayOutage_df, theme):
     del thm
     st.altair_chart(daily_outage_area, use_container_width=True)
 
-def monthlyOutagesChart(currentMonthlyOutage_df, theme):
+@st.experimental_singleton(suppress_st_warning=True)
+def monthlyOutagesChart(_currentMonthlyOutage_df, _theme):
     st.subheader('Monthly Outages')
     st.markdown('**Next 2-years**')
-    thm = {k:v for k,v in theme.items() if k not in ['BC','Saskatchewan','Montana','Pool Price','Intertie','7-Day Wind Forecast','3-Day Solar Forecast']}
-    monthly_outage_area = alt.Chart(currentMonthlyOutage_df).mark_bar(opacity=0.7).encode(
+    thm = {k:v for k,v in _theme.items() if k not in ['BC','Saskatchewan','Montana','Pool Price','Intertie','7-Day Wind Forecast','3-Day Solar Forecast']}
+    monthly_outage_area = alt.Chart(_currentMonthlyOutage_df).mark_bar(opacity=0.7).encode(
         x=alt.X(
             'yearmonth(timeStamp):O',
             title=None,
@@ -417,15 +323,16 @@ def monthlyOutagesChart(currentMonthlyOutage_df, theme):
     del thm
     st.altair_chart(monthly_outage_area, use_container_width=True)
 
-def outageDiffChart(dateFormat, outageDiff_df, outageAlertList):
+@st.experimental_singleton(suppress_st_warning=True)
+def outageDiffChart(_dateFormat, _outageDiff_df, _outageAlertList):
     if len(outageAlertList)>0:
-        outageHeatmapChart = alt.Chart(outageDiff_df
+        outageHeatmapChart = alt.Chart(_outageDiff_df
         ).mark_rect(
             opacity=0.9,
             stroke='grey',strokeWidth=0
         ).encode(
             x=alt.X(
-                f'{dateFormat}(timeStamp):O',
+                f'{_dateFormat}(timeStamp):O',
                 title=None,
                 axis=alt.Axis(
                     ticks=False,
@@ -440,8 +347,8 @@ def outageDiffChart(dateFormat, outageDiff_df, outageAlertList):
                 alt.Color(
                     'diff_value:Q',
                     scale=alt.Scale(
-                        domainMin=-max(abs(outageDiff_df['diff_value'])),
-                        domainMax=max(abs(outageDiff_df['diff_value'])),
+                        domainMin=-max(abs(_outageDiff_df['diff_value'])),
+                        domainMax=max(abs(_outageDiff_df['diff_value'])),
                         scheme='redyellowgreen'),
                     legend=alt.Legend(
                         title='Value (MW)',
@@ -449,14 +356,13 @@ def outageDiffChart(dateFormat, outageDiff_df, outageAlertList):
             tooltip=[
                 alt.Tooltip('fuelType',title='Fuel Type'),
                 alt.Tooltip('diff_value',title='Value (MW)'),
-                alt.Tooltip(f'{dateFormat}(timeStamp)',title='Date/Time')],
-        ).properties(height=105 if len(outageAlertList)==1 else 60 * len(outageAlertList)
+                alt.Tooltip(f'{_dateFormat}(timeStamp)',title='Date/Time')],
+        ).properties(height=105 if len(_outageAlertList)==1 else 60 * len(_outageAlertList)
         ).configure_view(strokeWidth=0
         ).configure_axis(grid=False)
         st.altair_chart(outageHeatmapChart, use_container_width=True)
 
 # Set global parameters
-
 tz = pytz.timezone('America/Edmonton')
 db = firestore_db_instance()
 theme = {'Biomass & Other':'#1f77b4',
@@ -482,13 +388,9 @@ with st.sidebar:
     launchDataManager()
 
 history_df = read_firestore_history(db)
-# if max(history_df['timeStamp']) < datetime.now(tz)-relativedelta(days=1,hour=23,minute=55,second=0,microsecond=0):
-#     #st.warning('Updating history')
-#     #read_firestore_history.clear()
-#     history_df = read_firestore_history(db)
 
 placeholder = st.empty()
-for seconds in range(100): # 85 iterations x 7 second wait time/iteration = Reset after 600 seconds
+for seconds in range(300):
 
 # Current supply
     current_df = read_firestore(db,'currentData')
@@ -503,13 +405,14 @@ for seconds in range(100): # 85 iterations x 7 second wait time/iteration = Rese
     sevenDayOutage_df = currentDailyOutage_df[currentDailyOutage_df['timeStamp'].dt.date <= datetime.now(tz).date() + timedelta(days=7)]
     windSolar_df = read_firestore(db,'windSolar')
     sevenDayOutage_df = pd.concat([sevenDayOutage_df, windSolar_df], axis=0)
-
     ninetyDayOutage_df = currentDailyOutage_df[currentDailyOutage_df['timeStamp'].dt.date <= datetime.now(tz).date() + timedelta(days=90)]
+
 # Monthly Outages
     oldMonthlyOutage_df = oldOutage_df('outages.monthlyOutages')
     currentMonthlyOutage_df = read_firestore(db,'monthlyOutages')
     monthlyOutageDiff_df = diff_calc(oldMonthlyOutage_df, currentMonthlyOutage_df)
     monthlyOutageAlertList = monthlyOutageDiff_df['fuelType'].unique()
+
 # Outage alerts
     outageAlertList = set(list(dailyOutageAlertList)+list(monthlyOutageAlertList))
 
@@ -528,6 +431,7 @@ for seconds in range(100): # 85 iterations x 7 second wait time/iteration = Rese
                 if len(outageAlertList) > 0:
                     for fuelType in outageAlertList:
                         warning('alert', fuelType)
+        # sevenDayCurrentChart(sevenDayCurrent_df, theme)
         # Charts
         col3, col4 = st.columns(2)
         with col3:
@@ -542,14 +446,16 @@ for seconds in range(100): # 85 iterations x 7 second wait time/iteration = Rese
             st.subheader('Monthly Outage')
             st.markdown('**+/- vs 7 days ago**')
             outageDiffChart('yearmonth', monthlyOutageDiff_df, monthlyOutageAlertList)
-    # snapshot2 = tracemalloc.take_snapshot()
-    # top_stats = snapshot2.compare_to(snapshot1, 'lineno')
-    # print("[ Top 10 differences ]")
-    # for stat in top_stats[:10]:
-    #     print(stat)
-    time.sleep(7)
-    del current_df, sevenDayCurrent_df, dailyOutageDiff_df, dailyOutageAlertList, sevenDayOutage_df, windSolar_df, ninetyDayOutage_df,\
-        oldMonthlyOutage_df, currentMonthlyOutage_df, monthlyOutageDiff_df, monthlyOutageAlertList, outageAlertList, col1, col2, col3, col4
-    gc.collect()
+        sevenDayCurrentChart.clear()
+        sevenDayOutageChart.clear()
+        ninetyDayOutageChart.clear()
+        monthlyOutagesChart.clear()
+        outageDiffChart.clear()
+
+        del current_df, sevenDayCurrent_df, dailyOutageDiff_df, dailyOutageAlertList, sevenDayOutage_df, windSolar_df, ninetyDayOutage_df,\
+         oldMonthlyOutage_df, currentMonthlyOutage_df, monthlyOutageDiff_df, monthlyOutageAlertList, outageAlertList, col1, col2, col3, col4
+        gc.collect()
+    time.sleep(10)
 del placeholder, history_df, db, tz, theme, cutoff
+gc.collect()
 st.experimental_rerun()
