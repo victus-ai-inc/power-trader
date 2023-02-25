@@ -22,7 +22,7 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.image import MIMEImage
 
-@st.experimental_singleton(suppress_st_warning=True)
+@st.cache_resource()
 def firestore_db_instance():
     firebase_admin.initialize_app(credential=credentials.Certificate(dict(st.secrets["gcp_service_account"])))
     firebase_admin.get_app()
@@ -35,7 +35,7 @@ def read_firestore(db, document):
     df['timeStamp'] = df['timeStamp'].dt.tz_convert('America/Edmonton')
     return df
 
-@st.experimental_memo(suppress_st_warning=True)
+@st.cache_data()
 def get_streamInfo(streamId):
     streamInfo = pd.read_csv('stream_codes.csv', usecols=['streamId','fuelType'], dtype={'streamId':'Int64','fuelType':'category'})
     streamInfo = streamInfo[streamInfo['streamId']==streamId]
@@ -118,7 +118,7 @@ def update_historical_data():
         historicalData_ref.set(history_df.to_dict('list'))
         st.session_state['last_history_update'] = min(history_df['timeStamp'])
 
-@st.experimental_memo(suppress_st_warning=True, ttl=20)
+@st.cache_data(ttl=20)
 def update_current_data():
     streamIds = [86, 322684, 322677, 87, 85, 23695, 322665, 23694, 120, 124947, 122, 1]
     #current_df = get_data(streamIds, datetime.now(tz).date(), datetime.now(tz).date()+timedelta(days=1))
@@ -203,7 +203,7 @@ def update_BigQuery_outages(outageTable, df):
         bigquery.Client(credentials=cred).load_table_from_dataframe(df,f'outages.{outageTable}')
         st.session_state['last_'+outageTable+'_update'] = datetime.now(tz).date()
 
-@st.experimental_memo(suppress_st_warning=True, ttl=180)
+@st.cache_data(ttl=180)
 def update_daily_outages():
     # Pull last update from FS & update BQ if necessary
     oldOutages = read_firestore(db,'dailyOutages')
@@ -224,7 +224,7 @@ def update_daily_outages():
     diff_calc('dailyOutages', oldOutages, newOutages)
     st.success(f"Daily data updated: {datetime.now(tz).strftime('%b %d @ %H:%M:%S')}")
 
-@st.experimental_memo(suppress_st_warning=True, ttl=300)
+@st.cache_data(ttl=300)
 def update_monthly_outages():
     # Pull last update from FS
     oldOutages = read_firestore(db,'monthlyOutages')
@@ -244,7 +244,7 @@ def update_monthly_outages():
     st.success(f"Monthly data updated: {datetime.now(tz).strftime('%b %d @ %H:%M:%S')}")
 
 # WIND SOLAR FORECAST TO FS
-@st.experimental_memo(suppress_st_warning=True, ttl=300)
+@st.cache_data(ttl=300)
 def update_wind_solar():
     streamIds = [102225, 293354]
     wind_solar = getData(streamIds, datetime.now(tz).date(), datetime.now(tz).date() + relativedelta(days=8))

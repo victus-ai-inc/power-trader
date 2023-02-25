@@ -52,13 +52,13 @@ def launchDataManager():
     ''',
     unsafe_allow_html=True)
 
-@st.experimental_singleton(suppress_st_warning=True)
+@st.cache_resource()
 def firestore_db_instance():
     firebase_admin.initialize_app(credential=credentials.Certificate(dict(st.secrets["gcp_service_account"])))
     firebase_admin.get_app()
     return firestore.client()
 
-@st.experimental_memo(suppress_st_warning=True)
+@st.cache_data()
 def read_firestore_history(_db):
     firestore_ref = _db.collection('appData').document('historicalData')
     df = pd.DataFrame.from_dict(firestore_ref.get().to_dict())
@@ -134,7 +134,7 @@ def warning(type, lst):
                 text-align: center;
                 padding: 15px 10px;">{lst}</p>''', unsafe_allow_html=True)
 
-@st.experimental_memo(suppress_st_warning=True)
+@st.cache_data()
 def oldOutage_df(outageTable):
     cred = service_account.Credentials.from_service_account_info(st.secrets["gcp_service_account"])
     query = f'''
@@ -162,7 +162,7 @@ def diff_calc(old_df, new_df):
     diff_df = diff_df.groupby('fuelType').filter(lambda x: x['diff_value'].mean() != 0)
     return diff_df
 
-@st.experimental_singleton(suppress_st_warning=True)
+@st.cache_resource()
 def sevenDayCurrentChart(_sevenDay_df, _theme):
     st.subheader('Current Supply')
     st.markdown('**Previous 7-days**')
@@ -206,7 +206,7 @@ def sevenDayCurrentChart(_sevenDay_df, _theme):
     del thm
     return st.altair_chart(alt.layer(combo_area,combo_line).resolve_scale(y='independent'), use_container_width=True)
 
-@st.experimental_singleton(suppress_st_warning=True)
+@st.cache_resource()
 def sevenDayOutageChart(_sevenDayOutage_df, _theme):
     st.subheader('Daily Outages')
     st.markdown('**Next 7-days**')
@@ -256,7 +256,7 @@ def sevenDayOutageChart(_sevenDayOutage_df, _theme):
     del thm
     st.altair_chart(alt.layer(sevenDayOutageArea, sevenDayOutageLine).resolve_scale(y='independent'), use_container_width=True)
 
-@st.experimental_singleton(suppress_st_warning=True)
+@st.cache_resource()
 def ninetyDayOutageChart(_ninetyDayOutage_df, _theme):
     st.subheader('Daily Outages')
     st.markdown('**Next 90-days**')
@@ -290,7 +290,7 @@ def ninetyDayOutageChart(_ninetyDayOutage_df, _theme):
     del thm
     st.altair_chart(daily_outage_area, use_container_width=True)
 
-@st.experimental_singleton(suppress_st_warning=True)
+@st.cache_resource()
 def monthlyOutagesChart(_currentMonthlyOutage_df, _theme):
     st.subheader('Monthly Outages')
     st.markdown('**Next 2-years**')
@@ -323,7 +323,7 @@ def monthlyOutagesChart(_currentMonthlyOutage_df, _theme):
     del thm
     st.altair_chart(monthly_outage_area, use_container_width=True)
 
-@st.experimental_singleton(suppress_st_warning=True)
+@st.cache_resource()
 def dailyOutageDiffChart(_dateFormat, _outageDiff_df, _outageAlertList):
     if len(outageAlertList)>0:
         outageHeatmapChart = alt.Chart(_outageDiff_df
@@ -362,7 +362,7 @@ def dailyOutageDiffChart(_dateFormat, _outageDiff_df, _outageAlertList):
         ).configure_axis(grid=False)
         st.altair_chart(outageHeatmapChart, use_container_width=True)
 
-@st.experimental_singleton(suppress_st_warning=True)
+@st.cache_resource()
 def monthlyOutageDiffChart(_dateFormat, _outageDiff_df, _outageAlertList):
     if len(outageAlertList)>0:
         outageHeatmapChart = alt.Chart(_outageDiff_df
