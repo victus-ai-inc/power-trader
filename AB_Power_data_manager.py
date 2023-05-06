@@ -186,7 +186,7 @@ def diff_calc(outageTable, old_df, new_df):
     diff_df = diff_df[['timeStamp','fuelType','diff_value']]
     if diff_df[(diff_df['diff_value']>=100) | (diff_df['diff_value']<=-100)]['diff_value'].astype(bool).sum(axis=0) != 0:
         if outageTable == 'dailyOutages':
-            diff_df = diff_df.groupby('fuelType').resample('D',on='timeStamp').mean(numeric_only=True).reset_index()
+            diff_df = diff_df.groupby('fuelType').resample('D',on='timeStamp').mean(numeric_only=True,skipna=True).reset_index()
         diff_df['pos'] = np.where(diff_df['diff_value']>=0,diff_df['diff_value'],0)
         diff_df['neg'] = np.where(diff_df['diff_value']<0,-diff_df['diff_value'],0)
         alerts(outageTable, diff_df)
