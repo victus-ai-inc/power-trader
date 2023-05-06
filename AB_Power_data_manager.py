@@ -95,7 +95,7 @@ def getData(streamIds, fromDate, toDate):
         new_df = new_df.assign(fuelType=fuelType)
         new_df.rename(columns={0:'timeStamp', 1:'value'}, inplace=True)
         new_df
-        new_df['timeStamp'] = pd.to_datetime(new_df['timeStamp'],errors='ignore', infer_datetime_format=True).dt.tz_localize(tz, ambiguous=True, nonexistent='shift_forward')
+        new_df['timeStamp'] = pd.to_datetime(new_df['timeStamp']).dt.tz_localize(tz, ambiguous=True, nonexistent='shift_forward')
         new_df.replace(to_replace={'value':''}, value=0, inplace=True)
         df = pd.concat([df, new_df], axis=0, ignore_index=True)
         time.sleep(0.1)
