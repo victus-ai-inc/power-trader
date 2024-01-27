@@ -325,7 +325,7 @@ def monthlyOutagesChart(_currentMonthlyOutage_df, _theme):
 
 @st.cache_resource()
 def dailyOutageDiffChart(_dateFormat, _outageDiff_df, _outageAlertList):
-    if len(outageAlertList)>0:
+    if len(_outageAlertList)>0:
         outageHeatmapChart = alt.Chart(_outageDiff_df
         ).mark_rect(
             opacity=0.9,
@@ -434,7 +434,7 @@ for seconds in range(300):
 # Current supply
     current_df = read_firestore(db,'currentData')
     sevenDayCurrent_df = pd.concat([history_df, current_df], axis=0)
-
+    
 # Daily outages
     oldDailyOutage_df = oldOutage_df('outages.dailyOutages')
     currentDailyOutage_df = read_firestore(db,'dailyOutages')
